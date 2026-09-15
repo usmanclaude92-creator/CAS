@@ -1,0 +1,6 @@
+{
+  "name": "Construction Accounting System",
+  "description": "Production-ready Construction Accounting and Financial Reporting System with project-wise accounting, treasury, receivables, payables, and Supabase PostgreSQL integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
