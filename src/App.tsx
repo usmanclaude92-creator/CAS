@@ -11,7 +11,6 @@ import { LoginView } from './components/auth/LoginView';
 
 // Core Business Views
 import { DashboardView } from './components/views/DashboardView';
-import { ProjectDashboardView } from './components/views/ProjectDashboardView';
 import { ApprovalsView } from './components/views/ApprovalsView';
 import { ProjectsView } from './components/views/ProjectsView';
 import { BankingView } from './components/views/BankingView';
@@ -269,29 +268,18 @@ function AppContent() {
           ) : (
             <>
               {/* Dynamic Views */}
-              {activeView === 'dashboard' && (
+              {(activeView === 'dashboard' || activeView === 'project_dashboard') && (
                 <DashboardView
-                  onOpenMoneyIn={() => {
-                    setModalProjectId(undefined);
-                    setIsMoneyInOpen(true);
-                  }}
+                  initialScope={activeView === 'project_dashboard' ? 'project' : 'overall'}
+                  initialProjectId={selectedProjectId}
+                  onOpenMoneyIn={handleOpenProjectMoneyIn}
                   onOpenMoneyOut={() => setIsMoneyOutOpen(true)}
-                  onOpenClientInvoice={() => {
-                    setModalProjectId(undefined);
-                    setIsClientInvoiceOpen(true);
-                  }}
-                  onOpenPurchase={() => {
-                    setModalProjectId(undefined);
-                    setIsPurchaseOpen(true);
-                  }}
-                  onOpenExpense={() => {
-                    setModalProjectId(undefined);
-                    setIsExpenseOpen(true);
-                  }}
+                  onOpenClientInvoice={handleOpenProjectInvoices}
+                  onOpenPurchase={handleOpenProjectPurchase}
+                  onOpenExpense={handleOpenProjectExpense}
                   onOpenTransfer={() => setIsTransferOpen(true)}
                   onSelectProject={(id) => {
                     setSelectedProjectId(id);
-                    setActiveView('project_dashboard');
                   }}
                   onSelectCustomer={(id) => {
                     setSelectedCustomerId(id);
@@ -302,20 +290,10 @@ function AppContent() {
                     setActiveView('purchases');
                   }}
                   onReverseTransaction={handleOpenReverse}
-                />
-              )}
-
-              {activeView === 'project_dashboard' && (
-                <ProjectDashboardView
-                  initialProjectId={selectedProjectId}
                   onNavigateToProjectsList={(projectId) => {
                     if (projectId) setSelectedProjectId(projectId);
                     setActiveView('projects');
                   }}
-                  onOpenClientInvoice={handleOpenProjectInvoices}
-                  onOpenPurchase={handleOpenProjectPurchase}
-                  onOpenExpense={handleOpenProjectExpense}
-                  onOpenMoneyIn={handleOpenProjectMoneyIn}
                 />
               )}
 

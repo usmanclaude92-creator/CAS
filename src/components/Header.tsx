@@ -408,7 +408,7 @@ export const Header: React.FC<HeaderProps> = ({
     canCreateTransfer;
 
   return (
-    <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 sm:gap-4 transition-colors duration-200">
+    <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 sm:gap-4 transition-colors duration-200 print:hidden">
       {/* Title and Sidebar toggle */}
       <div className="flex items-center gap-3 shrink-0">
         <button

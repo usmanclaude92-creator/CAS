@@ -20,6 +20,7 @@ import {
   Percent,
   Users,
   Truck,
+  Printer,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { formatOMR, formatPercent, addMoney } from '../../utils/formatters';
@@ -644,10 +645,14 @@ export const ReportsView: React.FC = () => {
     }
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="space-y-5">
-      {/* Top Title & Export */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Top Title & Export & Print Action Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-bold text-slate-900">Financial Reports &amp; Statements</h2>
@@ -673,6 +678,16 @@ export const ReportsView: React.FC = () => {
           )}
 
           <button
+            type="button"
+            onClick={handlePrint}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 transition-colors cursor-pointer shadow-xs"
+            title="Print report (PDF / Printer)"
+          >
+            <Printer className="w-4 h-4 text-slate-600" />
+            Print Report
+          </button>
+
+          <button
             onClick={handleExport}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-lg text-white bg-emerald-700 hover:bg-emerald-600 transition-colors cursor-pointer shadow"
           >
@@ -683,7 +698,7 @@ export const ReportsView: React.FC = () => {
       </div>
 
       {/* Report Selection Tabs */}
-      <div className="bg-white rounded-xl border border-slate-200 p-2 shadow-xs flex flex-wrap gap-1.5">
+      <div className="bg-white rounded-xl border border-slate-200 p-2 shadow-xs flex flex-wrap gap-1.5 print:hidden">
         {[
           { id: 'profitability', label: 'Project Profitability', icon: TrendingUp },
           { id: 'income_statement', label: 'Income Statement (P&L)', icon: BarChart3 },
@@ -725,7 +740,7 @@ export const ReportsView: React.FC = () => {
       {/* ============================================================= */}
       {/* GLOBAL QUICK FILTER TOOLBAR (Period Presets & Project Selector) */}
       {/* ============================================================= */}
-      <div className="bg-slate-50/90 rounded-xl border border-slate-200 p-3.5 shadow-xs space-y-3">
+      <div className="bg-slate-50/90 rounded-xl border border-slate-200 p-3.5 shadow-xs space-y-3 print:hidden">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           {/* Quick Date Presets */}
           <div className="flex flex-wrap items-center gap-1.5">
@@ -822,13 +837,40 @@ export const ReportsView: React.FC = () => {
       {/* ============================================================= */}
       {/* REPORT CANVAS & REPORT-SPECIFIC QUICK FILTERS                 */}
       {/* ============================================================= */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6 print:p-0 print:border-none print:shadow-none print:bg-white">
+        {/* Printable Official Statement Header - only visible during print */}
+        <div className="hidden print:block mb-6 border-b-2 border-slate-900 pb-4">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 uppercase tracking-wide">
+                {selectedReport === 'profitability' && 'Project Profitability & Cost Analysis'}
+                {selectedReport === 'income_statement' && 'Statement of Profit or Loss (Income Statement)'}
+                {selectedReport === 'balance_sheet' && 'Statement of Financial Position (Balance Sheet)'}
+                {selectedReport === 'trial_balance' && 'Trial Balance Statement'}
+                {selectedReport === 'cash_flow' && 'Statement of Cash Flows'}
+                {selectedReport === 'ar_aging' && 'Accounts Receivable (AR) Aging Summary'}
+                {selectedReport === 'ap_aging' && 'Accounts Payable (AP) Aging Summary'}
+                {selectedReport === 'general_journal' && 'General Journal & Audit Ledger'}
+              </h1>
+              <p className="text-xs font-medium text-slate-600 mt-1">
+                Construction Accounting ERP &bull; Sultanate of Oman &bull; IFRS Compliant
+              </p>
+            </div>
+            <div className="text-right text-xs text-slate-700 space-y-0.5">
+              <div><span className="text-slate-500">Period:</span> <strong>{dateRange.label}</strong></div>
+              <div><span className="text-slate-500">Scope:</span> <strong>{selectedProjectObj ? `${selectedProjectObj.name} (${selectedProjectObj.code})` : 'All Projects Consolidated'}</strong></div>
+              <div><span className="text-slate-500">Currency:</span> <strong>OMR (Numeric 18, 3)</strong></div>
+              <div><span className="text-slate-500">Printed:</span> <strong>{new Date().toLocaleDateString('en-GB')}</strong></div>
+            </div>
+          </div>
+        </div>
+
         {/* =========================================================== */}
         {/* REPORT 1: Project Profitability                             */}
         {/* =========================================================== */}
         {selectedReport === 'profitability' && (
           <div className="space-y-4">
-            <div className="border-b border-slate-200 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="border-b border-slate-200 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 print:hidden">
               <div>
                 <h3 className="text-base font-bold text-slate-900">Project Profitability &amp; Cost Analysis</h3>
                 <p className="text-xs text-slate-500">
@@ -841,7 +883,7 @@ export const ReportsView: React.FC = () => {
             </div>
 
             {/* Quick Filter Bar for Profitability */}
-            <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 print:hidden">
               {/* Margin Quick Pills */}
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-xs font-semibold text-slate-700 mr-1 flex items-center gap-1">
@@ -993,7 +1035,7 @@ export const ReportsView: React.FC = () => {
             </div>
 
             {/* Quick Filter Bar for Income Statement */}
-            <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs">
+            <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs print:hidden">
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-slate-700">Scope:</span>
                 <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-medium">
@@ -1127,7 +1169,7 @@ export const ReportsView: React.FC = () => {
             </div>
 
             {/* Balance Sheet Quick Toggles */}
-            <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs">
+            <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs print:hidden">
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-slate-700">As-of Date:</span>
                 <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-medium">
@@ -1232,7 +1274,7 @@ export const ReportsView: React.FC = () => {
             </div>
 
             {/* Trial Balance Quick Filter Pills */}
-            <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs print:hidden">
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="font-semibold text-slate-700 mr-1 flex items-center gap-1">
                   <Filter className="w-3 h-3 text-slate-500" /> Class:
@@ -1387,7 +1429,7 @@ export const ReportsView: React.FC = () => {
             </div>
 
             {/* Quick Filters for AR Aging */}
-            <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 space-y-3">
+            <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 space-y-3 print:hidden">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 {/* Aging Bracket Pills */}
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -1541,7 +1583,7 @@ export const ReportsView: React.FC = () => {
             </div>
 
             {/* Quick Filters for AP Aging */}
-            <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 space-y-3">
+            <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 space-y-3 print:hidden">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 {/* Aging Bracket Pills */}
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -1722,7 +1764,7 @@ export const ReportsView: React.FC = () => {
             </div>
 
             {/* Quick Filters for General Journal */}
-            <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 space-y-3">
+            <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 space-y-3 print:hidden">
               {/* Source Type Pills */}
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-xs font-semibold text-slate-700 mr-1 flex items-center gap-1">

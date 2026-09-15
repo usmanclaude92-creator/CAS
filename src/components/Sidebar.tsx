@@ -70,8 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     superAdminOnly?: boolean;
     badge?: string;
   }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'dashboard.view' },
-    { id: 'project_dashboard', label: 'Project Dashboard', icon: BarChart3, permission: 'projects.view' },
+    { id: 'dashboard', label: 'Executive Dashboard', icon: LayoutDashboard, permission: 'dashboard.view' },
     { id: 'approvals', label: 'Pending Approvals', icon: Clock, permission: 'approvals.view' },
     { id: 'projects', label: 'Projects & Costing', icon: Building2, permission: 'projects.view' },
     { id: 'banking', label: 'Banking & Treasury', icon: Landmark, permission: 'treasury.view' },
@@ -105,14 +104,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Mobile Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs lg:hidden print:hidden"
           onClick={onClose}
         />
       )}
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-slate-900 text-slate-300 flex flex-col transition-transform duration-200 ease-in-out lg:translate-x-0 border-r border-slate-800 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-slate-900 text-slate-300 flex flex-col transition-transform duration-200 ease-in-out lg:translate-x-0 border-r border-slate-800 print:hidden ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -150,7 +149,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
           {visibleNavItems.map((item) => {
             const Icon = item.icon;
-            const isActive = activeView === item.id;
+            const isActive =
+              activeView === item.id || (item.id === 'dashboard' && activeView === 'project_dashboard');
             return (
               <button
                 key={item.id}
