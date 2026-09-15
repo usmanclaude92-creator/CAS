@@ -33,6 +33,7 @@ export type NavView =
   | 'approvals'
   | 'reports'
   | 'masters'
+  | 'system_config'
   | 'users'
   | 'roles'
   | 'workflow_settings'
@@ -68,28 +69,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
     icon: React.FC<{ className?: string }>;
     permission?: string;
     superAdminOnly?: boolean;
+    section?: 'main' | 'masters' | 'system';
     badge?: string;
   }[] = [
-    { id: 'dashboard', label: 'Executive Dashboard', icon: LayoutDashboard, permission: 'dashboard.view' },
-    { id: 'approvals', label: 'Pending Approvals', icon: Clock, permission: 'approvals.view' },
-    { id: 'projects', label: 'Projects & Costing', icon: Building2, permission: 'projects.view' },
-    { id: 'banking', label: 'Banking & Treasury', icon: Landmark, permission: 'treasury.view' },
-    { id: 'customers', label: 'Clients & Receivables', icon: Users, permission: 'customers.view' },
-    { id: 'purchases', label: 'Vendors & Payables', icon: Truck, permission: 'purchases.view' },
-    { id: 'expenses', label: 'Direct Site Expenses', icon: Coins, permission: 'expenses.view' },
-    { id: 'reports', label: 'Financial Reports', icon: FileBarChart, permission: 'reports.view' },
-    { id: 'masters', label: 'Masters & Setup', icon: Layers, permission: 'settings.view' },
-    { id: 'users', label: 'User Directory', icon: UserCheck, permission: 'users.view' },
-    { id: 'roles', label: 'Roles & RBAC', icon: Shield, permission: 'roles.view' },
-    { id: 'workflow_settings', label: 'Approval Governance', icon: Sliders, permission: 'settings.view' },
-    {
-      id: 'master_import_audit',
-      label: 'Import Audit Trail',
-      icon: FileSpreadsheet,
-      permission: 'audit.view',
-      superAdminOnly: false,
-    },
-    { id: 'audit', label: 'Immutable Audit Log', icon: ShieldAlert, permission: 'audit.view' },
+    { id: 'dashboard', label: 'Executive Dashboard', icon: LayoutDashboard, permission: 'dashboard.view', section: 'main' },
+    { id: 'approvals', label: 'Pending Approvals', icon: Clock, permission: 'approvals.view', section: 'main' },
+    { id: 'projects', label: 'Projects & Costing', icon: Building2, permission: 'projects.view', section: 'main' },
+    { id: 'banking', label: 'Banking & Treasury', icon: Landmark, permission: 'treasury.view', section: 'main' },
+    { id: 'customers', label: 'Clients & Receivables', icon: Users, permission: 'customers.view', section: 'main' },
+    { id: 'purchases', label: 'Vendors & Payables', icon: Truck, permission: 'purchases.view', section: 'main' },
+    { id: 'expenses', label: 'Direct Site Expenses', icon: Coins, permission: 'expenses.view', section: 'main' },
+    { id: 'reports', label: 'Financial Reports', icon: FileBarChart, permission: 'reports.view', section: 'main' },
+    { id: 'masters', label: 'Business Masters', icon: Layers, permission: 'settings.view', section: 'masters' },
+    { id: 'system_config', label: 'System Configuration', icon: Sliders, permission: 'settings.view', section: 'system' },
+    { id: 'audit', label: 'Immutable Audit Log', icon: ShieldAlert, permission: 'audit.view', section: 'system' },
   ];
 
   // Filter based on user permissions
@@ -147,29 +140,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Nav Links */}
         <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
-          {visibleNavItems.map((item) => {
+          {visibleNavItems.map((item, index) => {
             const Icon = item.icon;
             const isActive =
               activeView === item.id || (item.id === 'dashboard' && activeView === 'project_dashboard');
+            const prevItem = visibleNavItems[index - 1];
+            const isNewSection = !prevItem || prevItem.section !== item.section;
+
             return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  onSelectView(item.id);
-                  onClose();
-                }}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                  isActive
-                    ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center gap-2.5 truncate">
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                  <span className="truncate">{item.label}</span>
-                </div>
-                {isActive && <ChevronRight className="w-3.5 h-3.5 text-blue-200 shrink-0" />}
-              </button>
+              <React.Fragment key={item.id}>
+                {isNewSection && item.section === 'masters' && (
+                  <div className="pt-3 pb-1 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Master Data
+                  </div>
+                )}
+                {isNewSection && item.section === 'system' && (
+                  <div className="pt-3 pb-1 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Administration &amp; Setup
+                  </div>
+                )}
+                <button
+                  onClick={() => {
+                    onSelectView(item.id);
+                    onClose();
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                    isActive
+                      ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 truncate">
+                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                    <span className="truncate">{item.label}</span>
+                  </div>
+                  {isActive && <ChevronRight className="w-3.5 h-3.5 text-blue-200 shrink-0" />}
+                </button>
+              </React.Fragment>
             );
           })}
         </nav>

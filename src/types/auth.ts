@@ -28,17 +28,23 @@ export interface Role {
   updatedAt?: string;
 }
 
-export type UserStatus = 'active' | 'inactive';
+export type UserStatus = 'active' | 'inactive' | 'suspended';
 
 export interface UserProfile {
   id: string;
   email: string;
+  username?: string;
   fullName: string;
   mobile?: string;
   roleId: string;
   roleCode: string;
   roleName: string;
   status: UserStatus;
+  password?: string;
+  lastPasswordChange?: string;
+  forcePasswordReset?: boolean;
+  twoFactorEnabled?: boolean;
+  sessionStatus?: 'online' | 'offline' | 'idle';
   department?: string;
   employeeId?: string;
   assignedProjectIds: string[]; // empty array or ['*'] means All Projects

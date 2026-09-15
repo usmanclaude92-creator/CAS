@@ -21,10 +21,12 @@ import {
   Users,
   Truck,
   Printer,
+  FileText,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { formatOMR, formatPercent, addMoney } from '../../utils/formatters';
-import { exportToExcel } from '../../utils/exportToExcel';
+import { exportToExcel, exportToCsv } from '../../utils/exportToExcel';
+import { toast } from '../../context/ToastContext';
 import {
   DatePreset,
   getDateRangeFromPreset,
@@ -460,9 +462,10 @@ export const ReportsView: React.FC = () => {
   }, [summary, trialAccountClass, hideZeroTrial, trialSearch]);
 
   // -------------------------------------------------------------
-  // EXCEL EXPORT (Always exports the current filtered dataset!)
+  // EXCEL & CSV EXPORT (Always exports the current filtered dataset!)
   // -------------------------------------------------------------
-  const handleExport = () => {
+  const handleExport = (exportFormat: 'excel' | 'csv' = 'excel') => {
+    const exportFn = exportFormat === 'csv' ? exportToCsv : exportToExcel;
     const today = new Date().toISOString().split('T')[0];
     const projectSuffix = selectedProjectObj ? `_${selectedProjectObj.code}` : '_AllProjects';
     const periodSuffix = dateRange.label.replace(/\s+/g, '_');
@@ -483,7 +486,7 @@ export const ReportsView: React.FC = () => {
         'Margin (%)': `${p.profitMargin.toFixed(2)}%`,
       }));
 
-      exportToExcel({
+      exportFn({
         filename: `Project_Profitability_${periodSuffix}${projectSuffix}_${today}`,
         sheetName: 'Profitability',
         title: `CONSTRUCTION PROJECT PROFITABILITY REPORT (${dateRange.label.toUpperCase()})`,
@@ -503,7 +506,7 @@ export const ReportsView: React.FC = () => {
         { 'Category': 'PROFIT MARGIN', 'Line Item': 'Gross Profit Margin (%)', 'Amount (OMR)': `${is.profitMargin.toFixed(2)}%` },
       ];
 
-      exportToExcel({
+      exportFn({
         filename: `Income_Statement_${periodSuffix}${projectSuffix}_${today}`,
         sheetName: 'Income Statement',
         title: `STATEMENT OF PROFIT & LOSS (${dateRange.label.toUpperCase()}${selectedProjectObj ? ` — ${selectedProjectObj.name}` : ''})`,
@@ -528,7 +531,7 @@ export const ReportsView: React.FC = () => {
         { 'Section': 'EQUITY TOTAL', 'Account': 'TOTAL LIABILITIES & EQUITY', 'Amount (OMR)': totalLiabilities + equity },
       ];
 
-      exportToExcel({
+      exportFn({
         filename: `Balance_Sheet_${today}`,
         sheetName: 'Balance Sheet',
         title: 'STATEMENT OF FINANCIAL POSITION (BALANCE SHEET)',
@@ -545,7 +548,7 @@ export const ReportsView: React.FC = () => {
         'Credit (OMR)': r.credit > 0 ? r.credit : '',
       }));
 
-      exportToExcel({
+      exportFn({
         filename: `Trial_Balance_${today}`,
         sheetName: 'Trial Balance',
         title: 'TRIAL BALANCE STATEMENT (FILTERED)',
@@ -563,7 +566,7 @@ export const ReportsView: React.FC = () => {
         { 'Section': 'NET CASH FLOW', 'Description': 'Net Cash Flow for the Period', 'Inflow (OMR)': cf.netCashFlow > 0 ? cf.netCashFlow : '', 'Outflow (OMR)': cf.netCashFlow < 0 ? Math.abs(cf.netCashFlow) : '' },
       ];
 
-      exportToExcel({
+      exportFn({
         filename: `Cash_Flow_${periodSuffix}${projectSuffix}_${today}`,
         sheetName: 'Cash Flow',
         title: `STATEMENT OF CASH FLOWS (${dateRange.label.toUpperCase()})`,
@@ -584,7 +587,7 @@ export const ReportsView: React.FC = () => {
         'Aging Bracket': inv.bracketLabel,
       }));
 
-      exportToExcel({
+      exportFn({
         filename: `AR_Aging_Report_${arAgingBracket}_${today}`,
         sheetName: 'AR Aging',
         title: `ACCOUNTS RECEIVABLE AGING ANALYSIS (${arAgingBracket.toUpperCase()})`,
@@ -606,7 +609,7 @@ export const ReportsView: React.FC = () => {
         'Aging Bracket': p.bracketLabel,
       }));
 
-      exportToExcel({
+      exportFn({
         filename: `AP_Aging_Report_${apAgingBracket}_${today}`,
         sheetName: 'AP Aging',
         title: `ACCOUNTS PAYABLE AGING ANALYSIS (${apAgingBracket.toUpperCase()})`,
@@ -634,7 +637,7 @@ export const ReportsView: React.FC = () => {
         };
       });
 
-      exportToExcel({
+      exportFn({
         filename: `General_Journal_${periodSuffix}_${today}`,
         sheetName: 'General Journal',
         title: `GENERAL JOURNAL & AUDIT TRACE (${dateRange.label.toUpperCase()})`,
@@ -643,6 +646,11 @@ export const ReportsView: React.FC = () => {
         data,
       });
     }
+
+    toast.success(
+      `Report Exported (${exportFormat.toUpperCase()})`,
+      `Downloaded financial report as ${exportFormat === 'csv' ? 'Excel-compatible CSV' : 'Excel workbook'}.`
+    );
   };
 
   const handlePrint = () => {
@@ -680,16 +688,28 @@ export const ReportsView: React.FC = () => {
           <button
             type="button"
             onClick={handlePrint}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 transition-colors cursor-pointer shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 transition-colors cursor-pointer shadow-xs"
             title="Print report (PDF / Printer)"
           >
-            <Printer className="w-4 h-4 text-slate-600" />
+            <Printer className="w-4 h-4 text-slate-600 dark:text-slate-400" />
             Print Report
           </button>
 
           <button
-            onClick={handleExport}
+            type="button"
+            onClick={() => handleExport('csv')}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 transition-colors cursor-pointer shadow-xs"
+            title="Download financial report in Excel-compatible CSV format"
+          >
+            <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            Export to CSV
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleExport('excel')}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-lg text-white bg-emerald-700 hover:bg-emerald-600 transition-colors cursor-pointer shadow"
+            title="Download styled Excel spreadsheet"
           >
             <FileSpreadsheet className="w-4 h-4" />
             Export Filtered Report (Excel)

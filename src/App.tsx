@@ -19,6 +19,7 @@ import { PurchasesView } from './components/views/PurchasesView';
 import { ExpensesView } from './components/views/ExpensesView';
 import { ReportsView } from './components/views/ReportsView';
 import { MastersView } from './components/views/MastersView';
+import { SystemConfigurationView } from './components/views/SystemConfigurationView';
 import { UsersView } from './components/views/UsersView';
 import { RolesView } from './components/views/RolesView';
 import { WorkflowSettingsView } from './components/views/WorkflowSettingsView';
@@ -92,9 +93,15 @@ function AppContent() {
       setTick((t) => t + 1);
     });
 
+    const unsubSupabase = supabaseService.subscribe(() => {
+      setIsSupabaseConnected(supabaseService.isConfigured());
+      setTick((t) => t + 1);
+    });
+
     return () => {
       unsubAccounting();
       unsubAuth();
+      unsubSupabase();
     };
   }, []);
 
@@ -164,6 +171,8 @@ function AppContent() {
         return authService.hasPermission('reports.view');
       case 'masters':
         return authService.hasPermission('settings.view') || authService.isSuperAdmin();
+      case 'system_config':
+        return authService.hasPermission('settings.view') || authService.hasPermission('users.view') || authService.isSuperAdmin();
       case 'users':
         return authService.hasPermission('users.view');
       case 'roles':
@@ -383,11 +392,32 @@ function AppContent() {
                 />
               )}
 
-              {activeView === 'users' && <UsersView />}
+              {activeView === 'system_config' && (
+                <SystemConfigurationView
+                  onOpenSupabaseSettings={() => setIsSupabaseSettingsOpen(true)}
+                />
+              )}
 
-              {activeView === 'roles' && <RolesView />}
+              {activeView === 'users' && (
+                <SystemConfigurationView
+                  initialTab="credentials"
+                  onOpenSupabaseSettings={() => setIsSupabaseSettingsOpen(true)}
+                />
+              )}
 
-              {activeView === 'workflow_settings' && <WorkflowSettingsView />}
+              {activeView === 'roles' && (
+                <SystemConfigurationView
+                  initialTab="roles"
+                  onOpenSupabaseSettings={() => setIsSupabaseSettingsOpen(true)}
+                />
+              )}
+
+              {activeView === 'workflow_settings' && (
+                <SystemConfigurationView
+                  initialTab="workflow"
+                  onOpenSupabaseSettings={() => setIsSupabaseSettingsOpen(true)}
+                />
+              )}
 
               {activeView === 'master_import_audit' && <MasterImportAuditView />}
 

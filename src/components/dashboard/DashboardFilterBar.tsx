@@ -81,89 +81,56 @@ export const DashboardFilterBar: React.FC<DashboardFilterBarProps> = ({
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs p-4 sm:p-5 space-y-4 print:hidden transition-colors">
       {/* Top Row: Scope Selector & Action Hub */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        {/* Scope Selector: Overall vs Project */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mr-1">
-            Scope:
-          </span>
-
-          {/* Overall (Company-Wide) Button */}
-          <button
-            type="button"
-            onClick={() => {
-              onScopeChange('overall');
-              onSelectProjectId(null);
-            }}
-            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-              scope === 'overall'
-                ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-sm'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-700'
-            }`}
+        {/* Scope Selector: Single Unified Dropdown */}
+        <div className="flex items-center gap-2.5">
+          <label
+            htmlFor="dashboard-scope-select"
+            className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider shrink-0"
           >
-            <Building2 className="w-4 h-4 text-amber-500" />
-            <span>Overall (Company-wide)</span>
-            <span
-              className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${
-                scope === 'overall'
-                  ? 'bg-slate-800 dark:bg-slate-200 text-slate-200 dark:text-slate-800'
-                  : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-              }`}
-            >
-              {projects.length} Projects
-            </span>
-          </button>
+            Scope:
+          </label>
 
-          {/* Project-Wise Dropdown / Button */}
-          <div className="relative inline-flex items-center">
-            <button
-              type="button"
-              onClick={() => {
-                if (scope !== 'project') {
-                  onScopeChange('project');
-                  if (!selectedProjectId && projects.length > 0) {
-                    onSelectProjectId(projects[0].id);
-                  }
-                }
-              }}
-              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                scope === 'project'
-                  ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-600/30'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-700'
-              }`}
-            >
-              <HardHat className="w-4 h-4 text-amber-400" />
-              <span>Project-Wise Analytics</span>
-            </button>
-          </div>
-
-          {/* Project Dropdown Selector when in Project Mode or switching */}
-          <div className="relative flex-1 min-w-[220px] max-w-sm">
+          <div className="relative w-full sm:w-[360px] lg:w-[420px]">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              {scope === 'project' && selectedProjectId ? (
+                <HardHat className="w-4 h-4 text-amber-500 shrink-0" />
+              ) : (
+                <Building2 className="w-4 h-4 text-amber-500 shrink-0" />
+              )}
+            </div>
             <select
-              value={selectedProjectId || ''}
+              id="dashboard-scope-select"
+              value={scope === 'project' && selectedProjectId ? selectedProjectId : 'overall'}
               onChange={(e) => {
-                const pId = e.target.value;
-                if (pId) {
-                  onSelectProjectId(pId);
-                  onScopeChange('project');
-                } else {
-                  onSelectProjectId(null);
+                const val = e.target.value;
+                if (val === 'overall' || !val) {
                   onScopeChange('overall');
+                  onSelectProjectId(null);
+                } else {
+                  onScopeChange('project');
+                  onSelectProjectId(val);
                 }
               }}
-              className={`w-full text-xs font-medium py-2 pl-3 pr-8 rounded-xl border transition-colors cursor-pointer appearance-none ${
-                scope === 'project'
-                  ? 'border-blue-500 dark:border-blue-400 bg-blue-50/50 dark:bg-blue-950/40 text-blue-950 dark:text-blue-200 font-semibold'
-                  : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+              className={`w-full text-xs py-2.5 pl-9 pr-8 rounded-xl border transition-all cursor-pointer appearance-none ${
+                scope === 'project' && selectedProjectId
+                  ? 'border-blue-500/80 dark:border-blue-500/70 bg-blue-50/60 dark:bg-blue-950/40 text-blue-950 dark:text-blue-100 font-semibold shadow-xs'
+                  : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium hover:border-slate-400 dark:hover:border-slate-600 shadow-2xs'
               } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
             >
-              <option value="">-- Switch to Project Drilldown --</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  [{p.code}] {p.name} {p.customerName ? `• ${p.customerName}` : ''}
-                </option>
-              ))}
+              <option value="overall">
+                Overall (Company-wide) • All Projects ({projects.length})
+              </option>
+              {projects.length > 0 && (
+                <optgroup label="── Individual Projects ──">
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      [{p.code}] {p.name} {p.customerName ? `• ${p.customerName}` : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
-            <ChevronDown className="w-4 h-4 text-slate-400 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
+            <ChevronDown className="w-4 h-4 text-slate-400 dark:text-slate-500 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" />
           </div>
         </div>
 

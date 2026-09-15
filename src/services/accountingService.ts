@@ -294,6 +294,11 @@ class AccountingService {
     return this.state;
   }
 
+  public refreshFromStorage(): void {
+    this.state = this.loadState();
+    this.notifyListeners();
+  }
+
   public getCurrentUser(): User {
     return this.state.currentUser;
   }

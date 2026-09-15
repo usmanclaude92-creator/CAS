@@ -26,6 +26,7 @@ const INITIAL_USERS: UserProfile[] = [
   {
     id: 'usr-super-admin',
     email: 'superadmin@construction.om',
+    username: 'superadmin',
     fullName: 'Eng. Tariq Al Busaidi',
     mobile: '+968 9911 2233',
     roleId: 'role-super-admin',
@@ -43,6 +44,7 @@ const INITIAL_USERS: UserProfile[] = [
   {
     id: 'usr-accounts-manager',
     email: 'accounts.mgr@construction.om',
+    username: 'accounts.mgr',
     fullName: 'Muna Al Rahbi',
     mobile: '+968 9822 3344',
     roleId: 'role-accounts-manager',
@@ -60,6 +62,7 @@ const INITIAL_USERS: UserProfile[] = [
   {
     id: 'usr-finance-manager',
     email: 'finance.mgr@construction.om',
+    username: 'finance.mgr',
     fullName: 'Rashid Al Balushi',
     mobile: '+968 9733 4455',
     roleId: 'role-finance-manager',
@@ -77,6 +80,7 @@ const INITIAL_USERS: UserProfile[] = [
   {
     id: 'usr-accountant',
     email: 'accountant@construction.om',
+    username: 'fatima.acc',
     fullName: 'Fatima Al Lawati',
     mobile: '+968 9644 5566',
     roleId: 'role-accountant',
@@ -94,6 +98,7 @@ const INITIAL_USERS: UserProfile[] = [
   {
     id: 'usr-project-accountant',
     email: 'project.acc@construction.om',
+    username: 'said.site',
     fullName: 'Said Al Habsi',
     mobile: '+968 9555 6677',
     roleId: 'role-project-accountant',
@@ -111,6 +116,7 @@ const INITIAL_USERS: UserProfile[] = [
   {
     id: 'usr-treasury',
     email: 'treasury@construction.om',
+    username: 'zayed.cash',
     fullName: 'Zayed Al Hinai',
     mobile: '+968 9466 7788',
     roleId: 'role-treasury-user',
@@ -128,6 +134,7 @@ const INITIAL_USERS: UserProfile[] = [
   {
     id: 'usr-viewer',
     email: 'viewer@construction.om',
+    username: 'auditor.view',
     fullName: 'Auditor External Reviewer',
     mobile: '+968 9377 8899',
     roleId: 'role-viewer',
@@ -145,6 +152,7 @@ const INITIAL_USERS: UserProfile[] = [
   {
     id: 'usr-inactive-user',
     email: 'inactive@construction.om',
+    username: 'former.staff',
     fullName: 'Former Staff Member',
     mobile: '+968 9288 9900',
     roleId: 'role-accountant',
@@ -340,14 +348,18 @@ class AuthService {
       }
     }
 
-    // 2. Validate against system user directory
-    const user = this.users.find((u) => u.email.toLowerCase() === normalizedEmail);
+    // 2. Validate against system user directory (by email OR username)
+    const user = this.users.find(
+      (u) =>
+        u.email.toLowerCase() === normalizedEmail ||
+        (u.username && u.username.toLowerCase() === normalizedEmail)
+    );
     if (!user) {
-      return { success: false, error: 'Invalid email address or user not registered in system.' };
+      return { success: false, error: 'Invalid credentials or user not registered in system.' };
     }
 
     if (user.status !== 'active') {
-      return { success: false, error: 'Account is inactive or deactivated. Access denied.' };
+      return { success: false, error: `Account is ${user.status}. Access denied. Please contact your system administrator.` };
     }
 
     // Passwords in production are never verified client-side in plaintext;
@@ -653,12 +665,15 @@ class AuthService {
   public async createUser(data: {
     fullName: string;
     email: string;
+    username?: string;
+    password?: string;
     mobile?: string;
     roleId: string;
     assignedProjectIds: string[];
     isAllProjects: boolean;
     department?: string;
     employeeId?: string;
+    status?: UserStatus;
     remarks?: string;
   }): Promise<{ success: boolean; user?: UserProfile; error?: string }> {
     if (!this.hasPermission('users.create')) {
@@ -668,6 +683,13 @@ class AuthService {
     const normalizedEmail = data.email.trim().toLowerCase();
     if (this.users.some((u) => u.email.toLowerCase() === normalizedEmail)) {
       return { success: false, error: 'A user with this email address already exists.' };
+    }
+
+    if (data.username) {
+      const cleanUsername = data.username.trim().toLowerCase();
+      if (this.users.some((u) => u.username?.toLowerCase() === cleanUsername)) {
+        return { success: false, error: `Username "${data.username}" is already assigned to another user.` };
+      }
     }
 
     const role = this.roles.find((r) => r.id === data.roleId);
@@ -683,12 +705,13 @@ class AuthService {
     const newUser: UserProfile = {
       id: 'usr-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
       email: normalizedEmail,
+      username: data.username ? data.username.trim().toLowerCase() : normalizedEmail.split('@')[0],
       fullName: data.fullName.trim(),
       mobile: data.mobile?.trim(),
       roleId: role.id,
       roleCode: role.code,
       roleName: role.name,
-      status: 'active',
+      status: data.status || 'active',
       department: data.department?.trim(),
       employeeId: data.employeeId?.trim(),
       assignedProjectIds: data.isAllProjects ? [] : data.assignedProjectIds,
@@ -696,6 +719,11 @@ class AuthService {
       remarks: data.remarks?.trim(),
       createdAt: new Date().toISOString(),
     };
+
+    if (data.password) {
+      newUser.password = data.password;
+      newUser.lastPasswordChange = new Date().toISOString();
+    }
 
     this.users.push(newUser);
     this.saveData();
@@ -741,6 +769,19 @@ class AuthService {
       return { success: false, error: 'Only a Super Administrator can modify another Super Administrator account.' };
     }
 
+    if (updates.username !== undefined) {
+      const cleanUsername = updates.username.trim().toLowerCase();
+      if (cleanUsername) {
+        const duplicate = this.users.find((u) => u.id !== userId && u.username?.toLowerCase() === cleanUsername);
+        if (duplicate) {
+          return { success: false, error: `Username "${updates.username}" is already taken.` };
+        }
+        user.username = cleanUsername;
+      } else {
+        user.username = undefined;
+      }
+    }
+
     if (updates.roleId) {
       const role = this.roles.find((r) => r.id === updates.roleId);
       if (role) {
@@ -754,6 +795,8 @@ class AuthService {
     if (updates.mobile !== undefined) user.mobile = updates.mobile?.trim();
     if (updates.department !== undefined) user.department = updates.department?.trim();
     if (updates.employeeId !== undefined) user.employeeId = updates.employeeId?.trim();
+    if (updates.status !== undefined) user.status = updates.status;
+    if (updates.forcePasswordReset !== undefined) user.forcePasswordReset = updates.forcePasswordReset;
     if (updates.remarks !== undefined) user.remarks = updates.remarks?.trim();
     if (updates.isAllProjects !== undefined) user.isAllProjects = updates.isAllProjects;
     if (updates.assignedProjectIds !== undefined) user.assignedProjectIds = updates.assignedProjectIds;
@@ -799,6 +842,35 @@ class AuthService {
     return { success: true };
   }
 
+  public async suspendUser(userId: string, reason?: string): Promise<{ success: boolean; error?: string }> {
+    if (!this.hasPermission('users.deactivate') && !this.isSuperAdmin()) {
+      return { success: false, error: 'Insufficient privileges to suspend user accounts.' };
+    }
+
+    const user = this.users.find((u) => u.id === userId);
+    if (!user) {
+      return { success: false, error: 'User not found.' };
+    }
+
+    if (user.roleCode === 'super_admin') {
+      const activeSuperAdmins = this.users.filter((u) => u.roleCode === 'super_admin' && u.status === 'active');
+      if (activeSuperAdmins.length <= 1) {
+        return {
+          success: false,
+          error: 'Safeguard triggered: Cannot suspend the system’s sole active Super Administrator.',
+        };
+      }
+    }
+
+    user.status = 'suspended';
+    if (reason) {
+      user.remarks = user.remarks ? `${user.remarks} | Suspended: ${reason}` : `Suspended: ${reason}`;
+    }
+    user.updatedAt = new Date().toISOString();
+    this.saveData();
+    return { success: true };
+  }
+
   public async activateUser(userId: string): Promise<{ success: boolean; error?: string }> {
     if (!this.hasPermission('users.activate')) {
       return { success: false, error: 'Insufficient privileges to activate user accounts.' };
@@ -812,6 +884,37 @@ class AuthService {
     user.status = 'active';
     user.updatedAt = new Date().toISOString();
     this.saveData();
+    return { success: true };
+  }
+
+  public async setUserPassword(userId: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
+    if (!this.isSuperAdmin() && this.currentUser?.id !== userId) {
+      return { success: false, error: 'Only Super Administrators or the account owner can change passwords.' };
+    }
+
+    if (!newPassword || newPassword.length < 8) {
+      return { success: false, error: 'Password must be at least 8 characters long.' };
+    }
+
+    const hasUpper = /[A-Z]/.test(newPassword);
+    const hasLower = /[a-z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    if (!hasUpper || !hasLower || !hasNumber) {
+      return {
+        success: false,
+        error: 'Password must contain at least one uppercase letter, one lowercase letter, and one number.',
+      };
+    }
+
+    const user = this.users.find((u) => u.id === userId);
+    if (!user) return { success: false, error: 'User not found.' };
+
+    user.password = newPassword;
+    user.lastPasswordChange = new Date().toISOString();
+    user.forcePasswordReset = false;
+    user.updatedAt = new Date().toISOString();
+    this.saveData();
+
     return { success: true };
   }
 

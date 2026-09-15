@@ -17,16 +17,12 @@ export interface ExportToExcelOptions {
   columns?: ExcelColumn[];
 }
 
-/**
- * Export structured data to a professional Excel (.xlsx) file
- * Supports both options object and positional arguments
- */
-export function exportToExcel(
+function buildWorksheet(
   optionsOrFilename: string | ExportToExcelOptions,
   sheetNameParam?: string,
   columnsParam?: ExcelColumn[],
   dataParam?: any[]
-) {
+): { worksheet: XLSX.WorkSheet; filename: string; sheetName: string } {
   let filename = '';
   let sheetName = 'Report';
   let columns: ExcelColumn[] | undefined;
@@ -78,9 +74,55 @@ export function exportToExcel(
     }
   }
 
+  return { worksheet, filename, sheetName };
+}
+
+/**
+ * Export structured data to a professional Excel (.xlsx) file
+ * Supports both options object and positional arguments
+ */
+export function exportToExcel(
+  optionsOrFilename: string | ExportToExcelOptions,
+  sheetNameParam?: string,
+  columnsParam?: ExcelColumn[],
+  dataParam?: any[]
+) {
+  const { worksheet, filename, sheetName } = buildWorksheet(
+    optionsOrFilename,
+    sheetNameParam,
+    columnsParam,
+    dataParam
+  );
+
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, sheetName || 'Report');
 
   const cleanFilename = filename.endsWith('.xlsx') ? filename : `${filename}.xlsx`;
-  XLSX.writeFile(workbook, cleanFilename);
+  XLSX.writeFile(workbook, cleanFilename, { bookType: 'xlsx' });
 }
+
+/**
+ * Export structured data to an Excel-compatible CSV (.csv) file
+ * Utilizes SheetJS (XLSX) to format and generate proper CSV encoding with UTF-8 BOM
+ */
+export function exportToCsv(
+  optionsOrFilename: string | ExportToExcelOptions,
+  sheetNameParam?: string,
+  columnsParam?: ExcelColumn[],
+  dataParam?: any[]
+) {
+  const { worksheet, filename, sheetName } = buildWorksheet(
+    optionsOrFilename,
+    sheetNameParam,
+    columnsParam,
+    dataParam
+  );
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName || 'Report');
+
+  const cleanFilename = filename.endsWith('.csv') ? filename : `${filename}.csv`;
+  XLSX.writeFile(workbook, cleanFilename, { bookType: 'csv' });
+}
+
+export default exportToExcel;
