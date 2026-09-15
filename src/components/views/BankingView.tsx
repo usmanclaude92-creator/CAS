@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Landmark,
   Wallet,
@@ -10,10 +10,20 @@ import {
   ArrowDownRight,
   CheckCircle2,
   FileText,
+  Filter,
+  Search,
+  X,
+  Calendar,
+  RotateCcw,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
-import { formatOMR } from '../../utils/formatters';
+import { formatOMR, addMoney } from '../../utils/formatters';
 import { exportToExcel } from '../../utils/exportToExcel';
+import {
+  DatePreset,
+  getDateRangeFromPreset,
+  isDateInRange,
+} from '../../utils/reportFilters';
 
 interface BankingViewProps {
   onOpenTransfer: () => void;
@@ -31,12 +41,45 @@ export const BankingView: React.FC<BankingViewProps> = ({
   const [selectedAccountId, setSelectedAccountId] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<'treasury_ledger' | 'transfers'>('treasury_ledger');
 
+  // Quick filters
+  const [datePreset, setDatePreset] = useState<DatePreset>('all');
+  const [customStart, setCustomStart] = useState<string>('');
+  const [customEnd, setCustomEnd] = useState<string>('');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'MONEY_IN' | 'MONEY_OUT' | 'TRANSFER'>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const dateRange = useMemo(() => {
+    return getDateRangeFromPreset(datePreset, customStart, customEnd);
+  }, [datePreset, customStart, customEnd]);
+
   const state = accountingService.getState();
   const summary = accountingService.getDashboardSummary();
 
-  const treasuryLedger = accountingService.getTreasuryLedger(
+  const rawTreasuryLedger = accountingService.getTreasuryLedger(
     selectedAccountId === 'all' ? undefined : selectedAccountId
   );
+
+  const treasuryLedger = useMemo(() => {
+    return rawTreasuryLedger.filter((row) => {
+      if (!isDateInRange(row.date, dateRange.startDate, dateRange.endDate)) return false;
+      if (typeFilter !== 'all' && row.type !== typeFilter) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchRef = row.documentRef.toLowerCase().includes(q);
+        const matchParty = (row.party || '').toLowerCase().includes(q);
+        const matchDesc = row.description.toLowerCase().includes(q);
+        const matchAcc = row.accountName.toLowerCase().includes(q);
+        if (!matchRef && !matchParty && !matchDesc && !matchAcc) return false;
+      }
+      return true;
+    });
+  }, [rawTreasuryLedger, dateRange, typeFilter, searchQuery]);
+
+  const ledgerTotals = useMemo(() => {
+    const totalReceipts = treasuryLedger.reduce((sum, r) => addMoney(sum, r.receipt), 0);
+    const totalPayments = treasuryLedger.reduce((sum, r) => addMoney(sum, r.payment), 0);
+    return { totalReceipts, totalPayments, count: treasuryLedger.length };
+  }, [treasuryLedger]);
 
   const handleExportBankBook = () => {
     const data = treasuryLedger.map((row) => ({
@@ -54,7 +97,7 @@ export const BankingView: React.FC<BankingViewProps> = ({
     exportToExcel({
       filename: `Bank_Cash_Book_${new Date().toISOString().split('T')[0]}`,
       sheetName: 'Treasury Book',
-      title: 'COMPANY TREASURY & BANK CASH BOOK STATEMENT',
+      title: `COMPANY TREASURY & BANK CASH BOOK STATEMENT (${dateRange.label.toUpperCase()})`,
       companyName: 'Al Tasneem & Partners Construction LLC - Muscat, Oman',
       currency: 'OMR',
       data,
@@ -293,6 +336,100 @@ export const BankingView: React.FC<BankingViewProps> = ({
             </select>
           </div>
         </div>
+
+        {/* Quick Filters Toolbar for Bank Cash Book */}
+        {activeTab === 'treasury_ledger' && (
+          <div className="bg-slate-50/80 px-6 py-3 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+            {/* Presets & Type Pills */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="font-semibold text-slate-700 mr-1 flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-blue-600" /> Period:
+                </span>
+                {[
+                  { id: 'all', label: 'All Time' },
+                  { id: 'this_month', label: 'This Month' },
+                  { id: 'this_quarter', label: 'This Quarter' },
+                  { id: 'this_year', label: 'This Year' },
+                ].map((btn) => (
+                  <button
+                    key={btn.id}
+                    onClick={() => setDatePreset(btn.id as DatePreset)}
+                    className={`px-2 py-0.5 rounded text-[11px] font-medium cursor-pointer transition-colors ${
+                      datePreset === btn.id
+                        ? 'bg-blue-600 text-white font-semibold'
+                        : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5 border-l border-slate-200 pl-3">
+                <span className="font-semibold text-slate-700 mr-1 flex items-center gap-1">
+                  <Filter className="w-3 h-3 text-slate-500" /> Type:
+                </span>
+                {[
+                  { id: 'all', label: 'All' },
+                  { id: 'MONEY_IN', label: 'Receipts' },
+                  { id: 'MONEY_OUT', label: 'Payments' },
+                  { id: 'TRANSFER', label: 'Transfers' },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setTypeFilter(item.id as any)}
+                    className={`px-2 py-0.5 rounded text-[11px] font-medium cursor-pointer transition-colors ${
+                      typeFilter === item.id
+                        ? 'bg-slate-900 text-white font-semibold'
+                        : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Search & Reset */}
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Search className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search party, doc ref, desc..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-7 pr-2 py-1 text-xs border border-slate-200 rounded-lg bg-white text-slate-800 focus:outline-none w-52"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              {(datePreset !== 'all' || typeFilter !== 'all' || searchQuery || selectedAccountId !== 'all') && (
+                <button
+                  onClick={() => {
+                    setDatePreset('all');
+                    setTypeFilter('all');
+                    setSearchQuery('');
+                    setSelectedAccountId('all');
+                  }}
+                  className="text-[11px] text-slate-500 hover:text-rose-600 flex items-center gap-0.5 cursor-pointer whitespace-nowrap"
+                  title="Reset all filters"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {activeTab === 'treasury_ledger' && (
           <div className="overflow-x-auto">

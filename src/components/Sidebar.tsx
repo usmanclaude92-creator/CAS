@@ -18,11 +18,13 @@ import {
   Sliders,
   FileSpreadsheet,
   LogOut,
+  BarChart3,
 } from 'lucide-react';
 import { authService } from '../services/authService';
 
 export type NavView =
   | 'dashboard'
+  | 'project_dashboard'
   | 'projects'
   | 'banking'
   | 'customers'
@@ -69,6 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     badge?: string;
   }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'dashboard.view' },
+    { id: 'project_dashboard', label: 'Project Dashboard', icon: BarChart3, permission: 'projects.view' },
     { id: 'approvals', label: 'Pending Approvals', icon: Clock, permission: 'approvals.view' },
     { id: 'projects', label: 'Projects & Costing', icon: Building2, permission: 'projects.view' },
     { id: 'banking', label: 'Banking & Treasury', icon: Landmark, permission: 'treasury.view' },

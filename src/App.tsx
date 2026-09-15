@@ -7,11 +7,11 @@ import React, { useState, useEffect } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { Sidebar, NavView } from './components/Sidebar';
 import { Header } from './components/Header';
-import { AcceptanceTestBanner } from './components/AcceptanceTestBanner';
 import { LoginView } from './components/auth/LoginView';
 
 // Core Business Views
 import { DashboardView } from './components/views/DashboardView';
+import { ProjectDashboardView } from './components/views/ProjectDashboardView';
 import { ApprovalsView } from './components/views/ApprovalsView';
 import { ProjectsView } from './components/views/ProjectsView';
 import { BankingView } from './components/views/BankingView';
@@ -147,6 +147,8 @@ function AppContent() {
     switch (view) {
       case 'dashboard':
         return authService.hasPermission('dashboard.view');
+      case 'project_dashboard':
+        return authService.hasPermission('projects.view');
       case 'approvals':
         return authService.hasPermission('approvals.view');
       case 'projects':
@@ -200,10 +202,23 @@ function AppContent() {
 
       {/* Main Content Area */}
       <div className="flex-1 lg:pl-64 flex flex-col min-w-0">
-        {/* Header Bar with Theme Toggle & User Switcher */}
+        {/* Header Bar with Theme Toggle, Global Search & User Switcher */}
         <Header
           activeView={activeView}
+          onNavigateView={(view) => setActiveView(view)}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          onSelectProject={(id) => {
+            setSelectedProjectId(id);
+            setActiveView('projects');
+          }}
+          onSelectCustomer={(id) => {
+            setSelectedCustomerId(id);
+            setActiveView('customers');
+          }}
+          onSelectVendor={(id) => {
+            setSelectedVendorId(id);
+            setActiveView('purchases');
+          }}
           onOpenMoneyIn={() => {
             setModalProjectId(undefined);
             setIsMoneyInOpen(true);
@@ -226,11 +241,8 @@ function AppContent() {
           onLogout={handleLogout}
         />
 
-        {/* Viewport Content */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
-          {/* Acceptance Test Banner */}
-          {activeView === 'dashboard' && <AcceptanceTestBanner />}
-
+        {/* Viewport Content - 94% width with 3% margin on left and right */}
+        <main className="flex-1 py-4 sm:py-6 lg:py-8 w-[94%] max-w-[94%] mx-auto space-y-6">
           {/* Access Denied View if user lacks view permission */}
           {!hasAccessToActiveView ? (
             <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-rose-200 dark:border-rose-900/60 shadow-xs space-y-4 max-w-lg mx-auto mt-12">
@@ -279,7 +291,7 @@ function AppContent() {
                   onOpenTransfer={() => setIsTransferOpen(true)}
                   onSelectProject={(id) => {
                     setSelectedProjectId(id);
-                    setActiveView('projects');
+                    setActiveView('project_dashboard');
                   }}
                   onSelectCustomer={(id) => {
                     setSelectedCustomerId(id);
@@ -290,6 +302,20 @@ function AppContent() {
                     setActiveView('purchases');
                   }}
                   onReverseTransaction={handleOpenReverse}
+                />
+              )}
+
+              {activeView === 'project_dashboard' && (
+                <ProjectDashboardView
+                  initialProjectId={selectedProjectId}
+                  onNavigateToProjectsList={(projectId) => {
+                    if (projectId) setSelectedProjectId(projectId);
+                    setActiveView('projects');
+                  }}
+                  onOpenClientInvoice={handleOpenProjectInvoices}
+                  onOpenPurchase={handleOpenProjectPurchase}
+                  onOpenExpense={handleOpenProjectExpense}
+                  onOpenMoneyIn={handleOpenProjectMoneyIn}
                 />
               )}
 

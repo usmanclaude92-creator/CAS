@@ -19,7 +19,6 @@ import {
 import { accountingService } from '../../services/accountingService';
 import { formatOMR, formatPercent } from '../../utils/formatters';
 import { exportToExcel } from '../../utils/exportToExcel';
-import { AcceptanceTestBanner } from '../AcceptanceTestBanner';
 import { Transaction } from '../../types';
 import { CashFlowProjectionCard } from '../dashboard/CashFlowProjectionCard';
 
@@ -98,9 +97,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Acceptance Test Banner (Validates Prompt #49 requirements in 1 click) */}
-      <AcceptanceTestBanner onOpenProjectView={onSelectProject} />
-
       {/* Primary KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Treasury / Liquid Funds */}
