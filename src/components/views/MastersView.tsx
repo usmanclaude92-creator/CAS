@@ -11,12 +11,18 @@ import {
   RefreshCw,
   UploadCloud,
   FileSpreadsheet,
+  Edit2,
+  Trash2,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { authService } from '../../services/authService';
 import { formatOMR } from '../../utils/formatters';
 import { MasterDataImportModal, MasterImportType } from '../modals/MasterDataImportModal';
 import { BatchEntityImportModal } from '../modals/BatchEntityImportModal';
+import { NewExpenseCategoryModal } from '../modals/NewExpenseCategoryModal';
+import { ExpenseHead } from '../../types';
 
 interface MastersViewProps {
   onOpenNewProject: () => void;
@@ -38,6 +44,8 @@ export const MastersView: React.FC<MastersViewProps> = ({
   >('projects');
   const [importModalType, setImportModalType] = useState<MasterImportType | null>(null);
   const [batchImportType, setBatchImportType] = useState<'customers' | 'vendors' | null>(null);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<ExpenseHead | null>(null);
   const [, setRerender] = useState(0);
 
   const state = accountingService.getState();
@@ -50,8 +58,12 @@ export const MastersView: React.FC<MastersViewProps> = ({
     authService.isSuperAdmin() && authService.hasPermission('master_data.import');
 
   useEffect(() => {
-    const unsub = authService.subscribe(() => setRerender((v) => v + 1));
-    return () => unsub();
+    const unsubAuth = authService.subscribe(() => setRerender((v) => v + 1));
+    const unsubAccounting = accountingService.subscribe(() => setRerender((v) => v + 1));
+    return () => {
+      unsubAuth();
+      unsubAccounting();
+    };
   }, []);
 
   const handleResetToSeed = () => {
@@ -404,38 +416,144 @@ export const MastersView: React.FC<MastersViewProps> = ({
         {/* EXPENSE HEADS TAB */}
         {activeMaster === 'expense_heads' && (
           <div>
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800">
-              <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Direct Expense Heads &amp; Cost Categories</h3>
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800 dark:text-white">
+                  Direct Expense Heads &amp; Cost Categories ({state.expenseHeads.length})
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Standard classifications for site vouchers, equipment hires, labor, and job overheads
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingCategory(null);
+                  setIsCategoryModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-white bg-rose-700 hover:bg-rose-600 cursor-pointer shadow-xs transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Add Expense Category</span>
+              </button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-semibold uppercase tracking-wider text-[11px]">
                     <th className="py-2.5 px-4">Expense Head Name</th>
-                    <th className="py-2.5 px-4">Category</th>
+                    <th className="py-2.5 px-4">Cost Classification Group</th>
                     <th className="py-2.5 px-4">Description</th>
+                    <th className="py-2.5 px-4">Linked Vouchers</th>
                     <th className="py-2.5 px-4">Status</th>
+                    <th className="py-2.5 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {state.expenseHeads.map((h) => (
-                    <tr key={h.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <td className="py-2.5 px-4 font-semibold text-slate-900 dark:text-white">{h.name}</td>
-                      <td className="py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400">{h.category}</td>
-                      <td className="py-2.5 px-4 text-slate-500 dark:text-slate-400">{h.description || 'Standard project expense'}</td>
-                      <td className="py-2.5 px-4">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                          {h.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {state.expenseHeads.map((h) => {
+                    const linkedCount = state.directExpenses.filter((e) => e.expenseHeadId === h.id).length;
+                    return (
+                      <tr key={h.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="py-2.5 px-4 font-semibold text-slate-900 dark:text-white">
+                          {h.name}
+                        </td>
+                        <td className="py-2.5 px-4">
+                          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                            {h.category || 'Direct Project Cost'}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4 text-slate-500 dark:text-slate-400 max-w-xs truncate">
+                          {h.description || '—'}
+                        </td>
+                        <td className="py-2.5 px-4 font-mono text-slate-600 dark:text-slate-400">
+                          {linkedCount} vouchers
+                        </td>
+                        <td className="py-2.5 px-4">
+                          <button
+                            type="button"
+                            title="Click to toggle active/inactive status"
+                            onClick={() => {
+                              try {
+                                accountingService.updateExpenseHead(h.id, {
+                                  status: h.status === 'active' ? 'inactive' : 'active',
+                                });
+                                setRerender((v) => v + 1);
+                              } catch (err: any) {
+                                alert(err?.message || 'Failed to update category status.');
+                              }
+                            }}
+                            className={`px-2 py-0.5 rounded text-[10px] font-semibold border cursor-pointer transition-colors ${
+                              h.status === 'active'
+                                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-700 hover:bg-slate-200'
+                            }`}
+                          >
+                            {h.status === 'active' ? 'Active' : 'Inactive'}
+                          </button>
+                        </td>
+                        <td className="py-2.5 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              title="Edit Expense Category"
+                              onClick={() => {
+                                setEditingCategory(h);
+                                setIsCategoryModalOpen(true);
+                              }}
+                              className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors cursor-pointer"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              title={
+                                linkedCount > 0
+                                  ? 'Cannot delete: vouchers are recorded under this category'
+                                  : 'Delete Expense Category'
+                              }
+                              disabled={linkedCount > 0}
+                              onClick={() => {
+                                if (window.confirm(`Are you sure you want to delete expense category "${h.name}"?`)) {
+                                  try {
+                                    accountingService.deleteExpenseHead(h.id);
+                                    setRerender((v) => v + 1);
+                                  } catch (err: any) {
+                                    alert(err?.message || 'Failed to delete category.');
+                                  }
+                                }
+                              }}
+                              className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
         )}
       </div>
+
+      {/* Expense Category Modal */}
+      {isCategoryModalOpen && (
+        <NewExpenseCategoryModal
+          isOpen={isCategoryModalOpen}
+          editCategory={editingCategory}
+          onClose={() => {
+            setIsCategoryModalOpen(false);
+            setEditingCategory(null);
+          }}
+          onSuccess={() => {
+            setIsCategoryModalOpen(false);
+            setEditingCategory(null);
+            setRerender((v) => v + 1);
+          }}
+        />
+      )}
 
       {/* Super Administrator Bulk Import Modal */}
       {importModalType && (

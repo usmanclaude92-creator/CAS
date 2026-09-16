@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, AlertCircle } from 'lucide-react';
+import { X, Upload, AlertCircle, Plus } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { uploadAttachmentFile } from '../../services/supabaseClient';
-import { TreasuryAccountType } from '../../types';
+import { TreasuryAccountType, ExpenseHead } from '../../types';
 import { formatOMR } from '../../utils/formatters';
+import { NewExpenseCategoryModal } from './NewExpenseCategoryModal';
 
 interface ExpenseModalProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   useEffect(() => {
     if (paidFrom === 'bank') {
@@ -170,19 +172,36 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                Expense Head <span className="text-rose-600">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-slate-700">
+                  Expense Category / Head <span className="text-rose-600">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsCategoryModalOpen(true)}
+                  className="text-[11px] text-rose-600 hover:text-rose-800 font-semibold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>+ New Category</span>
+                </button>
+              </div>
               <select
                 required
                 value={expenseHeadId}
                 onChange={(e) => setExpenseHeadId(e.target.value)}
-                className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 cursor-pointer"
               >
-                {state.expenseHeads.map((h) => (
-                  <option key={h.id} value={h.id}>
-                    {h.name}
-                  </option>
+                {/* Group categories by classification */}
+                {Array.from(new Set(state.expenseHeads.map((h) => h.category || 'Direct Project Cost'))).map((groupName) => (
+                  <optgroup key={groupName} label={groupName}>
+                    {state.expenseHeads
+                      .filter((h) => (h.category || 'Direct Project Cost') === groupName && (h.status === 'active' || h.id === expenseHeadId))
+                      .map((h) => (
+                        <option key={h.id} value={h.id}>
+                          {h.name} {h.status === 'inactive' ? '(Inactive)' : ''}
+                        </option>
+                      ))}
+                  </optgroup>
                 ))}
               </select>
             </div>
@@ -335,6 +354,18 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
           </div>
         </form>
       </div>
+
+      {/* Inline New Expense Category Modal */}
+      {isCategoryModalOpen && (
+        <NewExpenseCategoryModal
+          isOpen={isCategoryModalOpen}
+          onClose={() => setIsCategoryModalOpen(false)}
+          onSuccess={(newCat) => {
+            setExpenseHeadId(newCat.id);
+            setIsCategoryModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };

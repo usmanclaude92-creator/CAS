@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Coins,
   Plus,
@@ -7,10 +7,15 @@ import {
   DollarSign,
   FileText,
   Filter,
+  Layers,
+  Edit2,
+  Tag,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { formatOMR } from '../../utils/formatters';
 import { exportToExcel } from '../../utils/exportToExcel';
+import { NewExpenseCategoryModal } from '../modals/NewExpenseCategoryModal';
+import { ExpenseHead } from '../../types';
 
 interface ExpensesViewProps {
   onOpenExpense: () => void;
@@ -25,6 +30,17 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
 }) => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
   const [selectedExpenseHeadId, setSelectedExpenseHeadId] = useState<string>('all');
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<ExpenseHead | null>(null);
+  const [version, setVersion] = useState(0);
+
+  // Subscribe to accounting engine updates (for new expenses, new categories, status changes)
+  useEffect(() => {
+    const unsubscribe = accountingService.subscribe(() => {
+      setVersion((v) => v + 1);
+    });
+    return unsubscribe;
+  }, []);
 
   const state = accountingService.getState();
 
@@ -82,6 +98,16 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
 
         <div className="flex flex-wrap items-center gap-2">
           <button
+            onClick={() => {
+              setEditingCategory(null);
+              setIsCategoryModalOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 cursor-pointer shadow-xs transition-colors"
+          >
+            <Layers className="w-3.5 h-3.5 text-rose-600" />
+            + Add Expense Category
+          </button>
+          <button
             onClick={onOpenTransfer}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-indigo-700 hover:bg-indigo-600 cursor-pointer shadow"
           >
@@ -106,26 +132,83 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
       </div>
 
       {/* Expense Head Breakdown Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {headBreakdown.map((hb) => (
-          <div
-            key={hb.id}
-            onClick={() => setSelectedExpenseHeadId(selectedExpenseHeadId === hb.id ? 'all' : hb.id)}
-            className={`p-3 rounded-xl border text-xs cursor-pointer transition-all ${
-              selectedExpenseHeadId === hb.id
-                ? 'border-rose-500 bg-rose-50/60 shadow-xs'
-                : 'border-slate-200 bg-white hover:border-slate-300'
-            }`}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            Cost Categories &amp; Heads ({state.expenseHeads.length})
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setEditingCategory(null);
+              setIsCategoryModalOpen(true);
+            }}
+            className="text-[11px] font-semibold text-rose-700 hover:text-rose-900 inline-flex items-center gap-1 cursor-pointer"
           >
-            <span className="text-[11px] text-slate-500 truncate block font-medium">
-              {hb.name}
-            </span>
-            <div className="text-sm font-bold font-mono text-slate-900 mt-1">
-              {formatOMR(hb.total)}
+            <Plus className="w-3 h-3" />
+            <span>New Category</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {headBreakdown.map((hb) => (
+            <div
+              key={hb.id}
+              onClick={() => setSelectedExpenseHeadId(selectedExpenseHeadId === hb.id ? 'all' : hb.id)}
+              className={`p-3 rounded-xl border text-xs cursor-pointer transition-all relative group ${
+                selectedExpenseHeadId === hb.id
+                  ? 'border-rose-500 bg-rose-50/60 shadow-xs ring-1 ring-rose-400'
+                  : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-1">
+                <span className="text-[11px] text-slate-600 truncate block font-medium flex-1" title={hb.name}>
+                  {hb.name}
+                </span>
+                <button
+                  type="button"
+                  title="Edit category"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingCategory(hb);
+                    setIsCategoryModalOpen(true);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded text-slate-400 hover:text-rose-600"
+                >
+                  <Edit2 className="w-3 h-3" />
+                </button>
+              </div>
+              <div className="text-sm font-bold font-mono text-slate-900 mt-1">
+                {formatOMR(hb.total)}
+              </div>
+              <div className="flex items-center justify-between mt-0.5">
+                <span className="text-[10px] text-slate-400">{hb.count} Vouchers</span>
+                {hb.category && (
+                  <span className="text-[9px] px-1 py-0.2 rounded bg-slate-100 text-slate-500 truncate max-w-[70px]">
+                    {hb.category}
+                  </span>
+                )}
+              </div>
             </div>
-            <span className="text-[10px] text-slate-400 mt-0.5 block">{hb.count} Vouchers</span>
-          </div>
-        ))}
+          ))}
+
+          {/* Quick Add Category Card */}
+          <button
+            type="button"
+            onClick={() => {
+              setEditingCategory(null);
+              setIsCategoryModalOpen(true);
+            }}
+            className="p-3 rounded-xl border border-dashed border-rose-300 bg-rose-50/40 hover:bg-rose-50 hover:border-rose-400 text-xs cursor-pointer transition-all flex flex-col items-center justify-center text-center group min-h-[72px]"
+          >
+            <div className="w-6 h-6 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 mb-1 group-hover:scale-110 transition-transform">
+              <Plus className="w-3.5 h-3.5" />
+            </div>
+            <span className="text-[11px] font-semibold text-rose-700">
+              + New Category
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Expenses Table */}
@@ -144,7 +227,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
             <select
               value={selectedProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none"
+              className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none cursor-pointer"
             >
               <option value="all">-- All Projects --</option>
               {state.projects.map((p) => (
@@ -157,13 +240,19 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
             <select
               value={selectedExpenseHeadId}
               onChange={(e) => setSelectedExpenseHeadId(e.target.value)}
-              className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none"
+              className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none cursor-pointer"
             >
-              <option value="all">-- All Expense Heads --</option>
-              {state.expenseHeads.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.name}
-                </option>
+              <option value="all">-- All Expense Heads ({state.expenseHeads.length}) --</option>
+              {Array.from(new Set(state.expenseHeads.map((h) => h.category || 'Direct Project Cost'))).map((groupName) => (
+                <optgroup key={groupName} label={groupName}>
+                  {state.expenseHeads
+                    .filter((h) => (h.category || 'Direct Project Cost') === groupName)
+                    .map((h) => (
+                      <option key={h.id} value={h.id}>
+                        {h.name}
+                      </option>
+                    ))}
+                </optgroup>
               ))}
             </select>
           </div>
@@ -239,6 +328,23 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
           </table>
         </div>
       </div>
+
+      {/* New/Edit Expense Category Modal */}
+      {isCategoryModalOpen && (
+        <NewExpenseCategoryModal
+          isOpen={isCategoryModalOpen}
+          editCategory={editingCategory}
+          onClose={() => {
+            setIsCategoryModalOpen(false);
+            setEditingCategory(null);
+          }}
+          onSuccess={(newCat) => {
+            setSelectedExpenseHeadId(newCat.id);
+            setIsCategoryModalOpen(false);
+            setEditingCategory(null);
+          }}
+        />
+      )}
     </div>
   );
 };

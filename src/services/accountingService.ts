@@ -296,7 +296,7 @@ class AccountingService {
 
   public refreshFromStorage(): void {
     this.state = this.loadState();
-    this.notifyListeners();
+    this.notify();
   }
 
   public getCurrentUser(): User {
@@ -1132,18 +1132,92 @@ class AccountingService {
   }
 
   public createExpenseHead(data: Omit<ExpenseHead, 'id'>): ExpenseHead {
-    if (!data.name?.trim()) throw new Error('Expense head name is required.');
+    if (!data.name?.trim()) throw new Error('Expense category name is required.');
+    const trimmedName = data.name.trim();
+
+    const duplicate = this.state.expenseHeads.find(
+      (h) => h.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (duplicate) {
+      throw new Error(`Expense category "${trimmedName}" already exists.`);
+    }
+
     const head: ExpenseHead = {
-      id: 'exp-head-' + Date.now(),
-      name: data.name.trim(),
-      category: data.category || 'General',
-      status: data.status,
-      remarks: data.remarks,
+      id: 'exp-head-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+      name: trimmedName,
+      category: data.category?.trim() || 'Direct Project Cost',
+      description: data.description?.trim(),
+      status: data.status || 'active',
+      remarks: data.remarks?.trim(),
     };
     this.state.expenseHeads.push(head);
-    this.addAuditLog('CREATE_EXPENSE_HEAD', 'Masters & Settings', `Created expense head "${head.name}"`, undefined, head.id);
+    this.addAuditLog(
+      'CREATE_EXPENSE_HEAD',
+      'Masters & Settings',
+      `Created expense category "${head.name}" under grouping "${head.category}"`,
+      undefined,
+      head.id
+    );
     this.saveState();
     return head;
+  }
+
+  public updateExpenseHead(
+    id: string,
+    updates: Partial<Omit<ExpenseHead, 'id'>>
+  ): ExpenseHead {
+    const head = this.state.expenseHeads.find((h) => h.id === id);
+    if (!head) throw new Error('Expense category not found.');
+
+    if (updates.name !== undefined) {
+      const trimmedName = updates.name.trim();
+      if (!trimmedName) throw new Error('Expense category name cannot be empty.');
+      const duplicate = this.state.expenseHeads.find(
+        (h) => h.id !== id && h.name.toLowerCase() === trimmedName.toLowerCase()
+      );
+      if (duplicate) {
+        throw new Error(`Expense category "${trimmedName}" already exists.`);
+      }
+      head.name = trimmedName;
+    }
+
+    if (updates.category !== undefined) head.category = updates.category.trim();
+    if (updates.description !== undefined) head.description = updates.description.trim();
+    if (updates.status !== undefined) head.status = updates.status;
+    if (updates.remarks !== undefined) head.remarks = updates.remarks.trim();
+
+    this.addAuditLog(
+      'UPDATE_EXPENSE_HEAD',
+      'Masters & Settings',
+      `Updated expense category "${head.name}" (${head.category})`,
+      undefined,
+      head.id
+    );
+    this.saveState();
+    return head;
+  }
+
+  public deleteExpenseHead(id: string): void {
+    const head = this.state.expenseHeads.find((h) => h.id === id);
+    if (!head) throw new Error('Expense category not found.');
+
+    const hasExpenses = this.state.directExpenses.some((e) => e.expenseHeadId === id);
+    const hasMoneyOut = this.state.moneyOutList.some((m) => m.expenseHeadId === id);
+    if (hasExpenses || hasMoneyOut) {
+      throw new Error(
+        `Cannot delete category "${head.name}" because transactions are recorded against it. You can mark it inactive instead.`
+      );
+    }
+
+    this.state.expenseHeads = this.state.expenseHeads.filter((h) => h.id !== id);
+    this.addAuditLog(
+      'DELETE_EXPENSE_HEAD',
+      'Masters & Settings',
+      `Deleted expense category "${head.name}"`,
+      undefined,
+      id
+    );
+    this.saveState();
   }
 
   // -------------------------------------------------------------

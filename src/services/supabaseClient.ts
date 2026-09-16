@@ -256,6 +256,12 @@ export const supabaseService = {
   getClient: getSupabaseClient,
   uploadAttachment: uploadAttachmentFile,
   testConnection: testSupabaseConnection,
+  getConfig: () => ({
+    url: currentConfig.url,
+    anonKey: currentConfig.anonKey,
+    supabaseUrl: currentConfig.url,
+    supabaseAnonKey: currentConfig.anonKey,
+  }),
   subscribe: (fn: () => void) => {
     listeners.add(fn);
     return () => listeners.delete(fn);
