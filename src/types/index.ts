@@ -112,6 +112,8 @@ export interface ExpenseHead {
   remarks?: string;
 }
 
+export type ExpenseCategory = ExpenseHead;
+
 export type TransactionStatus =
   | 'draft'
   | 'submitted'

@@ -25,7 +25,27 @@ import {
   ChevronRight,
   Sparkles,
   CheckCircle2,
+  BarChart3,
+  Layers,
+  Activity,
+  Calendar,
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  ComposedChart,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ReferenceLine,
+} from 'recharts';
 import { accountingService } from '../../services/accountingService';
 import { formatOMR, formatPercent, addMoney, subtractMoney } from '../../utils/formatters';
 import { exportToExcel } from '../../utils/exportToExcel';
@@ -56,6 +76,74 @@ export interface DashboardViewProps {
   onReverseTransaction?: (txn: Transaction) => void;
   onNavigateToProjectsList?: (projectId?: string) => void;
 }
+
+const CustomMonthlyTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload || !payload.length) return null;
+
+  const data = payload[0]?.payload;
+  if (!data) return null;
+
+  return (
+    <div className="bg-slate-900/95 backdrop-blur-xs border border-slate-700/90 rounded-xl p-3.5 shadow-2xl text-slate-100 min-w-[250px]">
+      <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-2.5">
+        <span className="font-semibold text-xs text-slate-200">{data.monthLabel || label}</span>
+        <span
+          className={`text-[10px] font-mono px-2 py-0.5 rounded font-semibold ${
+            data.netProfit >= 0
+              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+              : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+          }`}
+        >
+          {data.marginPercent.toFixed(1)}% Margin
+        </span>
+      </div>
+      <div className="space-y-1.5 text-xs">
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1.5 text-slate-300">
+            <span className="w-2.5 h-2.5 rounded-sm bg-blue-500 inline-block" />
+            Invoiced Revenue:
+          </span>
+          <span className="font-mono font-bold text-blue-400">{formatOMR(data.revenue)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1.5 text-slate-300">
+            <span className="w-2.5 h-2.5 rounded-sm bg-rose-500 inline-block" />
+            Total Project Cost:
+          </span>
+          <span className="font-mono font-bold text-rose-400">{formatOMR(data.totalExpenses)}</span>
+        </div>
+        {data.purchases > 0 && (
+          <div className="flex items-center justify-between pl-4 text-[11px] text-slate-400">
+            <span>• Purchases &amp; Materials:</span>
+            <span className="font-mono text-amber-300">{formatOMR(data.purchases)}</span>
+          </div>
+        )}
+        {data.directExpenses > 0 && (
+          <div className="flex items-center justify-between pl-4 text-[11px] text-slate-400">
+            <span>• Direct Site Expenses:</span>
+            <span className="font-mono text-purple-300">{formatOMR(data.directExpenses)}</span>
+          </div>
+        )}
+        <div className="border-t border-slate-800 pt-1.5 mt-1 flex items-center justify-between">
+          <span className="text-slate-300 font-medium">Net Operating Profit:</span>
+          <span
+            className={`font-mono font-bold ${
+              data.netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'
+            }`}
+          >
+            {formatOMR(data.netProfit)}
+          </span>
+        </div>
+        {(data.cashIn > 0 || data.cashOut > 0) && (
+          <div className="border-t border-slate-800/60 pt-1.5 text-[10px] text-slate-400 flex justify-between">
+            <span>Cash In: <strong className="text-emerald-400 font-mono">{formatOMR(data.cashIn)}</strong></span>
+            <span>Cash Out: <strong className="text-amber-400 font-mono">{formatOMR(data.cashOut)}</strong></span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   initialScope = 'overall',
@@ -91,6 +179,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Transactions Search & Filtering
   const [txnSearchTerm, setTxnSearchTerm] = useState('');
   const [txnFilterType, setTxnFilterType] = useState<string>('all');
+
+  // Recharts Interactive Controls for Monthly Revenue & Expense Trends
+  const [trendChartType, setTrendChartType] = useState<'bar' | 'area' | 'line'>('bar');
+  const [trendTimeframe, setTrendTimeframe] = useState<'6m' | '12m' | 'all'>('6m');
+  const [trendMetricView, setTrendMetricView] = useState<'combined' | 'detailed' | 'cashflow'>('combined');
+  const [showProfitOverlay, setShowProfitOverlay] = useState<boolean>(true);
 
   // Compute active date range
   const dateRange = useMemo(() => {
@@ -271,72 +365,171 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
   }, [state, scope, selectedProjectId, currentProject, dateRange, projects]);
 
-  // Monthly Trend Chart Data (Last 6 Months grouped)
-  const monthlyTrendData: MonthlyTrendPoint[] = useMemo(() => {
-    const monthsMap = new Map<string, { revenue: number; cost: number; collections: number }>();
+  // All recorded transactions from accountingService engine
+  const allTransactions = useMemo(() => {
+    return accountingService.getAllTransactions();
+  }, [state]);
 
-    // Helper to format date into "MMM yyyy"
-    const getMonthKey = (dStr: string) => {
-      if (!dStr) return null;
-      const d = new Date(dStr.includes('T') ? dStr.split('T')[0] : dStr);
-      return d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
-    };
+  // Monthly Revenue & Expense trends calculated directly from existing transaction data in accountingService
+  const monthlyRevenueExpenseTrends = useMemo(() => {
+    // Exclude reversed transactions
+    const validTransactions = allTransactions.filter((txn) => {
+      if (txn.status === 'reversed') return false;
+      if (scope === 'project' && selectedProjectId && txn.projectId !== selectedProjectId) {
+        return false;
+      }
+      return true;
+    });
 
-    // Populate months with zero
     const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const past = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = past.toLocaleString('en-US', { month: 'short', year: 'numeric' });
-      monthsMap.set(key, { revenue: 0, cost: 0, collections: 0 });
+    const monthsCount = trendTimeframe === '12m' ? 12 : trendTimeframe === 'all' ? 18 : 6;
+    const monthsMap = new Map<string, {
+      monthKey: string;
+      monthLabel: string;
+      revenue: number;
+      purchases: number;
+      directExpenses: number;
+      totalExpenses: number;
+      netProfit: number;
+      marginPercent: number;
+      cashIn: number;
+      cashOut: number;
+      invoiceCount: number;
+      expenseCount: number;
+      txnCount: number;
+    }>();
+
+    // Pre-populate chronological months up to current date
+    for (let i = monthsCount - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const key = `${y}-${m}`;
+      const label = d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+      monthsMap.set(key, {
+        monthKey: key,
+        monthLabel: label,
+        revenue: 0,
+        purchases: 0,
+        directExpenses: 0,
+        totalExpenses: 0,
+        netProfit: 0,
+        marginPercent: 0,
+        cashIn: 0,
+        cashOut: 0,
+        invoiceCount: 0,
+        expenseCount: 0,
+        txnCount: 0,
+      });
     }
 
-    analyticsData.relevantInvoices.forEach((inv) => {
-      const k = getMonthKey(inv.date);
-      if (k && monthsMap.has(k)) {
-        const cur = monthsMap.get(k)!;
-        cur.revenue = addMoney(cur.revenue, inv.amount);
+    // Process all valid transactions
+    validTransactions.forEach((txn) => {
+      if (!txn.date) return;
+      const cleanDate = txn.date.includes('T') ? txn.date.split('T')[0] : txn.date;
+      const parts = cleanDate.split('-');
+      if (parts.length < 2) return;
+      const key = `${parts[0]}-${parts[1].padStart(2, '0')}`;
+
+      if (!monthsMap.has(key)) {
+        if (trendTimeframe === 'all' || trendTimeframe === '12m') {
+          const d = new Date(`${key}-01`);
+          const label = !isNaN(d.getTime())
+            ? d.toLocaleString('en-US', { month: 'short', year: 'numeric' })
+            : key;
+          monthsMap.set(key, {
+            monthKey: key,
+            monthLabel: label,
+            revenue: 0,
+            purchases: 0,
+            directExpenses: 0,
+            totalExpenses: 0,
+            netProfit: 0,
+            marginPercent: 0,
+            cashIn: 0,
+            cashOut: 0,
+            invoiceCount: 0,
+            expenseCount: 0,
+            txnCount: 0,
+          });
+        } else {
+          return;
+        }
+      }
+
+      const item = monthsMap.get(key)!;
+      item.txnCount += 1;
+      const amt = Number(txn.amount) || 0;
+
+      if (txn.type === 'CLIENT_INVOICE') {
+        item.revenue = addMoney(item.revenue, amt);
+        item.invoiceCount += 1;
+      } else if (txn.type === 'PURCHASE') {
+        item.purchases = addMoney(item.purchases, amt);
+        item.totalExpenses = addMoney(item.totalExpenses, amt);
+        item.expenseCount += 1;
+      } else if (txn.type === 'EXPENSE') {
+        item.directExpenses = addMoney(item.directExpenses, amt);
+        item.totalExpenses = addMoney(item.totalExpenses, amt);
+        item.expenseCount += 1;
+      } else if (txn.type === 'MONEY_IN') {
+        item.cashIn = addMoney(item.cashIn, amt);
+      } else if (txn.type === 'MONEY_OUT') {
+        item.cashOut = addMoney(item.cashOut, amt);
       }
     });
 
-    analyticsData.relevantPurchases.forEach((p) => {
-      const k = getMonthKey(p.date);
-      if (k && monthsMap.has(k)) {
-        const cur = monthsMap.get(k)!;
-        cur.cost = addMoney(cur.cost, p.amount);
-      }
+    const sorted = Array.from(monthsMap.values()).sort((a, b) => a.monthKey.localeCompare(b.monthKey));
+    return sorted.map((m) => {
+      const netProfit = subtractMoney(m.revenue, m.totalExpenses);
+      const marginPercent = m.revenue > 0 ? (netProfit / m.revenue) * 100 : 0;
+      return {
+        ...m,
+        netProfit,
+        marginPercent,
+      };
     });
+  }, [allTransactions, scope, selectedProjectId, trendTimeframe]);
 
-    analyticsData.relevantExpenses.forEach((e) => {
-      const k = getMonthKey(e.expenseDate);
-      if (k && monthsMap.has(k)) {
-        const cur = monthsMap.get(k)!;
-        cur.cost = addMoney(cur.cost, e.amount);
-      }
-    });
+  // Aggregate Key Performance Indicators for the Trend Chart
+  const trendSummary = useMemo(() => {
+    const totalRev = monthlyRevenueExpenseTrends.reduce((s, m) => addMoney(s, m.revenue), 0);
+    const totalExp = monthlyRevenueExpenseTrends.reduce((s, m) => addMoney(s, m.totalExpenses), 0);
+    const totalPurchases = monthlyRevenueExpenseTrends.reduce((s, m) => addMoney(s, m.purchases), 0);
+    const totalDirectExp = monthlyRevenueExpenseTrends.reduce((s, m) => addMoney(s, m.directExpenses), 0);
+    const totalCashIn = monthlyRevenueExpenseTrends.reduce((s, m) => addMoney(s, m.cashIn), 0);
+    const totalCashOut = monthlyRevenueExpenseTrends.reduce((s, m) => addMoney(s, m.cashOut), 0);
+    const netProfit = subtractMoney(totalRev, totalExp);
+    const margin = totalRev > 0 ? (netProfit / totalRev) * 100 : 0;
+    const activeMonths = monthlyRevenueExpenseTrends.filter((m) => m.revenue > 0 || m.totalExpenses > 0);
+    const avgMonthlyRev = activeMonths.length > 0 ? totalRev / activeMonths.length : 0;
+    const profitableMonths = monthlyRevenueExpenseTrends.filter((m) => m.netProfit > 0 && m.revenue > 0).length;
 
-    analyticsData.relevantReceipts.forEach((r) => {
-      const k = getMonthKey(r.transactionDate);
-      if (k && monthsMap.has(k)) {
-        const cur = monthsMap.get(k)!;
-        cur.collections = addMoney(cur.collections, r.amount);
-      }
-    });
+    return {
+      totalRev,
+      totalExp,
+      totalPurchases,
+      totalDirectExp,
+      totalCashIn,
+      totalCashOut,
+      netProfit,
+      margin,
+      avgMonthlyRev,
+      activeMonthsCount: activeMonths.length,
+      profitableMonths,
+    };
+  }, [monthlyRevenueExpenseTrends]);
 
-    const result: MonthlyTrendPoint[] = [];
-    monthsMap.forEach((val, month) => {
-      const profit = subtractMoney(val.revenue, val.cost);
-      const margin = val.revenue > 0 ? (profit / val.revenue) * 100 : 0;
-      result.push({
-        month,
-        revenue: val.revenue,
-        cost: val.cost,
-        collections: val.collections,
-        margin,
-      });
-    });
-
-    return result;
-  }, [analyticsData]);
+  // Synchronized Monthly Trend Chart Data for the downstream analytics charts
+  const monthlyTrendData: MonthlyTrendPoint[] = useMemo(() => {
+    return monthlyRevenueExpenseTrends.map((m) => ({
+      month: m.monthLabel,
+      revenue: m.revenue,
+      cost: m.totalExpenses,
+      collections: m.cashIn,
+      margin: m.marginPercent,
+    }));
+  }, [monthlyRevenueExpenseTrends]);
 
   // Cost Structure Donut Chart Data
   const costDistributionData: CostCategoryPoint[] = useMemo(() => {
@@ -471,10 +664,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, [scope, currentProject, analyticsData, projects]);
 
   // Filtered transactions for the ledger stream
-  const allTransactions = useMemo(() => {
-    return accountingService.getAllTransactions();
-  }, [state]);
-
   const filteredTransactions = useMemo(() => {
     return allTransactions
       .filter((txn) => {
@@ -777,7 +966,426 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* 4. Interactive Analytics Charts (Monthly Trend, Cost Donut, Project Margins, Budget) */}
+      {/* 4. Interactive Recharts: Monthly Revenue & Expense Trends (Utilizing accountingService Transactions) */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs p-5 space-y-4 transition-colors">
+        {/* Header & Interactive Controls */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50">
+                <BarChart3 className="w-4 h-4" />
+              </span>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                Monthly Revenue &amp; Expense Trends
+              </h3>
+              {scope === 'project' && currentProject && (
+                <span className="px-2 py-0.5 rounded text-xs font-mono font-semibold bg-blue-50 dark:bg-blue-950/70 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+                  {currentProject.code} — {currentProject.name}
+                </span>
+              )}
+              {scope === 'overall' && (
+                <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                  Consolidated Enterprise
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Visualizing monthly recognized revenue (Client IPCs) vs. total project costs (Purchases &amp; Direct Expenses) with net operating margins.
+            </p>
+          </div>
+
+          {/* Interactive Controls Toolbar */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* View Metric Mode */}
+            <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800/80 p-1 border border-slate-200/60 dark:border-slate-700/60 text-xs">
+              <button
+                type="button"
+                onClick={() => setTrendMetricView('combined')}
+                className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                  trendMetricView === 'combined'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                Revenue vs Cost
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrendMetricView('detailed')}
+                className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                  trendMetricView === 'detailed'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                Cost Breakdown
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrendMetricView('cashflow')}
+                className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                  trendMetricView === 'cashflow'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                Accrual vs Cash
+              </button>
+            </div>
+
+            {/* Chart Type: Bar, Area, Line */}
+            <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800/80 p-1 border border-slate-200/60 dark:border-slate-700/60 text-xs">
+              <button
+                type="button"
+                onClick={() => setTrendChartType('bar')}
+                title="Grouped Bar Chart"
+                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                  trendChartType === 'bar'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrendChartType('area')}
+                title="Gradient Area Curves"
+                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                  trendChartType === 'area'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                <TrendingUp className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrendChartType('line')}
+                title="Trend Lines"
+                className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                  trendChartType === 'line'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                <Activity className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Timeframe: 6M, 12M, All */}
+            <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800/80 p-1 border border-slate-200/60 dark:border-slate-700/60 text-xs font-medium">
+              <button
+                type="button"
+                onClick={() => setTrendTimeframe('6m')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                  trendTimeframe === '6m'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                6M
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrendTimeframe('12m')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                  trendTimeframe === '12m'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                12M
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrendTimeframe('all')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                  trendTimeframe === 'all'
+                    ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                }`}
+              >
+                All
+              </button>
+            </div>
+
+            {/* Net Profit Line Overlay Toggle */}
+            <button
+              type="button"
+              onClick={() => setShowProfitOverlay(!showProfitOverlay)}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
+                showProfitOverlay
+                  ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                  : 'bg-slate-50 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${showProfitOverlay ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+              <span>Profit Curve</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Quick KPI Strip inside Trend Card */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 rounded-xl border border-blue-100 dark:border-blue-900/40">
+            <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 block">Period Revenue</span>
+            <span className="text-base font-bold font-mono text-slate-900 dark:text-slate-100 mt-0.5 block">
+              {formatOMR(trendSummary.totalRev)}
+            </span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">Billed client progress</span>
+          </div>
+
+          <div className="p-3 bg-rose-50/50 dark:bg-rose-950/20 rounded-xl border border-rose-100 dark:border-rose-900/40">
+            <span className="text-[11px] font-medium text-rose-600 dark:text-rose-400 block">Total Project Cost</span>
+            <span className="text-base font-bold font-mono text-slate-900 dark:text-slate-100 mt-0.5 block">
+              {formatOMR(trendSummary.totalExp)}
+            </span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">Purchases &amp; site costs</span>
+          </div>
+
+          <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
+            <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 block">Net Operating Profit</span>
+            <span className={`text-base font-bold font-mono mt-0.5 block ${trendSummary.netProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-400'}`}>
+              {formatOMR(trendSummary.netProfit)}
+            </span>
+            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+              {trendSummary.margin.toFixed(1)}% Operating Margin
+            </span>
+          </div>
+
+          <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-700">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Monthly Run Rate</span>
+            <span className="text-base font-bold font-mono text-slate-900 dark:text-slate-100 mt-0.5 block">
+              {formatOMR(trendSummary.avgMonthlyRev)}
+            </span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">Avg active month billings</span>
+          </div>
+
+          <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-700 col-span-2 sm:col-span-1">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Profitable Months</span>
+            <span className="text-base font-bold font-mono text-slate-900 dark:text-slate-100 mt-0.5 block">
+              {trendSummary.profitableMonths} / {monthlyRevenueExpenseTrends.length}
+            </span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">Positive margin periods</span>
+          </div>
+        </div>
+
+        {/* The Recharts Container */}
+        <div className="h-80 w-full pt-2">
+          <ResponsiveContainer width="100%" height="100%">
+            {trendChartType === 'bar' ? (
+              <ComposedChart data={monthlyRevenueExpenseTrends} margin={{ top: 15, right: 15, left: -5, bottom: 15 }}>
+                <defs>
+                  <linearGradient id="colorRevBar" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.9} />
+                    <stop offset="100%" stopColor="#1d4ed8" stopOpacity={0.7} />
+                  </linearGradient>
+                  <linearGradient id="colorExpBar" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.9} />
+                    <stop offset="100%" stopColor="#be123c" stopOpacity={0.7} />
+                  </linearGradient>
+                  <linearGradient id="colorPurBar" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.9} />
+                    <stop offset="100%" stopColor="#b45309" stopOpacity={0.7} />
+                  </linearGradient>
+                  <linearGradient id="colorDirBar" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.9} />
+                    <stop offset="100%" stopColor="#6d28d9" stopOpacity={0.7} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" strokeOpacity={0.4} />
+                <XAxis
+                  dataKey="monthLabel"
+                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  axisLine={{ stroke: '#cbd5e1' }}
+                  tickLine={false}
+                  dy={6}
+                />
+                <YAxis
+                  yAxisId="amount"
+                  tickFormatter={(val) => `${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`}
+                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  axisLine={{ stroke: '#cbd5e1' }}
+                  tickLine={false}
+                />
+                <Tooltip content={<CustomMonthlyTooltip />} />
+                <Legend
+                  wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
+                  iconType="circle"
+                />
+                <ReferenceLine yAxisId="amount" y={0} stroke="#94a3b8" />
+
+                {trendMetricView === 'combined' && (
+                  <>
+                    <Bar
+                      yAxisId="amount"
+                      dataKey="revenue"
+                      name="Invoiced Revenue"
+                      fill="url(#colorRevBar)"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={32}
+                    />
+                    <Bar
+                      yAxisId="amount"
+                      dataKey="totalExpenses"
+                      name="Total Project Cost"
+                      fill="url(#colorExpBar)"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={32}
+                    />
+                  </>
+                )}
+
+                {trendMetricView === 'detailed' && (
+                  <>
+                    <Bar
+                      yAxisId="amount"
+                      dataKey="revenue"
+                      name="Invoiced Revenue"
+                      fill="url(#colorRevBar)"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={28}
+                    />
+                    <Bar
+                      yAxisId="amount"
+                      dataKey="purchases"
+                      name="Purchases &amp; Materials"
+                      fill="url(#colorPurBar)"
+                      stackId="expenses"
+                      radius={[0, 0, 0, 0]}
+                      maxBarSize={28}
+                    />
+                    <Bar
+                      yAxisId="amount"
+                      dataKey="directExpenses"
+                      name="Direct Site Expenses"
+                      fill="url(#colorDirBar)"
+                      stackId="expenses"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={28}
+                    />
+                  </>
+                )}
+
+                {trendMetricView === 'cashflow' && (
+                  <>
+                    <Bar
+                      yAxisId="amount"
+                      dataKey="revenue"
+                      name="Billed Revenue (Accrual)"
+                      fill="url(#colorRevBar)"
+                      radius={[3, 3, 0, 0]}
+                      maxBarSize={22}
+                    />
+                    <Bar
+                      yAxisId="amount"
+                      dataKey="cashIn"
+                      name="Cash Collections (Receipts)"
+                      fill="#10b981"
+                      radius={[3, 3, 0, 0]}
+                      maxBarSize={22}
+                    />
+                    <Bar
+                      yAxisId="amount"
+                      dataKey="totalExpenses"
+                      name="Incurred Cost (Accrual)"
+                      fill="url(#colorExpBar)"
+                      radius={[3, 3, 0, 0]}
+                      maxBarSize={22}
+                    />
+                    <Bar
+                      yAxisId="amount"
+                      dataKey="cashOut"
+                      name="Cash Payments Out"
+                      fill="#f97316"
+                      radius={[3, 3, 0, 0]}
+                      maxBarSize={22}
+                    />
+                  </>
+                )}
+
+                {showProfitOverlay && (
+                  <Line
+                    yAxisId="amount"
+                    type="monotone"
+                    dataKey="netProfit"
+                    name="Net Operating Profit"
+                    stroke="#10b981"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: '#10b981', strokeWidth: 1.5, stroke: '#ffffff' }}
+                    activeDot={{ r: 6 }}
+                  />
+                )}
+              </ComposedChart>
+            ) : trendChartType === 'area' ? (
+              <AreaChart data={monthlyRevenueExpenseTrends} margin={{ top: 15, right: 15, left: -5, bottom: 15 }}>
+                <defs>
+                  <linearGradient id="areaRev" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
+                  </linearGradient>
+                  <linearGradient id="areaExp" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" strokeOpacity={0.4} />
+                <XAxis dataKey="monthLabel" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={{ stroke: '#cbd5e1' }} tickLine={false} dy={6} />
+                <YAxis tickFormatter={(val) => `${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={{ stroke: '#cbd5e1' }} tickLine={false} />
+                <Tooltip content={<CustomMonthlyTooltip />} />
+                <Legend wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }} iconType="circle" />
+                <Area type="monotone" dataKey="revenue" name="Invoiced Revenue" stroke="#2563eb" strokeWidth={2.5} fillOpacity={1} fill="url(#areaRev)" />
+                <Area type="monotone" dataKey="totalExpenses" name="Total Project Cost" stroke="#e11d48" strokeWidth={2.5} fillOpacity={1} fill="url(#areaExp)" />
+                {showProfitOverlay && (
+                  <Line type="monotone" dataKey="netProfit" name="Net Operating Profit" stroke="#10b981" strokeWidth={2} dot={{ r: 4, fill: '#10b981' }} />
+                )}
+              </AreaChart>
+            ) : (
+              <LineChart data={monthlyRevenueExpenseTrends} margin={{ top: 15, right: 15, left: -5, bottom: 15 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" strokeOpacity={0.4} />
+                <XAxis dataKey="monthLabel" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={{ stroke: '#cbd5e1' }} tickLine={false} dy={6} />
+                <YAxis tickFormatter={(val) => `${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={{ stroke: '#cbd5e1' }} tickLine={false} />
+                <Tooltip content={<CustomMonthlyTooltip />} />
+                <Legend wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }} iconType="circle" />
+                <Line type="monotone" dataKey="revenue" name="Invoiced Revenue" stroke="#2563eb" strokeWidth={2.5} dot={{ r: 4, fill: '#2563eb' }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="totalExpenses" name="Total Project Cost" stroke="#e11d48" strokeWidth={2.5} dot={{ r: 4, fill: '#e11d48' }} activeDot={{ r: 6 }} />
+                {trendMetricView === 'detailed' && (
+                  <>
+                    <Line type="monotone" dataKey="purchases" name="Purchases" stroke="#f59e0b" strokeWidth={1.8} strokeDasharray="4 4" dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="directExpenses" name="Direct Site Expenses" stroke="#8b5cf6" strokeWidth={1.8} strokeDasharray="4 4" dot={{ r: 3 }} />
+                  </>
+                )}
+                {showProfitOverlay && (
+                  <Line type="monotone" dataKey="netProfit" name="Net Operating Profit" stroke="#10b981" strokeWidth={2.5} dot={{ r: 4, fill: '#10b981' }} />
+                )}
+              </LineChart>
+            )}
+          </ResponsiveContainer>
+        </div>
+
+        {/* Empty State / Helper */}
+        {trendSummary.activeMonthsCount === 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-amber-50/70 dark:bg-amber-950/40 rounded-xl border border-amber-200/80 dark:border-amber-800/60 text-xs text-amber-800 dark:text-amber-300">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>No transactions recorded in this selected scope yet. Record invoices or purchases, or populate sample historical trend data.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                accountingService.seedHistoricalMonthlyData();
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold transition-colors shrink-0 shadow-xs cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Load 6-Month Demo Trend</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 5. Interactive Analytics Charts (Cost Donut, Project Margins, Budget vs Actuals) */}
       <DashboardAnalyticsCharts
         scope={scope}
         projectName={currentProject?.name}
@@ -1038,11 +1646,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filteredTransactions.map((txn) => {
+              {filteredTransactions.map((txn, idx) => {
                 const isReversed = txn.status === 'reversed';
                 return (
                   <tr
-                    key={txn.id}
+                    key={`${txn.type}-${txn.id}-${idx}`}
                     className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors ${
                       isReversed ? 'bg-slate-50/50 dark:bg-slate-800/20 opacity-60' : ''
                     }`}

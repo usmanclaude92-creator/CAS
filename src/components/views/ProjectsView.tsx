@@ -508,8 +508,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {projectLedger.map((row) => (
-                      <tr key={row.id} className="hover:bg-slate-50/70 transition-colors">
+                    {projectLedger.map((row, idx) => (
+                      <tr key={`${row.id}-${idx}`} className="hover:bg-slate-50/70 transition-colors">
                         <td className="py-3 px-4 font-mono text-slate-600 whitespace-nowrap">
                           {row.date}
                         </td>
@@ -572,8 +572,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {projectInvoices.map((inv) => (
-                      <tr key={inv.id} className="hover:bg-slate-50/70">
+                    {projectInvoices.map((inv, idx) => (
+                      <tr key={`${inv.id}-${idx}`} className="hover:bg-slate-50/70">
                         <td className="py-3 px-4 font-mono text-slate-600">{inv.date}</td>
                         <td className="py-3 px-4 font-semibold text-blue-700">{inv.invoiceType}</td>
                         <td className="py-3 px-4 font-mono font-medium text-slate-900">{inv.invoiceNumber}</td>
@@ -631,8 +631,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {projectPurchases.map((p) => (
-                      <tr key={p.id} className="hover:bg-slate-50/70">
+                    {projectPurchases.map((p, idx) => (
+                      <tr key={`${p.id}-${idx}`} className="hover:bg-slate-50/70">
                         <td className="py-3 px-4 font-mono text-slate-600">{p.date}</td>
                         <td className="py-3 px-4 font-mono font-medium text-slate-900">{p.purchaseInvoiceNumber}</td>
                         <td className="py-3 px-4 font-medium text-slate-800">{p.vendorName}</td>
@@ -688,8 +688,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {projectExpenses.map((exp) => (
-                      <tr key={exp.id} className="hover:bg-slate-50/70">
+                    {projectExpenses.map((exp, idx) => (
+                      <tr key={`${exp.id}-${idx}`} className="hover:bg-slate-50/70">
                         <td className="py-3 px-4 font-mono text-slate-600">{exp.expenseDate}</td>
                         <td className="py-3 px-4 font-mono font-medium text-slate-900">{exp.documentRef}</td>
                         <td className="py-3 px-4 font-medium text-slate-800">{exp.expenseHeadName}</td>

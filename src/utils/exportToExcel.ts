@@ -42,6 +42,17 @@ function buildWorksheet(
 
   let worksheet: XLSX.WorkSheet;
 
+  if (!rawData || rawData.length === 0) {
+    if (columns && columns.length > 0) {
+      const emptyRow: Record<string, any> = {};
+      columns.forEach((c) => { emptyRow[c.header] = ''; });
+      worksheet = XLSX.utils.json_to_sheet([emptyRow]);
+    } else {
+      worksheet = XLSX.utils.aoa_to_sheet([['No records available for the selected filter criteria']]);
+    }
+    return { worksheet, filename, sheetName };
+  }
+
   if (columns && columns.length > 0) {
     const rows = rawData.map((item) => {
       const rowObj: Record<string, any> = {};
@@ -123,6 +134,39 @@ export function exportToCsv(
 
   const cleanFilename = filename.endsWith('.csv') ? filename : `${filename}.csv`;
   XLSX.writeFile(workbook, cleanFilename, { bookType: 'csv' });
+}
+
+export interface SheetDefinition {
+  sheetName: string;
+  data: any[];
+  columns?: ExcelColumn[];
+}
+
+export interface MultiSheetExportOptions {
+  filename: string;
+  sheets: SheetDefinition[];
+}
+
+/**
+ * Export multiple financial report tables into a single consolidated multi-sheet Excel workbook (.xlsx)
+ */
+export function exportMultiSheetExcel(options: MultiSheetExportOptions) {
+  const workbook = XLSX.utils.book_new();
+
+  options.sheets.forEach((sheetDef) => {
+    const { worksheet } = buildWorksheet({
+      filename: options.filename,
+      sheetName: sheetDef.sheetName,
+      columns: sheetDef.columns,
+      data: sheetDef.data,
+    });
+    // Excel worksheet names must be <= 31 characters and free of invalid chars : \ / ? * [ ]
+    const safeSheetName = sheetDef.sheetName.replace(/[:\\/?*\[\]]/g, '').substring(0, 31);
+    XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName || 'Sheet');
+  });
+
+  const cleanFilename = options.filename.endsWith('.xlsx') ? options.filename : `${options.filename}.xlsx`;
+  XLSX.writeFile(workbook, cleanFilename, { bookType: 'xlsx' });
 }
 
 export default exportToExcel;

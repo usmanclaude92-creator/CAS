@@ -4,7 +4,7 @@ import { accountingService } from '../../services/accountingService';
 import { uploadAttachmentFile } from '../../services/supabaseClient';
 import { TreasuryAccountType, ExpenseHead } from '../../types';
 import { formatOMR } from '../../utils/formatters';
-import { NewExpenseCategoryModal } from './NewExpenseCategoryModal';
+import { AddExpenseCategoryModal } from './AddExpenseCategoryModal';
 
 interface ExpenseModalProps {
   isOpen: boolean;
@@ -357,7 +357,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
 
       {/* Inline New Expense Category Modal */}
       {isCategoryModalOpen && (
-        <NewExpenseCategoryModal
+        <AddExpenseCategoryModal
           isOpen={isCategoryModalOpen}
           onClose={() => setIsCategoryModalOpen(false)}
           onSuccess={(newCat) => {

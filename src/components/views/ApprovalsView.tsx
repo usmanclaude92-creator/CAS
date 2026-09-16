@@ -217,12 +217,12 @@ export const ApprovalsView: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filtered.map((txn) => {
+                {filtered.map((txn, idx) => {
                   const isCreator = (txn.createdBy || txn.submittedBy) === currentUser?.id;
                   const sodConflict = authService.getWorkflowSettings().separationOfDutiesEnabled && isCreator;
 
                   return (
-                    <tr key={txn.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors">
+                    <tr key={`${txn.type}-${txn.id}-${idx}`} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors">
                       <td className="px-4 py-3 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
                         {txn.date}
                       </td>

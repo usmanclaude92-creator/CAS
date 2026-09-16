@@ -22,11 +22,14 @@ import {
   Truck,
   Printer,
   FileText,
+  FolderDown,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { formatOMR, formatPercent, addMoney } from '../../utils/formatters';
-import { exportToExcel, exportToCsv } from '../../utils/exportToExcel';
+import { exportToExcel, exportToCsv, exportMultiSheetExcel } from '../../utils/exportToExcel';
 import { toast } from '../../context/ToastContext';
+import { ArtifyLogo } from '../ArtifyLogo';
+import { TableExportButtons } from './TableExportButtons';
 import {
   DatePreset,
   getDateRangeFromPreset,
@@ -462,194 +465,242 @@ export const ReportsView: React.FC = () => {
   }, [summary, trialAccountClass, hideZeroTrial, trialSearch]);
 
   // -------------------------------------------------------------
-  // EXCEL & CSV EXPORT (Always exports the current filtered dataset!)
+  // FINANCIAL DATA EXPORT GENERATORS
+  // (Utilizes real-time accountingService state and active filters)
   // -------------------------------------------------------------
-  const handleExport = (exportFormat: 'excel' | 'csv' = 'excel') => {
+  const getProfitabilityExportData = () => {
+    return filteredProfitabilities.map((p) => ({
+      'Project Code': p.projectCode,
+      'Project Name': p.projectName,
+      'Client': p.customerName,
+      'Contract Value (OMR)': p.contractValue,
+      'Invoiced Revenue (OMR)': p.totalInvoiced,
+      'Cash Collected (OMR)': p.totalReceived,
+      'Receivable Balance (OMR)': p.outstandingReceivable,
+      'Purchases Cost (OMR)': p.totalPurchases,
+      'Direct Expenses (OMR)': p.totalExpenses,
+      'Total Project Cost (OMR)': p.totalProjectCost,
+      'Gross Profit (OMR)': p.grossProfit,
+      'Margin (%)': `${p.profitMargin.toFixed(2)}%`,
+    }));
+  };
+
+  const getIncomeStatementExportData = () => {
+    const is = incomeStatementData;
+    return [
+      { 'Category': 'REVENUE', 'Line Item': 'Construction Billing (Invoices & IPCs)', 'Amount (OMR)': is.revenueInvoiced, '% Revenue': '100.0%' },
+      { 'Category': 'REVENUE', 'Line Item': 'Total Operating Revenue', 'Amount (OMR)': is.revenueInvoiced, '% Revenue': '100.0%' },
+      { 'Category': 'COST OF CONSTRUCTION', 'Line Item': 'Materials & Subcontractor Purchases', 'Amount (OMR)': is.purchasesCost, '% Revenue': is.revenueInvoiced > 0 ? `${((is.purchasesCost / is.revenueInvoiced) * 100).toFixed(1)}%` : '—' },
+      { 'Category': 'COST OF CONSTRUCTION', 'Line Item': 'Direct Project & Site Expenses', 'Amount (OMR)': is.expensesCost, '% Revenue': is.revenueInvoiced > 0 ? `${((is.expensesCost / is.revenueInvoiced) * 100).toFixed(1)}%` : '—' },
+      { 'Category': 'COST OF CONSTRUCTION', 'Line Item': 'Total Direct Project Costs', 'Amount (OMR)': is.totalProjectCosts, '% Revenue': is.revenueInvoiced > 0 ? `${((is.totalProjectCosts / is.revenueInvoiced) * 100).toFixed(1)}%` : '—' },
+      { 'Category': 'NET PROFIT', 'Line Item': 'Net Construction Gross Profit', 'Amount (OMR)': is.netProfit, '% Revenue': is.revenueInvoiced > 0 ? `${((is.netProfit / is.revenueInvoiced) * 100).toFixed(1)}%` : '—' },
+      { 'Category': 'PROFIT MARGIN', 'Line Item': 'Gross Profit Margin (%)', 'Amount (OMR)': `${is.profitMargin.toFixed(2)}%`, '% Revenue': '' },
+    ];
+  };
+
+  const getBalanceSheetExportData = () => {
+    const totalAssets = summary.totalLiquidFunds + summary.totalReceivables;
+    const totalLiabilities = summary.totalPayables;
+    const equity = totalAssets - totalLiabilities;
+
+    return [
+      { 'Section': 'ASSETS - Current Assets', 'Account': 'Bank Accounts', 'Amount (OMR)': summary.totalBankBalance },
+      { 'Section': 'ASSETS - Current Assets', 'Account': 'Cash in Hand', 'Amount (OMR)': summary.totalCashBalance },
+      { 'Section': 'ASSETS - Current Assets', 'Account': 'Petty Cash Floats', 'Amount (OMR)': summary.totalPettyCashBalance },
+      { 'Section': 'ASSETS - Current Assets', 'Account': 'Accounts Receivable (Clients)', 'Amount (OMR)': summary.totalReceivables },
+      { 'Section': 'ASSETS TOTAL', 'Account': 'TOTAL ASSETS', 'Amount (OMR)': totalAssets },
+      { 'Section': 'LIABILITIES', 'Account': 'Accounts Payable (Vendors & Subcontractors)', 'Amount (OMR)': summary.totalPayables },
+      { 'Section': 'LIABILITIES TOTAL', 'Account': 'TOTAL LIABILITIES', 'Amount (OMR)': totalLiabilities },
+      { 'Section': 'EQUITY', 'Account': 'Retained Earnings & Current Period Earnings', 'Amount (OMR)': equity },
+      { 'Section': 'EQUITY TOTAL', 'Account': 'TOTAL LIABILITIES & EQUITY', 'Amount (OMR)': totalLiabilities + equity },
+    ];
+  };
+
+  const getTrialBalanceExportData = () => {
+    return trialBalanceRows.map((r) => ({
+      'Account Code': r.code,
+      'Account Name': r.name,
+      'Class': r.class.toUpperCase(),
+      'Debit (OMR)': r.debit > 0 ? r.debit : '',
+      'Credit (OMR)': r.credit > 0 ? r.credit : '',
+    }));
+  };
+
+  const getCashFlowExportData = () => {
+    const cf = cashFlowData;
+    return [
+      { 'Section': 'OPERATING INFLOWS', 'Description': 'Receipts from Clients / IPC Collections', 'Inflow (OMR)': cf.totalReceipts, 'Outflow (OMR)': '' },
+      { 'Section': 'OPERATING OUTFLOWS', 'Description': 'Settlements to Vendors & Subcontractors', 'Inflow (OMR)': '', 'Outflow (OMR)': cf.totalVendorPaid },
+      { 'Section': 'OPERATING OUTFLOWS', 'Description': 'Payments for Direct Site Expenses', 'Inflow (OMR)': '', 'Outflow (OMR)': cf.totalExpensesPaid },
+      { 'Section': 'TOTAL OUTFLOWS', 'Description': 'Total Operating Disbursements', 'Inflow (OMR)': '', 'Outflow (OMR)': cf.totalOutflows },
+      { 'Section': 'NET CASH FLOW', 'Description': 'Net Cash Flow for the Period', 'Inflow (OMR)': cf.netCashFlow > 0 ? cf.netCashFlow : '', 'Outflow (OMR)': cf.netCashFlow < 0 ? Math.abs(cf.netCashFlow) : '' },
+    ];
+  };
+
+  const getArAgingExportData = () => {
+    return filteredArAging.map((inv) => ({
+      'Invoice / IPC #': inv.invoiceNumber,
+      'Date': inv.date,
+      'Customer': inv.customerName,
+      'Project': inv.projectName,
+      'Total Amount (OMR)': inv.amount,
+      'Received (OMR)': inv.receivedAmount,
+      'Outstanding Balance (OMR)': inv.outstandingAmount,
+      'Days Outstanding': inv.days,
+      'Aging Bracket': inv.bracketLabel,
+    }));
+  };
+
+  const getApAgingExportData = () => {
+    return filteredApAging.map((p) => ({
+      'Purchase Bill #': p.purchaseInvoiceNumber,
+      'Date': p.date,
+      'Vendor': p.vendorName,
+      'Project': p.projectName,
+      'Category': p.purchaseCategory,
+      'Total Amount (OMR)': p.amount,
+      'Paid (OMR)': p.paidAmount,
+      'Outstanding Balance (OMR)': p.outstandingAmount,
+      'Days Outstanding': p.days,
+      'Aging Bracket': p.bracketLabel,
+    }));
+  };
+
+  const getGeneralJournalExportData = () => {
+    return filteredJournalEntries.map((je) => {
+      const prj = state.projects.find((p) => p.id === je.projectId);
+      const cust = state.customers.find((c) => c.id === je.customerId);
+      const vend = state.vendors.find((v) => v.id === je.vendorId);
+      return {
+        'Entry #': je.entryNumber,
+        'Date': je.date,
+        'Source Type': je.sourceType.toUpperCase(),
+        'Project Trace': prj ? `${prj.code} - ${prj.name}` : '-',
+        'Customer Trace': cust ? `${cust.code} - ${cust.name}` : '-',
+        'Vendor Trace': vend ? `${vend.code} - ${vend.name}` : '-',
+        'Debit Account': je.debitAccount,
+        'Credit Account': je.creditAccount,
+        'Amount (OMR)': je.amount,
+        'Status': je.status.toUpperCase(),
+        'Description': je.description,
+      };
+    });
+  };
+
+  // -------------------------------------------------------------
+  // EXCEL & CSV EXPORT HANDLERS
+  // -------------------------------------------------------------
+  const handleExport = (exportFormat: 'excel' | 'csv' = 'excel', reportOverride?: ReportType) => {
+    const targetReport = reportOverride || selectedReport;
     const exportFn = exportFormat === 'csv' ? exportToCsv : exportToExcel;
     const today = new Date().toISOString().split('T')[0];
     const projectSuffix = selectedProjectObj ? `_${selectedProjectObj.code}` : '_AllProjects';
     const periodSuffix = dateRange.label.replace(/\s+/g, '_');
 
-    if (selectedReport === 'profitability') {
-      const data = filteredProfitabilities.map((p) => ({
-        'Project Code': p.projectCode,
-        'Project Name': p.projectName,
-        'Client': p.customerName,
-        'Contract Value (OMR)': p.contractValue,
-        'Invoiced Revenue (OMR)': p.totalInvoiced,
-        'Cash Collected (OMR)': p.totalReceived,
-        'Receivable Balance (OMR)': p.outstandingReceivable,
-        'Purchases Cost (OMR)': p.totalPurchases,
-        'Direct Expenses (OMR)': p.totalExpenses,
-        'Total Project Cost (OMR)': p.totalProjectCost,
-        'Gross Profit (OMR)': p.grossProfit,
-        'Margin (%)': `${p.profitMargin.toFixed(2)}%`,
-      }));
-
+    if (targetReport === 'profitability') {
       exportFn({
         filename: `Project_Profitability_${periodSuffix}${projectSuffix}_${today}`,
         sheetName: 'Profitability',
         title: `CONSTRUCTION PROJECT PROFITABILITY REPORT (${dateRange.label.toUpperCase()})`,
         companyName: 'Construction Accounting ERP - Sultanate of Oman',
         currency: 'OMR',
-        data,
+        data: getProfitabilityExportData(),
       });
-    } else if (selectedReport === 'income_statement') {
-      const is = incomeStatementData;
-      const data = [
-        { 'Category': 'REVENUE', 'Line Item': 'Construction Billing (Invoices & IPCs)', 'Amount (OMR)': is.revenueInvoiced },
-        { 'Category': 'REVENUE', 'Line Item': 'Total Operating Revenue', 'Amount (OMR)': is.revenueInvoiced },
-        { 'Category': 'COST OF CONSTRUCTION', 'Line Item': 'Materials & Subcontractor Purchases', 'Amount (OMR)': is.purchasesCost },
-        { 'Category': 'COST OF CONSTRUCTION', 'Line Item': 'Direct Project & Site Expenses', 'Amount (OMR)': is.expensesCost },
-        { 'Category': 'COST OF CONSTRUCTION', 'Line Item': 'Total Direct Project Costs', 'Amount (OMR)': is.totalProjectCosts },
-        { 'Category': 'NET PROFIT', 'Line Item': 'Net Construction Gross Profit', 'Amount (OMR)': is.netProfit },
-        { 'Category': 'PROFIT MARGIN', 'Line Item': 'Gross Profit Margin (%)', 'Amount (OMR)': `${is.profitMargin.toFixed(2)}%` },
-      ];
-
+    } else if (targetReport === 'income_statement') {
       exportFn({
         filename: `Income_Statement_${periodSuffix}${projectSuffix}_${today}`,
         sheetName: 'Income Statement',
         title: `STATEMENT OF PROFIT & LOSS (${dateRange.label.toUpperCase()}${selectedProjectObj ? ` — ${selectedProjectObj.name}` : ''})`,
         companyName: 'Construction Accounting ERP - Sultanate of Oman',
         currency: 'OMR',
-        data,
+        data: getIncomeStatementExportData(),
       });
-    } else if (selectedReport === 'balance_sheet') {
-      const totalAssets = summary.totalLiquidFunds + summary.totalReceivables;
-      const totalLiabilities = summary.totalPayables;
-      const equity = totalAssets - totalLiabilities;
-
-      const data = [
-        { 'Section': 'ASSETS - Current Assets', 'Account': 'Bank Accounts', 'Amount (OMR)': summary.totalBankBalance },
-        { 'Section': 'ASSETS - Current Assets', 'Account': 'Cash in Hand', 'Amount (OMR)': summary.totalCashBalance },
-        { 'Section': 'ASSETS - Current Assets', 'Account': 'Petty Cash Floats', 'Amount (OMR)': summary.totalPettyCashBalance },
-        { 'Section': 'ASSETS - Current Assets', 'Account': 'Accounts Receivable (Clients)', 'Amount (OMR)': summary.totalReceivables },
-        { 'Section': 'ASSETS TOTAL', 'Account': 'TOTAL ASSETS', 'Amount (OMR)': totalAssets },
-        { 'Section': 'LIABILITIES', 'Account': 'Accounts Payable (Vendors & Subcontractors)', 'Amount (OMR)': summary.totalPayables },
-        { 'Section': 'LIABILITIES TOTAL', 'Account': 'TOTAL LIABILITIES', 'Amount (OMR)': totalLiabilities },
-        { 'Section': 'EQUITY', 'Account': 'Retained Earnings & Current Period Earnings', 'Amount (OMR)': equity },
-        { 'Section': 'EQUITY TOTAL', 'Account': 'TOTAL LIABILITIES & EQUITY', 'Amount (OMR)': totalLiabilities + equity },
-      ];
-
+    } else if (targetReport === 'balance_sheet') {
       exportFn({
         filename: `Balance_Sheet_${today}`,
         sheetName: 'Balance Sheet',
         title: 'STATEMENT OF FINANCIAL POSITION (BALANCE SHEET)',
         companyName: 'Construction Accounting ERP - Sultanate of Oman',
         currency: 'OMR',
-        data,
+        data: getBalanceSheetExportData(),
       });
-    } else if (selectedReport === 'trial_balance') {
-      const data = trialBalanceRows.map((r) => ({
-        'Account Code': r.code,
-        'Account Name': r.name,
-        'Class': r.class.toUpperCase(),
-        'Debit (OMR)': r.debit > 0 ? r.debit : '',
-        'Credit (OMR)': r.credit > 0 ? r.credit : '',
-      }));
-
+    } else if (targetReport === 'trial_balance') {
       exportFn({
         filename: `Trial_Balance_${today}`,
         sheetName: 'Trial Balance',
         title: 'TRIAL BALANCE STATEMENT (FILTERED)',
         companyName: 'Construction Accounting ERP - Sultanate of Oman',
         currency: 'OMR',
-        data,
+        data: getTrialBalanceExportData(),
       });
-    } else if (selectedReport === 'cash_flow') {
-      const cf = cashFlowData;
-      const data = [
-        { 'Section': 'OPERATING INFLOWS', 'Description': 'Receipts from Clients / IPC Collections', 'Inflow (OMR)': cf.totalReceipts, 'Outflow (OMR)': '' },
-        { 'Section': 'OPERATING OUTFLOWS', 'Description': 'Settlements to Vendors & Subcontractors', 'Inflow (OMR)': '', 'Outflow (OMR)': cf.totalVendorPaid },
-        { 'Section': 'OPERATING OUTFLOWS', 'Description': 'Payments for Direct Site Expenses', 'Inflow (OMR)': '', 'Outflow (OMR)': cf.totalExpensesPaid },
-        { 'Section': 'TOTAL OUTFLOWS', 'Description': 'Total Operating Disbursements', 'Inflow (OMR)': '', 'Outflow (OMR)': cf.totalOutflows },
-        { 'Section': 'NET CASH FLOW', 'Description': 'Net Cash Flow for the Period', 'Inflow (OMR)': cf.netCashFlow > 0 ? cf.netCashFlow : '', 'Outflow (OMR)': cf.netCashFlow < 0 ? Math.abs(cf.netCashFlow) : '' },
-      ];
-
+    } else if (targetReport === 'cash_flow') {
       exportFn({
         filename: `Cash_Flow_${periodSuffix}${projectSuffix}_${today}`,
         sheetName: 'Cash Flow',
         title: `STATEMENT OF CASH FLOWS (${dateRange.label.toUpperCase()})`,
         companyName: 'Construction Accounting ERP - Sultanate of Oman',
         currency: 'OMR',
-        data,
+        data: getCashFlowExportData(),
       });
-    } else if (selectedReport === 'ar_aging') {
-      const data = filteredArAging.map((inv) => ({
-        'Invoice / IPC #': inv.invoiceNumber,
-        'Date': inv.date,
-        'Customer': inv.customerName,
-        'Project': inv.projectName,
-        'Total Amount (OMR)': inv.amount,
-        'Received (OMR)': inv.receivedAmount,
-        'Outstanding Balance (OMR)': inv.outstandingAmount,
-        'Days Outstanding': inv.days,
-        'Aging Bracket': inv.bracketLabel,
-      }));
-
+    } else if (targetReport === 'ar_aging') {
       exportFn({
         filename: `AR_Aging_Report_${arAgingBracket}_${today}`,
         sheetName: 'AR Aging',
         title: `ACCOUNTS RECEIVABLE AGING ANALYSIS (${arAgingBracket.toUpperCase()})`,
         companyName: 'Construction Accounting ERP - Sultanate of Oman',
         currency: 'OMR',
-        data,
+        data: getArAgingExportData(),
       });
-    } else if (selectedReport === 'ap_aging') {
-      const data = filteredApAging.map((p) => ({
-        'Purchase Bill #': p.purchaseInvoiceNumber,
-        'Date': p.date,
-        'Vendor': p.vendorName,
-        'Project': p.projectName,
-        'Category': p.purchaseCategory,
-        'Total Amount (OMR)': p.amount,
-        'Paid (OMR)': p.paidAmount,
-        'Outstanding Balance (OMR)': p.outstandingAmount,
-        'Days Outstanding': p.days,
-        'Aging Bracket': p.bracketLabel,
-      }));
-
+    } else if (targetReport === 'ap_aging') {
       exportFn({
         filename: `AP_Aging_Report_${apAgingBracket}_${today}`,
         sheetName: 'AP Aging',
         title: `ACCOUNTS PAYABLE AGING ANALYSIS (${apAgingBracket.toUpperCase()})`,
         companyName: 'Construction Accounting ERP - Sultanate of Oman',
         currency: 'OMR',
-        data,
+        data: getApAgingExportData(),
       });
-    } else if (selectedReport === 'general_journal') {
-      const data = filteredJournalEntries.map((je) => {
-        const prj = state.projects.find((p) => p.id === je.projectId);
-        const cust = state.customers.find((c) => c.id === je.customerId);
-        const vend = state.vendors.find((v) => v.id === je.vendorId);
-        return {
-          'Entry #': je.entryNumber,
-          'Date': je.date,
-          'Source Type': je.sourceType.toUpperCase(),
-          'Project Trace': prj ? `${prj.code} - ${prj.name}` : '-',
-          'Customer Trace': cust ? `${cust.code} - ${cust.name}` : '-',
-          'Vendor Trace': vend ? `${vend.code} - ${vend.name}` : '-',
-          'Debit Account': je.debitAccount,
-          'Credit Account': je.creditAccount,
-          'Amount (OMR)': je.amount,
-          'Status': je.status.toUpperCase(),
-          'Description': je.description,
-        };
-      });
-
+    } else if (targetReport === 'general_journal') {
       exportFn({
         filename: `General_Journal_${periodSuffix}_${today}`,
         sheetName: 'General Journal',
         title: `GENERAL JOURNAL & AUDIT TRACE (${dateRange.label.toUpperCase()})`,
         companyName: 'Construction Accounting ERP - Sultanate of Oman',
         currency: 'OMR',
-        data,
+        data: getGeneralJournalExportData(),
       });
     }
 
     toast.success(
-      `Report Exported (${exportFormat.toUpperCase()})`,
-      `Downloaded financial report as ${exportFormat === 'csv' ? 'Excel-compatible CSV' : 'Excel workbook'}.`
+      `Table Exported (${exportFormat.toUpperCase()})`,
+      `Downloaded ${targetReport.replace(/_/g, ' ')} as ${exportFormat === 'csv' ? 'Excel-compatible CSV' : 'Excel workbook'}.`
+    );
+  };
+
+  /**
+   * Export all 8 financial report statements into a single multi-sheet Excel workbook (.xlsx)
+   */
+  const handleExportAll = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const projectSuffix = selectedProjectObj ? `_${selectedProjectObj.code}` : '';
+
+    exportMultiSheetExcel({
+      filename: `Artify_Financial_Package${projectSuffix}_${today}`,
+      sheets: [
+        { sheetName: '1. Profitability', data: getProfitabilityExportData() },
+        { sheetName: '2. Income Statement', data: getIncomeStatementExportData() },
+        { sheetName: '3. Balance Sheet', data: getBalanceSheetExportData() },
+        { sheetName: '4. Trial Balance', data: getTrialBalanceExportData() },
+        { sheetName: '5. Cash Flow', data: getCashFlowExportData() },
+        { sheetName: '6. AR Aging', data: getArAgingExportData() },
+        { sheetName: '7. AP Aging', data: getApAgingExportData() },
+        { sheetName: '8. General Journal', data: getGeneralJournalExportData() },
+      ],
+    });
+
+    toast.success(
+      'Full Financial Package Exported (XLSX)',
+      'Downloaded all 8 financial statements in a consolidated multi-sheet Excel workbook.'
     );
   };
 
@@ -699,7 +750,7 @@ export const ReportsView: React.FC = () => {
             type="button"
             onClick={() => handleExport('csv')}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 transition-colors cursor-pointer shadow-xs"
-            title="Download financial report in Excel-compatible CSV format"
+            title="Download active financial table in Excel-compatible CSV format"
           >
             <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             Export to CSV
@@ -709,10 +760,20 @@ export const ReportsView: React.FC = () => {
             type="button"
             onClick={() => handleExport('excel')}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-lg text-white bg-emerald-700 hover:bg-emerald-600 transition-colors cursor-pointer shadow"
-            title="Download styled Excel spreadsheet"
+            title="Download active financial table as Excel workbook (.xlsx)"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            Export Filtered Report (Excel)
+            Export Table (Excel)
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportAll}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg text-white bg-slate-900 hover:bg-slate-800 transition-colors cursor-pointer shadow"
+            title="Export all 8 financial statements into a single consolidated multi-sheet Excel workbook"
+          >
+            <FolderDown className="w-4 h-4 text-emerald-400" />
+            Export All (8 Sheets .xlsx)
           </button>
         </div>
       </div>
@@ -858,29 +919,32 @@ export const ReportsView: React.FC = () => {
       {/* REPORT CANVAS & REPORT-SPECIFIC QUICK FILTERS                 */}
       {/* ============================================================= */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6 print:p-0 print:border-none print:shadow-none print:bg-white">
-        {/* Printable Official Statement Header - only visible during print */}
-        <div className="hidden print:block mb-6 border-b-2 border-slate-900 pb-4">
+        {/* Printable Official Statement Header - formatted for A4 PDF export */}
+        <div className="hidden print:block print-header-container mb-6">
           <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 uppercase tracking-wide">
-                {selectedReport === 'profitability' && 'Project Profitability & Cost Analysis'}
-                {selectedReport === 'income_statement' && 'Statement of Profit or Loss (Income Statement)'}
-                {selectedReport === 'balance_sheet' && 'Statement of Financial Position (Balance Sheet)'}
-                {selectedReport === 'trial_balance' && 'Trial Balance Statement'}
-                {selectedReport === 'cash_flow' && 'Statement of Cash Flows'}
-                {selectedReport === 'ar_aging' && 'Accounts Receivable (AR) Aging Summary'}
-                {selectedReport === 'ap_aging' && 'Accounts Payable (AP) Aging Summary'}
-                {selectedReport === 'general_journal' && 'General Journal & Audit Ledger'}
-              </h1>
-              <p className="text-xs font-medium text-slate-600 mt-1">
-                Construction Accounting ERP &bull; Sultanate of Oman &bull; IFRS Compliant
-              </p>
+            <div className="flex items-center gap-4">
+              <ArtifyLogo className="h-12 w-auto shrink-0" />
+              <div>
+                <h1 className="text-xl font-bold text-slate-900 uppercase tracking-wide">
+                  {selectedReport === 'profitability' && 'Project Profitability & Cost Analysis'}
+                  {selectedReport === 'income_statement' && 'Statement of Profit or Loss (Income Statement)'}
+                  {selectedReport === 'balance_sheet' && 'Statement of Financial Position (Balance Sheet)'}
+                  {selectedReport === 'trial_balance' && 'Trial Balance Statement'}
+                  {selectedReport === 'cash_flow' && 'Statement of Cash Flows'}
+                  {selectedReport === 'ar_aging' && 'Accounts Receivable (AR) Aging Summary'}
+                  {selectedReport === 'ap_aging' && 'Accounts Payable (AP) Aging Summary'}
+                  {selectedReport === 'general_journal' && 'General Journal & Audit Ledger'}
+                </h1>
+                <p className="text-xs font-medium text-slate-600 mt-1">
+                  Artify Construction Accounting System &bull; Sultanate of Oman &bull; IFRS &amp; GAAP Compliant
+                </p>
+              </div>
             </div>
-            <div className="text-right text-xs text-slate-700 space-y-0.5">
+            <div className="text-right text-xs text-slate-700 space-y-0.5 shrink-0 pl-4">
               <div><span className="text-slate-500">Period:</span> <strong>{dateRange.label}</strong></div>
               <div><span className="text-slate-500">Scope:</span> <strong>{selectedProjectObj ? `${selectedProjectObj.name} (${selectedProjectObj.code})` : 'All Projects Consolidated'}</strong></div>
               <div><span className="text-slate-500">Currency:</span> <strong>OMR (Numeric 18, 3)</strong></div>
-              <div><span className="text-slate-500">Printed:</span> <strong>{new Date().toLocaleDateString('en-GB')}</strong></div>
+              <div><span className="text-slate-500">Printed:</span> <strong>{new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</strong></div>
             </div>
           </div>
         </div>
@@ -897,8 +961,16 @@ export const ReportsView: React.FC = () => {
                   Project Cost = Direct Purchases + Direct Site Expenses. Receipts and disbursements reflect cash flow.
                 </p>
               </div>
-              <div className="text-xs font-medium text-slate-500">
-                Showing <strong className="text-slate-900">{filteredProfitabilities.length}</strong> of {rawProfitabilities.length} projects
+              <div className="flex items-center gap-3">
+                <div className="text-xs font-medium text-slate-500">
+                  Showing <strong className="text-slate-900">{filteredProfitabilities.length}</strong> of {rawProfitabilities.length} projects
+                </div>
+                <TableExportButtons
+                  tableName="Project Profitability"
+                  count={filteredProfitabilities.length}
+                  onExportCsv={() => handleExport('csv', 'profitability')}
+                  onExportExcel={() => handleExport('excel', 'profitability')}
+                />
               </div>
             </div>
 
@@ -1066,7 +1138,7 @@ export const ReportsView: React.FC = () => {
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 select-none">
                   <input
                     type="checkbox"
@@ -1076,6 +1148,11 @@ export const ReportsView: React.FC = () => {
                   />
                   <span>Show % of Revenue</span>
                 </label>
+                <TableExportButtons
+                  tableName="Income Statement"
+                  onExportCsv={() => handleExport('csv', 'income_statement')}
+                  onExportExcel={() => handleExport('excel', 'income_statement')}
+                />
               </div>
             </div>
 
@@ -1197,15 +1274,22 @@ export const ReportsView: React.FC = () => {
                 </span>
               </div>
 
-              <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 select-none">
-                <input
-                  type="checkbox"
-                  checked={hideZeroBalanceAccounts}
-                  onChange={(e) => setHideZeroBalanceAccounts(e.target.checked)}
-                  className="rounded text-blue-600 focus:ring-0"
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 select-none">
+                  <input
+                    type="checkbox"
+                    checked={hideZeroBalanceAccounts}
+                    onChange={(e) => setHideZeroBalanceAccounts(e.target.checked)}
+                    className="rounded text-blue-600 focus:ring-0"
+                  />
+                  <span>Hide Zero Balances</span>
+                </label>
+                <TableExportButtons
+                  tableName="Balance Sheet"
+                  onExportCsv={() => handleExport('csv', 'balance_sheet')}
+                  onExportExcel={() => handleExport('excel', 'balance_sheet')}
                 />
-                <span>Hide Zero Balances</span>
-              </label>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
@@ -1341,6 +1425,12 @@ export const ReportsView: React.FC = () => {
                   />
                   <span>Hide Zero</span>
                 </label>
+
+                <TableExportButtons
+                  tableName="Trial Balance"
+                  onExportCsv={() => handleExport('csv', 'trial_balance')}
+                  onExportExcel={() => handleExport('excel', 'trial_balance')}
+                />
               </div>
             </div>
 
@@ -1378,6 +1468,24 @@ export const ReportsView: React.FC = () => {
               <p className="text-xs text-slate-500">
                 Direct Method for: <strong>{dateRange.label}</strong> {selectedProjectObj ? `| Project: ${selectedProjectObj.name}` : '| Consolidated'} (OMR)
               </p>
+            </div>
+
+            {/* Quick Scope & Export Bar */}
+            <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs print:hidden">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-700">Scope:</span>
+                <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-medium">
+                  {selectedProjectObj ? `Project: ${selectedProjectObj.code}` : 'All Projects'}
+                </span>
+                <span className="px-2 py-0.5 rounded bg-slate-200 text-slate-700 font-medium">
+                  {dateRange.label}
+                </span>
+              </div>
+              <TableExportButtons
+                tableName="Cash Flow Statement"
+                onExportCsv={() => handleExport('csv', 'cash_flow')}
+                onExportExcel={() => handleExport('excel', 'cash_flow')}
+              />
             </div>
 
             {/* Quick KPI Strip */}
@@ -1443,8 +1551,16 @@ export const ReportsView: React.FC = () => {
                 <h3 className="text-base font-bold text-slate-900">Accounts Receivable Aging Schedule</h3>
                 <p className="text-xs text-slate-500">Client Invoices and IPCs pending collection categorized by aging brackets</p>
               </div>
-              <div className="text-xs font-medium text-slate-500">
-                Total Outstanding: <strong className="font-mono text-blue-700">{formatOMR(arTotals.totalOutstanding)}</strong> ({arTotals.count} invoices)
+              <div className="flex items-center gap-3">
+                <div className="text-xs font-medium text-slate-500">
+                  Total Outstanding: <strong className="font-mono text-blue-700">{formatOMR(arTotals.totalOutstanding)}</strong> ({arTotals.count} invoices)
+                </div>
+                <TableExportButtons
+                  tableName="AR Aging Schedule"
+                  count={filteredArAging.length}
+                  onExportCsv={() => handleExport('csv', 'ar_aging')}
+                  onExportExcel={() => handleExport('excel', 'ar_aging')}
+                />
               </div>
             </div>
 
@@ -1564,8 +1680,8 @@ export const ReportsView: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredArAging.map((inv) => (
-                      <tr key={inv.id} className="hover:bg-slate-50">
+                    filteredArAging.map((inv, idx) => (
+                      <tr key={`${inv.id}-${idx}`} className="hover:bg-slate-50">
                         <td className="py-2.5 px-3 font-mono font-medium text-slate-900">{inv.invoiceNumber}</td>
                         <td className="py-2.5 px-3 font-mono text-slate-600">{inv.date}</td>
                         <td className="py-2.5 px-3 font-semibold text-slate-800">{inv.customerName}</td>
@@ -1597,8 +1713,16 @@ export const ReportsView: React.FC = () => {
                 <h3 className="text-base font-bold text-slate-900">Accounts Payable Aging Schedule</h3>
                 <p className="text-xs text-slate-500">Supplier bills and subcontractor certificates pending settlement</p>
               </div>
-              <div className="text-xs font-medium text-slate-500">
-                Total Payable: <strong className="font-mono text-amber-700">{formatOMR(apTotals.totalOutstanding)}</strong> ({apTotals.count} bills)
+              <div className="flex items-center gap-3">
+                <div className="text-xs font-medium text-slate-500">
+                  Total Payable: <strong className="font-mono text-amber-700">{formatOMR(apTotals.totalOutstanding)}</strong> ({apTotals.count} bills)
+                </div>
+                <TableExportButtons
+                  tableName="AP Aging Schedule"
+                  count={filteredApAging.length}
+                  onExportCsv={() => handleExport('csv', 'ap_aging')}
+                  onExportExcel={() => handleExport('excel', 'ap_aging')}
+                />
               </div>
             </div>
 
@@ -1736,8 +1860,8 @@ export const ReportsView: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredApAging.map((p) => (
-                      <tr key={p.id} className="hover:bg-slate-50">
+                    filteredApAging.map((p, idx) => (
+                      <tr key={`${p.id}-${idx}`} className="hover:bg-slate-50">
                         <td className="py-2.5 px-3 font-mono font-medium text-slate-900">{p.purchaseInvoiceNumber}</td>
                         <td className="py-2.5 px-3 font-mono text-slate-600">{p.date}</td>
                         <td className="py-2.5 px-3 font-semibold text-slate-800">{p.vendorName}</td>
@@ -1776,10 +1900,16 @@ export const ReportsView: React.FC = () => {
                   Double-entry transactions linked to Projects, Customers, and Vendors with NUMERIC(18,3) OMR precision
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <span className="text-xs font-semibold text-slate-700">
                   Showing <strong className="text-blue-700">{journalTotals.count}</strong> entries (Volume: {formatOMR(journalTotals.totalVolume)})
                 </span>
+                <TableExportButtons
+                  tableName="General Journal"
+                  count={journalTotals.count}
+                  onExportCsv={() => handleExport('csv', 'general_journal')}
+                  onExportExcel={() => handleExport('excel', 'general_journal')}
+                />
               </div>
             </div>
 
@@ -1889,13 +2019,13 @@ export const ReportsView: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredJournalEntries.map((je) => {
+                    filteredJournalEntries.map((je, idx) => {
                       const prj = state.projects.find((p) => p.id === je.projectId);
                       const cust = state.customers.find((c) => c.id === je.customerId);
                       const vend = state.vendors.find((v) => v.id === je.vendorId);
 
                       return (
-                        <tr key={je.id} className="hover:bg-slate-50">
+                        <tr key={`${je.id}-${idx}`} className="hover:bg-slate-50">
                           <td className="py-2.5 px-3 font-mono font-medium text-slate-900">{je.entryNumber}</td>
                           <td className="py-2.5 px-3 font-mono text-slate-600">{je.date}</td>
                           <td className="py-2.5 px-3">
@@ -1954,6 +2084,34 @@ export const ReportsView: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Printable Official Signatory & Audit Verification Block (Visible only during A4 Print / PDF Export) */}
+        <div className="hidden print:block print-signatory-block mt-8 pt-6 border-t border-slate-300">
+          <div className="grid grid-cols-3 gap-6 text-xs text-slate-800">
+            <div className="border-t border-slate-400 pt-2 text-center">
+              <p className="font-bold text-slate-900">Prepared By</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Project Accountant / Financial Analyst</p>
+              <div className="h-12 border-b border-dashed border-slate-300 mx-6 my-2"></div>
+              <p className="text-[10px] text-slate-400 font-mono">Signature &amp; Date</p>
+            </div>
+            <div className="border-t border-slate-400 pt-2 text-center">
+              <p className="font-bold text-slate-900">Verified &amp; Reconciled By</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Chief Financial Officer / Head of Finance</p>
+              <div className="h-12 border-b border-dashed border-slate-300 mx-6 my-2"></div>
+              <p className="text-[10px] text-slate-400 font-mono">Signature &amp; Date</p>
+            </div>
+            <div className="border-t border-slate-400 pt-2 text-center">
+              <p className="font-bold text-slate-900">Approved By</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Managing Director / Partner</p>
+              <div className="h-12 border-b border-dashed border-slate-300 mx-6 my-2"></div>
+              <p className="text-[10px] text-slate-400 font-mono">Corporate Seal &amp; Date</p>
+            </div>
+          </div>
+          <div className="mt-6 pt-3 border-t border-slate-200 flex justify-between items-center text-[9px] text-slate-400 font-mono">
+            <span>Artify Construction Accounting System &bull; Computer Generated Official Report (Sultanate of Oman)</span>
+            <span>Ref: ART-REP-{selectedReport.toUpperCase()}-{new Date().getFullYear()} &bull; Page 1</span>
+          </div>
+        </div>
       </div>
     </div>
   );

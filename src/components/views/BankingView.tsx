@@ -448,8 +448,8 @@ export const BankingView: React.FC<BankingViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {treasuryLedger.map((row) => (
-                  <tr key={row.id} className="hover:bg-slate-50/70 transition-colors">
+                {treasuryLedger.map((row, idx) => (
+                  <tr key={`${row.id}-${idx}`} className="hover:bg-slate-50/70 transition-colors">
                     <td className="py-3 px-4 font-mono text-slate-600 whitespace-nowrap">{row.date}</td>
                     <td className="py-3 px-4 font-mono font-medium text-slate-900 whitespace-nowrap">
                       {row.documentRef}
@@ -514,8 +514,8 @@ export const BankingView: React.FC<BankingViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {state.transfers.map((tr) => (
-                  <tr key={tr.id} className="hover:bg-slate-50/70 transition-colors">
+                {state.transfers.map((tr, idx) => (
+                  <tr key={`${tr.id}-${idx}`} className="hover:bg-slate-50/70 transition-colors">
                     <td className="py-3 px-4 font-mono text-slate-600 whitespace-nowrap">{tr.date}</td>
                     <td className="py-3 px-4 font-mono font-medium text-slate-900 whitespace-nowrap">
                       {tr.documentRef}

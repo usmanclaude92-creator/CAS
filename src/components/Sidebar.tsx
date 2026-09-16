@@ -21,6 +21,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { authService } from '../services/authService';
+import { ArtifyLogo } from './ArtifyLogo';
 
 export type NavView =
   | 'dashboard'
@@ -108,15 +109,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Company Header */}
-        <div className="p-4 border-b border-slate-800 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold shadow-md shrink-0">
-            <HardHat className="w-6 h-6" />
-          </div>
-          <div className="overflow-hidden">
-            <h1 className="text-sm font-bold text-white tracking-tight truncate">Construction ERP</h1>
-            <p className="text-[11px] text-amber-400 font-medium truncate">Accounting &bull; OMR 3-Dec</p>
-          </div>
+        {/* Company Header - Replaced with Artify Construction Accounting System Logo (Image 1) */}
+        <div className="p-3 border-b border-slate-800 bg-[#070c1e] flex items-center justify-center">
+          <ArtifyLogo className="w-full h-auto max-h-12 hover:opacity-95 transition-opacity" />
         </div>
 
         {/* User Profile & Project Scope Badge */}

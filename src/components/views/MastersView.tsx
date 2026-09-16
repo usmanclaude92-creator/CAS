@@ -22,6 +22,8 @@ import { formatOMR } from '../../utils/formatters';
 import { MasterDataImportModal, MasterImportType } from '../modals/MasterDataImportModal';
 import { BatchEntityImportModal } from '../modals/BatchEntityImportModal';
 import { NewExpenseCategoryModal } from '../modals/NewExpenseCategoryModal';
+import { AddExpenseCategoryModal } from '../modals/AddExpenseCategoryModal';
+import { ManageExpenseCategoriesModal } from '../modals/ManageExpenseCategoriesModal';
 import { ExpenseHead } from '../../types';
 
 interface MastersViewProps {
@@ -45,6 +47,8 @@ export const MastersView: React.FC<MastersViewProps> = ({
   const [importModalType, setImportModalType] = useState<MasterImportType | null>(null);
   const [batchImportType, setBatchImportType] = useState<'customers' | 'vendors' | null>(null);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
+  const [isManageCategoriesModalOpen, setIsManageCategoriesModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ExpenseHead | null>(null);
   const [, setRerender] = useState(0);
 
@@ -425,17 +429,26 @@ export const MastersView: React.FC<MastersViewProps> = ({
                   Standard classifications for site vouchers, equipment hires, labor, and job overheads
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingCategory(null);
-                  setIsCategoryModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-white bg-rose-700 hover:bg-rose-600 cursor-pointer shadow-xs transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+ Add Expense Category</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  id="btn-masters-edit-categories"
+                  onClick={() => setIsManageCategoriesModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600 cursor-pointer shadow-xs transition-colors"
+                >
+                  <Edit2 className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
+                  <span>Edit / Manage Categories</span>
+                </button>
+                <button
+                  type="button"
+                  id="btn-masters-add-category"
+                  onClick={() => setIsAddCategoryModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-white bg-rose-700 hover:bg-rose-600 cursor-pointer shadow-xs transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Add Expense Category</span>
+                </button>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
@@ -538,7 +551,31 @@ export const MastersView: React.FC<MastersViewProps> = ({
         )}
       </div>
 
-      {/* Expense Category Modal */}
+      {/* Expense Category Management Modal */}
+      {isManageCategoriesModalOpen && (
+        <ManageExpenseCategoriesModal
+          isOpen={isManageCategoriesModalOpen}
+          onClose={() => setIsManageCategoriesModalOpen(false)}
+          onOpenAddModal={() => {
+            setIsManageCategoriesModalOpen(false);
+            setIsAddCategoryModalOpen(true);
+          }}
+        />
+      )}
+
+      {/* Add Expense Category Modal with Supabase update */}
+      {isAddCategoryModalOpen && (
+        <AddExpenseCategoryModal
+          isOpen={isAddCategoryModalOpen}
+          onClose={() => setIsAddCategoryModalOpen(false)}
+          onSuccess={() => {
+            setIsAddCategoryModalOpen(false);
+            setRerender((v) => v + 1);
+          }}
+        />
+      )}
+
+      {/* Legacy/Inline Expense Category Modal */}
       {isCategoryModalOpen && (
         <NewExpenseCategoryModal
           isOpen={isCategoryModalOpen}

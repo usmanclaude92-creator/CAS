@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { ThemeToggle } from '../ThemeToggle';
+import { ArtifyLogo } from '../ArtifyLogo';
 
 interface LoginViewProps {
   onLoginSuccess: () => void;
@@ -73,17 +74,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       {/* Top Header Bar with Theme Toggle */}
       <header className="p-4 sm:p-6 flex items-center justify-between max-w-7xl w-full mx-auto">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold shadow-md">
-            <HardHat className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white">
-              Construction Accounting
-            </h1>
-            <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
-              System &amp; Financials &bull; OMR (3-Decimals)
-            </p>
-          </div>
+          <ArtifyLogo className="h-10 w-auto rounded-lg shadow-sm" />
         </div>
 
         {/* Visible Dark/Light Theme Toggle on Login Screen (Mandatory Requirement) */}

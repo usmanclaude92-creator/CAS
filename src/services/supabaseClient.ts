@@ -251,11 +251,124 @@ export async function uploadAttachmentFile(
   });
 }
 
+/**
+ * Save or insert an Expense Category / Head to the live Supabase database
+ */
+export async function saveExpenseCategoryToSupabase(category: {
+  name: string;
+  description?: string;
+  category?: string;
+  status?: 'active' | 'inactive';
+  remarks?: string;
+}): Promise<{ success: boolean; synced: boolean; message: string; data?: any }> {
+  const client = getSupabaseClient();
+  if (!client) {
+    return {
+      success: true,
+      synced: false,
+      message: 'Saved locally in browser database. Supabase cloud endpoint not configured.',
+    };
+  }
+
+  try {
+    const payload = {
+      name: category.name.trim(),
+      category: category.category?.trim() || 'Direct Project Cost',
+      status: category.status || 'active',
+      remarks: category.description?.trim() || category.remarks?.trim() || null,
+    };
+
+    // Try 'expense_heads' first (standard table in migrations)
+    let res = await client
+      .from('expense_heads')
+      .upsert([payload], { onConflict: 'name' })
+      .select();
+
+    if (res.error) {
+      // Fallback: try 'expense_categories' if user created custom table
+      const fallbackRes = await client
+        .from('expense_categories')
+        .upsert([payload], { onConflict: 'name' })
+        .select();
+
+      if (!fallbackRes.error) {
+        return {
+          success: true,
+          synced: true,
+          message: 'Expense category saved to Supabase (expense_categories)!',
+          data: fallbackRes.data,
+        };
+      }
+
+      console.warn('[SupabaseClient] Failed to upsert to expense_heads & expense_categories:', res.error);
+      return {
+        success: false,
+        synced: false,
+        message: `Saved locally. Supabase note: ${res.error.message || 'Table not found'}`,
+      };
+    }
+
+    return {
+      success: true,
+      synced: true,
+      message: 'Expense category successfully synced with Supabase master list!',
+      data: res.data,
+    };
+  } catch (err: any) {
+    console.warn('[SupabaseClient] Error saving expense category:', err);
+    return {
+      success: false,
+      synced: false,
+      message: `Saved locally. Supabase connection error: ${err?.message || 'Network issue'}`,
+    };
+  }
+}
+
+/**
+ * Update or Archive an Expense Category in Supabase
+ */
+export async function updateExpenseCategoryInSupabase(
+  originalName: string,
+  updates: {
+    name?: string;
+    description?: string;
+    category?: string;
+    status?: 'active' | 'inactive';
+    remarks?: string;
+  }
+): Promise<{ success: boolean; synced: boolean; message?: string }> {
+  const client = getSupabaseClient();
+  if (!client) return { success: true, synced: false, message: 'Updated locally only' };
+
+  try {
+    const payload: Record<string, any> = {};
+    if (updates.name !== undefined) payload.name = updates.name.trim();
+    if (updates.category !== undefined) payload.category = updates.category.trim();
+    if (updates.status !== undefined) payload.status = updates.status;
+    if (updates.description !== undefined || updates.remarks !== undefined) {
+      payload.remarks = updates.description?.trim() || updates.remarks?.trim() || null;
+    }
+
+    // Try expense_heads
+    let res = await client.from('expense_heads').update(payload).eq('name', originalName.trim());
+    if (res.error) {
+      // Try expense_categories
+      await client.from('expense_categories').update(payload).eq('name', originalName.trim());
+    }
+
+    return { success: true, synced: true, message: 'Updated in Supabase' };
+  } catch (err: any) {
+    return { success: false, synced: false, message: err?.message };
+  }
+}
+
 export const supabaseService = {
   isConfigured: isSupabaseConfigured,
   getClient: getSupabaseClient,
   uploadAttachment: uploadAttachmentFile,
   testConnection: testSupabaseConnection,
+  saveExpenseCategory: saveExpenseCategoryToSupabase,
+  updateExpenseCategory: updateExpenseCategoryInSupabase,
   getConfig: () => ({
     url: currentConfig.url,
     anonKey: currentConfig.anonKey,

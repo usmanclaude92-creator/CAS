@@ -10,11 +10,14 @@ import {
   Layers,
   Edit2,
   Tag,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { formatOMR } from '../../utils/formatters';
 import { exportToExcel } from '../../utils/exportToExcel';
 import { NewExpenseCategoryModal } from '../modals/NewExpenseCategoryModal';
+import { AddExpenseCategoryModal } from '../modals/AddExpenseCategoryModal';
+import { ManageExpenseCategoriesModal } from '../modals/ManageExpenseCategoriesModal';
 import { ExpenseHead } from '../../types';
 
 interface ExpensesViewProps {
@@ -31,6 +34,8 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
   const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
   const [selectedExpenseHeadId, setSelectedExpenseHeadId] = useState<string>('all');
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
+  const [isManageCategoriesModalOpen, setIsManageCategoriesModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ExpenseHead | null>(null);
   const [version, setVersion] = useState(0);
 
@@ -97,11 +102,18 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Edit Categories Button */}
           <button
-            onClick={() => {
-              setEditingCategory(null);
-              setIsCategoryModalOpen(true);
-            }}
+            id="btn-edit-categories"
+            onClick={() => setIsManageCategoriesModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 cursor-pointer shadow-xs transition-colors"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 text-slate-600" />
+            Edit Categories
+          </button>
+          <button
+            id="btn-add-expense-category"
+            onClick={() => setIsAddCategoryModalOpen(true)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 cursor-pointer shadow-xs transition-colors"
           >
             <Layers className="w-3.5 h-3.5 text-rose-600" />
@@ -137,17 +149,26 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
           <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
             Cost Categories &amp; Heads ({state.expenseHeads.length})
           </span>
-          <button
-            type="button"
-            onClick={() => {
-              setEditingCategory(null);
-              setIsCategoryModalOpen(true);
-            }}
-            className="text-[11px] font-semibold text-rose-700 hover:text-rose-900 inline-flex items-center gap-1 cursor-pointer"
-          >
-            <Plus className="w-3 h-3" />
-            <span>New Category</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              id="btn-section-edit-categories"
+              onClick={() => setIsManageCategoriesModalOpen(true)}
+              className="text-[11px] font-semibold text-slate-700 hover:text-slate-900 border border-slate-300 bg-white hover:bg-slate-50 px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+            >
+              <SlidersHorizontal className="w-3 h-3 text-slate-600" />
+              <span>Edit Categories</span>
+            </button>
+            <button
+              type="button"
+              id="btn-section-new-category"
+              onClick={() => setIsAddCategoryModalOpen(true)}
+              className="text-[11px] font-semibold text-rose-700 hover:text-rose-900 border border-rose-200 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg inline-flex items-center gap-1 cursor-pointer shadow-xs transition-colors"
+            >
+              <Plus className="w-3 h-3 text-rose-600" />
+              <span>New Category</span>
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -167,13 +188,12 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
                 </span>
                 <button
                   type="button"
-                  title="Edit category"
+                  title="Edit/Rename or Archive category"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setEditingCategory(hb);
-                    setIsCategoryModalOpen(true);
+                    setIsManageCategoriesModalOpen(true);
                   }}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded text-slate-400 hover:text-rose-600"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded text-slate-400 hover:text-rose-600 cursor-pointer"
                 >
                   <Edit2 className="w-3 h-3" />
                 </button>
@@ -195,10 +215,8 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
           {/* Quick Add Category Card */}
           <button
             type="button"
-            onClick={() => {
-              setEditingCategory(null);
-              setIsCategoryModalOpen(true);
-            }}
+            id="card-quick-add-category"
+            onClick={() => setIsAddCategoryModalOpen(true)}
             className="p-3 rounded-xl border border-dashed border-rose-300 bg-rose-50/40 hover:bg-rose-50 hover:border-rose-400 text-xs cursor-pointer transition-all flex flex-col items-center justify-center text-center group min-h-[72px]"
           >
             <div className="w-6 h-6 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 mb-1 group-hover:scale-110 transition-transform">
@@ -273,8 +291,8 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredExpenses.map((exp) => (
-                <tr key={exp.id} className="hover:bg-slate-50/70 transition-colors">
+              {filteredExpenses.map((exp, idx) => (
+                <tr key={`${exp.id}-${idx}`} className="hover:bg-slate-50/70 transition-colors">
                   <td className="py-3 px-4 font-mono text-slate-600 whitespace-nowrap">{exp.expenseDate}</td>
                   <td className="py-3 px-4 font-mono font-medium text-slate-900 whitespace-nowrap">
                     {exp.documentRef}
@@ -329,7 +347,31 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
         </div>
       </div>
 
-      {/* New/Edit Expense Category Modal */}
+      {/* Manage Categories Modal for viewing, renaming, and archiving */}
+      {isManageCategoriesModalOpen && (
+        <ManageExpenseCategoriesModal
+          isOpen={isManageCategoriesModalOpen}
+          onClose={() => setIsManageCategoriesModalOpen(false)}
+          onOpenAddModal={() => {
+            setIsManageCategoriesModalOpen(false);
+            setIsAddCategoryModalOpen(true);
+          }}
+        />
+      )}
+
+      {/* Add Expense Category Modal with Supabase master list update */}
+      {isAddCategoryModalOpen && (
+        <AddExpenseCategoryModal
+          isOpen={isAddCategoryModalOpen}
+          onClose={() => setIsAddCategoryModalOpen(false)}
+          onSuccess={(newCat) => {
+            setSelectedExpenseHeadId(newCat.id);
+            setVersion((v) => v + 1);
+          }}
+        />
+      )}
+
+      {/* Fallback New/Edit Expense Category Modal */}
       {isCategoryModalOpen && (
         <NewExpenseCategoryModal
           isOpen={isCategoryModalOpen}
@@ -342,6 +384,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
             setSelectedExpenseHeadId(newCat.id);
             setIsCategoryModalOpen(false);
             setEditingCategory(null);
+            setVersion((v) => v + 1);
           }}
         />
       )}

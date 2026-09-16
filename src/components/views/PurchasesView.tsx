@@ -206,8 +206,8 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {vendorLedger.map((row) => (
-                  <tr key={row.id} className="hover:bg-slate-50/70 transition-colors">
+                {vendorLedger.map((row, idx) => (
+                  <tr key={`${row.id}-${idx}`} className="hover:bg-slate-50/70 transition-colors">
                     <td className="py-3 px-4 font-mono text-slate-600 whitespace-nowrap">{row.date}</td>
                     <td className="py-3 px-4 font-mono font-medium text-slate-900 whitespace-nowrap">
                       {row.documentRef}

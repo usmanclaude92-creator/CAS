@@ -248,8 +248,8 @@ export const MoneyInModal: React.FC<MoneyInModalProps> = ({ isOpen, onClose, pre
                 className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               >
                 <option value="">-- Select Outstanding Invoice / IPC --</option>
-                {availableInvoices.map((inv) => (
-                  <option key={inv.id} value={inv.id}>
+                {availableInvoices.map((inv, idx) => (
+                  <option key={`${inv.id}-${idx}`} value={inv.id}>
                     {inv.invoiceType} #{inv.invoiceNumber} — Outstanding: {formatOMR(inv.outstandingAmount)} (Total: {formatOMR(inv.amount)})
                   </option>
                 ))}

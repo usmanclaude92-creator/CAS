@@ -245,8 +245,8 @@ export const MoneyOutModal: React.FC<MoneyOutModalProps> = ({ isOpen, onClose, p
                   className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"
                 >
                   <option value="">-- Select Outstanding Purchase --</option>
-                  {availablePurchases.map((p) => (
-                    <option key={p.id} value={p.id}>
+                  {availablePurchases.map((p, idx) => (
+                    <option key={`${p.id}-${idx}`} value={p.id}>
                       Purchase #{p.purchaseInvoiceNumber} — Outstanding: {formatOMR(p.outstandingAmount)} ({p.projectName})
                     </option>
                   ))}

@@ -33,6 +33,29 @@ import { authService } from './authService';
 // Key for local relational mirror
 const STORAGE_KEY = 'construction_accounting_db_v1';
 
+let globalMonotonicCounter = 0;
+
+/**
+ * Robust monotonic unique identifier generator with timestamp, monotonic counter, and random entropy.
+ * Prevents key collision even across tight bulk loops or identical millisecond timestamps.
+ */
+export function generateUniqueId(prefix: string): string {
+  globalMonotonicCounter += 1;
+  const time = Date.now();
+  const rand = Math.random().toString(36).substring(2, 8);
+  return `${prefix}-${time}-${globalMonotonicCounter}-${rand}`;
+}
+
+/**
+ * Robust unique document reference generator
+ */
+export function generateUniqueRef(prefix: string): string {
+  globalMonotonicCounter += 1;
+  const time = Date.now();
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `${prefix}-${time}-${globalMonotonicCounter}-${rand}`;
+}
+
 export interface AppDatabaseState {
   currentUser: User;
   projects: Project[];
@@ -236,6 +259,14 @@ class AccountingService {
   constructor() {
     console.log('[AccountingService] Initializing accounting engine service entry point...');
     this.state = this.loadState();
+
+    // Auto-seed historical monthly data for PRJ-BSH-002 if the database is currently empty of transactions
+    // This provides immediate multi-month trend visualization while leaving PRJ-AKV-001 clean for acceptance testing
+    if ((!this.state.clientInvoices || this.state.clientInvoices.length === 0) &&
+        (!this.state.purchases || this.state.purchases.length === 0)) {
+      this.seedHistoricalMonthlyData();
+    }
+
     console.log('[AccountingService] Engine state initialized successfully without failures.', {
       currentUser: this.state.currentUser.name,
       projectsCount: this.state.projects?.length ?? 0,
@@ -258,16 +289,198 @@ class AccountingService {
       if (saved) {
         const parsed = JSON.parse(saved);
         // Ensure all arrays exist
-        return {
+        const merged: AppDatabaseState = {
           ...initialSeedState,
           ...parsed,
           currentUser: parsed.currentUser || initialSeedState.currentUser,
         };
+
+        const { state: cleanState, modified } = this.sanitizeAndDeduplicateState(merged);
+        if (modified) {
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanState));
+            console.log('[AccountingService] Repaired and deduplicated corrupted stored IDs successfully.');
+          } catch (err) {
+            console.warn('[AccountingService] Could not persist sanitized state:', err);
+          }
+        }
+        return cleanState;
       }
     } catch (e) {
       console.warn('Failed to parse saved state from storage:', e);
     }
     return JSON.parse(JSON.stringify(initialSeedState));
+  }
+
+  /**
+   * Scans all entities in the database state to guarantee unique IDs.
+   * If legacy duplicate IDs (e.g. from tight loops with Date.now()) exist in localStorage,
+   * this repairs them and updates relational references so React components maintain pristine keys.
+   */
+  private sanitizeAndDeduplicateState(inputState: AppDatabaseState): { state: AppDatabaseState; modified: boolean } {
+    let modified = false;
+    const state: AppDatabaseState = { ...inputState };
+
+    // 1. Client Invoices
+    const seenInvoiceIds = new Set<string>();
+    state.clientInvoices = (state.clientInvoices || []).map((inv) => {
+      if (!inv.id || seenInvoiceIds.has(inv.id)) {
+        const newId = generateUniqueId('inv');
+        modified = true;
+        seenInvoiceIds.add(newId);
+        return { ...inv, id: newId };
+      }
+      seenInvoiceIds.add(inv.id);
+      return inv;
+    });
+
+    // 2. Purchases
+    const seenPurchaseIds = new Set<string>();
+    state.purchases = (state.purchases || []).map((pur) => {
+      if (!pur.id || seenPurchaseIds.has(pur.id)) {
+        const newId = generateUniqueId('pur');
+        modified = true;
+        seenPurchaseIds.add(newId);
+        return { ...pur, id: newId };
+      }
+      seenPurchaseIds.add(pur.id);
+      return pur;
+    });
+
+    // 3. Money In (re-link to matched invoice)
+    const seenMoneyInIds = new Set<string>();
+    state.moneyInList = (state.moneyInList || []).map((m) => {
+      const updated = { ...m };
+      if (!updated.id || seenMoneyInIds.has(updated.id)) {
+        updated.id = generateUniqueId('mi');
+        modified = true;
+      }
+      seenMoneyInIds.add(updated.id);
+
+      if (updated.against === 'invoice' || updated.invoiceNumber) {
+        const matchingInv = state.clientInvoices.find(
+          (inv) =>
+            (updated.invoiceNumber && inv.invoiceNumber === updated.invoiceNumber) ||
+            (updated.remarks && inv.invoiceNumber && updated.remarks.includes(inv.invoiceNumber))
+        );
+        if (matchingInv && updated.invoiceId !== matchingInv.id) {
+          updated.invoiceId = matchingInv.id;
+          updated.invoiceNumber = matchingInv.invoiceNumber;
+          modified = true;
+        }
+      }
+      return updated;
+    });
+
+    // 4. Money Out (re-link to matched purchase)
+    const seenMoneyOutIds = new Set<string>();
+    state.moneyOutList = (state.moneyOutList || []).map((mo) => {
+      const updated = { ...mo };
+      if (!updated.id || seenMoneyOutIds.has(updated.id)) {
+        updated.id = generateUniqueId('mo');
+        modified = true;
+      }
+      seenMoneyOutIds.add(updated.id);
+
+      if (updated.paymentFor === 'purchase' || updated.purchaseInvoiceNumber) {
+        const matchingPur = state.purchases.find(
+          (p) =>
+            (updated.purchaseInvoiceNumber && p.purchaseInvoiceNumber === updated.purchaseInvoiceNumber) ||
+            (updated.remarks && p.purchaseInvoiceNumber && updated.remarks.includes(p.purchaseInvoiceNumber))
+        );
+        if (matchingPur && updated.purchaseId !== matchingPur.id) {
+          updated.purchaseId = matchingPur.id;
+          updated.purchaseInvoiceNumber = matchingPur.purchaseInvoiceNumber;
+          modified = true;
+        }
+      }
+      return updated;
+    });
+
+    // 5. Direct Expenses
+    const seenExpenseIds = new Set<string>();
+    state.directExpenses = (state.directExpenses || []).map((exp) => {
+      if (!exp.id || seenExpenseIds.has(exp.id)) {
+        const newId = generateUniqueId('exp');
+        modified = true;
+        seenExpenseIds.add(newId);
+        return { ...exp, id: newId };
+      }
+      seenExpenseIds.add(exp.id);
+      return exp;
+    });
+
+    // 6. Transfers
+    const seenTransferIds = new Set<string>();
+    state.transfers = (state.transfers || []).map((tr) => {
+      if (!tr.id || seenTransferIds.has(tr.id)) {
+        const newId = generateUniqueId('xfer');
+        modified = true;
+        seenTransferIds.add(newId);
+        return { ...tr, id: newId };
+      }
+      seenTransferIds.add(tr.id);
+      return tr;
+    });
+
+    // 7. Journal Entries
+    const seenJournalIds = new Set<string>();
+    const seenEntryNumbers = new Set<string>();
+    state.journalEntries = (state.journalEntries || []).map((je) => {
+      const updated = { ...je };
+      if (!updated.id || seenJournalIds.has(updated.id)) {
+        updated.id = generateUniqueId('je');
+        modified = true;
+      }
+      seenJournalIds.add(updated.id);
+
+      if (!updated.entryNumber || seenEntryNumbers.has(updated.entryNumber)) {
+        updated.entryNumber = generateUniqueRef('JE');
+        modified = true;
+      }
+      seenEntryNumbers.add(updated.entryNumber);
+
+      return updated;
+    });
+
+    // 8. Audit Logs
+    const seenAuditLogIds = new Set<string>();
+    state.auditLogs = (state.auditLogs || []).map((log) => {
+      if (!log.id || seenAuditLogIds.has(log.id)) {
+        const newId = generateUniqueId('log');
+        modified = true;
+        seenAuditLogIds.add(newId);
+        return { ...log, id: newId };
+      }
+      seenAuditLogIds.add(log.id);
+      return log;
+    });
+
+    // 9. Masters
+    const dedupeMasterList = <T extends { id: string }>(items: T[], prefix: string): T[] => {
+      const seen = new Set<string>();
+      return (items || []).map((item) => {
+        if (!item.id || seen.has(item.id)) {
+          const newId = generateUniqueId(prefix);
+          modified = true;
+          seen.add(newId);
+          return { ...item, id: newId };
+        }
+        seen.add(item.id);
+        return item;
+      });
+    };
+
+    state.projects = dedupeMasterList(state.projects, 'prj');
+    state.customers = dedupeMasterList(state.customers, 'cust');
+    state.vendors = dedupeMasterList(state.vendors, 'vend');
+    state.bankAccounts = dedupeMasterList(state.bankAccounts, 'bank');
+    state.cashAccounts = dedupeMasterList(state.cashAccounts, 'cash');
+    state.pettyCashAccounts = dedupeMasterList(state.pettyCashAccounts, 'petty');
+    state.expenseHeads = dedupeMasterList(state.expenseHeads, 'exp-head');
+    state.openingBalances = dedupeMasterList(state.openingBalances, 'ob');
+
+    return { state, modified };
   }
 
   private saveState() {
@@ -326,7 +539,7 @@ class AccountingService {
   public addAuditLog(action: string, module: string, details: string, docRef?: string, txId?: string, oldVal?: string, newVal?: string) {
     const authUser = authService.getCurrentUser();
     const entry: AuditLogEntry = {
-      id: 'log-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+      id: generateUniqueId('log'),
       timestamp: new Date().toISOString(),
       userId: authUser ? authUser.id : this.state.currentUser.id,
       userName: authUser ? authUser.fullName : this.state.currentUser.name,
@@ -411,7 +624,7 @@ class AccountingService {
     const project = this.state.projects.find((p) => p.id === data.projectId);
 
     const invoice: ClientInvoice = {
-      id: 'inv-' + Date.now(),
+      id: generateUniqueId('inv'),
       invoiceType: data.invoiceType,
       invoiceNumber: data.invoiceNumber.trim(),
       date: data.date,
@@ -437,7 +650,7 @@ class AccountingService {
     // Debit: Accounts Receivable (Customer)
     // Credit: Project Revenue
     this.createJournalEntry({
-      entryNumber: 'JE-INV-' + Date.now(),
+      entryNumber: generateUniqueRef('JE-INV'),
       date: data.date,
       sourceType: 'invoice',
       sourceId: invoice.id,
@@ -507,7 +720,7 @@ class AccountingService {
     const accountName = this.getAccountName(data.receivedInto, data.accountId);
 
     const record: MoneyIn = {
-      id: 'mi-' + Date.now(),
+      id: generateUniqueId('mi'),
       transactionDate: data.transactionDate,
       receivedFrom: data.receivedFrom.trim(),
       customerId: customer?.id,
@@ -521,7 +734,7 @@ class AccountingService {
       receivedInto: data.receivedInto,
       accountId: data.accountId,
       accountName,
-      documentRef: data.documentRef?.trim() || 'RECEIPT-' + Date.now(),
+      documentRef: data.documentRef?.trim() || generateUniqueRef('RECEIPT'),
       attachmentUrl: data.attachmentUrl,
       attachmentName: data.attachmentName,
       status: 'posted',
@@ -544,7 +757,7 @@ class AccountingService {
     // Debit: Receiving Bank/Cash Account
     // Credit: Accounts Receivable (or Other Receipts)
     this.createJournalEntry({
-      entryNumber: 'JE-RCPT-' + Date.now(),
+      entryNumber: generateUniqueRef('JE-RCPT'),
       date: data.transactionDate,
       sourceType: 'money_in',
       sourceId: record.id,
@@ -601,7 +814,7 @@ class AccountingService {
     const project = this.state.projects.find((p) => p.id === data.projectId);
 
     const purchase: Purchase = {
-      id: 'pur-' + Date.now(),
+      id: generateUniqueId('pur'),
       purchaseInvoiceNumber: data.purchaseInvoiceNumber.trim(),
       date: data.date,
       vendorId: data.vendorId,
@@ -627,7 +840,7 @@ class AccountingService {
     // Debit: Project Cost (Purchases)
     // Credit: Accounts Payable (Vendor)
     this.createJournalEntry({
-      entryNumber: 'JE-PUR-' + Date.now(),
+      entryNumber: generateUniqueRef('JE-PUR'),
       date: data.date,
       sourceType: 'purchase',
       sourceId: purchase.id,
@@ -705,7 +918,7 @@ class AccountingService {
       : undefined;
 
     const record: MoneyOut = {
-      id: 'mo-' + Date.now(),
+      id: generateUniqueId('mo'),
       transactionDate: data.transactionDate,
       paidTo: data.paidTo.trim(),
       vendorId: vendor?.id,
@@ -721,7 +934,7 @@ class AccountingService {
       paidFrom: data.paidFrom,
       accountId: data.accountId,
       accountName,
-      documentRef: data.documentRef?.trim() || 'PAYMENT-' + Date.now(),
+      documentRef: data.documentRef?.trim() || generateUniqueRef('PAYMENT'),
       attachmentUrl: data.attachmentUrl,
       attachmentName: data.attachmentName,
       status: 'posted',
@@ -748,7 +961,7 @@ class AccountingService {
     // Debit: Expense Head / Project Cost
     // Credit: Bank/Cash Account
     this.createJournalEntry({
-      entryNumber: 'JE-PYMT-' + Date.now(),
+      entryNumber: generateUniqueRef('JE-PYMT'),
       date: data.transactionDate,
       sourceType: 'money_out',
       sourceId: record.id,
@@ -804,7 +1017,7 @@ class AccountingService {
     const accountName = this.getAccountName(data.paidFrom, data.accountId);
 
     const expense: DirectExpense = {
-      id: 'exp-' + Date.now(),
+      id: generateUniqueId('exp'),
       expenseDate: data.expenseDate,
       projectId: data.projectId,
       projectName: project ? project.name : 'Unknown Project',
@@ -816,7 +1029,7 @@ class AccountingService {
       paidFrom: data.paidFrom,
       accountId: data.accountId,
       accountName,
-      documentRef: data.documentRef?.trim() || 'EXP-' + Date.now(),
+      documentRef: data.documentRef?.trim() || generateUniqueRef('EXP'),
       attachmentUrl: data.attachmentUrl,
       attachmentName: data.attachmentName,
       status: 'posted',
@@ -833,7 +1046,7 @@ class AccountingService {
     // Debit: Expense Head / Project Cost
     // Credit: Bank / Cash / Petty Cash
     this.createJournalEntry({
-      entryNumber: 'JE-EXP-' + Date.now(),
+      entryNumber: generateUniqueRef('JE-EXP'),
       date: data.expenseDate,
       sourceType: 'expense',
       sourceId: expense.id,
@@ -897,7 +1110,7 @@ class AccountingService {
     const toName = this.getAccountName(data.transferToType, data.transferToId);
 
     const transfer: AccountTransfer = {
-      id: 'xfer-' + Date.now(),
+      id: generateUniqueId('xfer'),
       date: data.date,
       transferFromType: data.transferFromType,
       transferFromId: data.transferFromId,
@@ -925,7 +1138,7 @@ class AccountingService {
     // Credit: Source Account
     // (NO REVENUE OR EXPENSE CREATED!)
     this.createJournalEntry({
-      entryNumber: 'JE-XFER-' + Date.now(),
+      entryNumber: generateUniqueRef('JE-XFER'),
       date: data.date,
       sourceType: 'transfer',
       sourceId: transfer.id,
@@ -995,7 +1208,7 @@ class AccountingService {
     }
 
     const entry: OpeningBalanceEntry = {
-      id: 'ob-' + Date.now(),
+      id: generateUniqueId('ob'),
       accountType: data.accountType,
       accountId: data.accountId,
       accountName: name,
@@ -1034,7 +1247,7 @@ class AccountingService {
     const customer = this.state.customers.find((c) => c.id === data.customerId);
 
     const project: Project = {
-      id: 'prj-' + Date.now(),
+      id: generateUniqueId('prj'),
       code: data.code.trim().toUpperCase(),
       name: data.name.trim(),
       customerId: data.customerId,
@@ -1061,7 +1274,7 @@ class AccountingService {
     if (exists) throw new Error(`Customer Code "${data.code}" already exists.`);
 
     const customer: Customer = {
-      id: 'cust-' + Date.now(),
+      id: generateUniqueId('cust'),
       code: data.code.trim().toUpperCase(),
       name: data.name.trim(),
       contactPerson: data.contactPerson,
@@ -1088,7 +1301,7 @@ class AccountingService {
     if (exists) throw new Error(`Vendor Code "${data.code}" already exists.`);
 
     const vendor: Vendor = {
-      id: 'vend-' + Date.now(),
+      id: generateUniqueId('vend'),
       code: data.code.trim().toUpperCase(),
       name: data.name.trim(),
       contactPerson: data.contactPerson,
@@ -1112,7 +1325,7 @@ class AccountingService {
     if (!data.accountName?.trim()) throw new Error('Account Name is required.');
 
     const bank: BankAccount = {
-      id: 'bank-' + Date.now(),
+      id: generateUniqueId('bank'),
       bankName: data.bankName.trim(),
       accountName: data.accountName.trim(),
       accountNumber: data.accountNumber,
@@ -1143,7 +1356,7 @@ class AccountingService {
     }
 
     const head: ExpenseHead = {
-      id: 'exp-head-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+      id: generateUniqueId('exp-head'),
       name: trimmedName,
       category: data.category?.trim() || 'Direct Project Cost',
       description: data.description?.trim(),
@@ -1406,7 +1619,7 @@ class AccountingService {
   // -------------------------------------------------------------
   private createJournalEntry(data: Omit<JournalEntry, 'id' | 'status' | 'createdAt'>) {
     const entry: JournalEntry = {
-      id: 'je-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      id: generateUniqueId('je'),
       entryNumber: data.entryNumber,
       date: data.date,
       sourceType: data.sourceType,
@@ -2368,6 +2581,120 @@ class AccountingService {
       'ACCEPTANCE_TEST_EXECUTED',
       'System',
       'Successfully ran prompt #49 Acceptance Test Scenario (IPC-001, BR-001, PUR-001, PV-001, EXP-001).'
+    );
+
+    this.saveState();
+  }
+
+  /**
+   * Populate realistic multi-month historical construction transactions
+   * Specifically assigned to PRJ-BSH-002 (Bausher Commercial Plaza),
+   * leaving PRJ-AKV-001 completely clean for Acceptance Test #49 validation.
+   */
+  public seedHistoricalMonthlyData() {
+    const project = this.state.projects.find((p) => p.code === 'PRJ-BSH-002') || this.state.projects[1] || this.state.projects[0];
+    const customer = this.state.customers.find((c) => c.code === 'CUST-002') || this.state.customers[0];
+    const vendor = this.state.vendors.find((v) => v.code === 'VEND-002') || this.state.vendors[0];
+    const bank = this.state.bankAccounts[0];
+    const petty = this.state.pettyCashAccounts[0];
+
+    if (!project || !customer || !vendor) return;
+
+    // Avoid duplicate seeding
+    if (this.state.clientInvoices.some((i) => i.invoiceNumber.startsWith('IPC-BSH-'))) {
+      return;
+    }
+
+    const currentYear = new Date().getFullYear();
+    const months = [
+      { month: 4, label: '04', rev: 15000, pur: 6500, exp: 600, cashIn: 12000, cashOut: 4500, expDesc: 'Excavation & site preparation' },
+      { month: 5, label: '05', rev: 19000, pur: 8200, exp: 750, cashIn: 16000, cashOut: 6000, expDesc: 'Foundation concrete pouring & rebar' },
+      { month: 6, label: '06', rev: 23500, pur: 10400, exp: 900, cashIn: 20000, cashOut: 7500, expDesc: 'Ground floor slab & structural columns' },
+      { month: 7, label: '07', rev: 21000, pur: 9200, exp: 850, cashIn: 18000, cashOut: 7000, expDesc: 'First floor masonry & electrical conduits' },
+      { month: 8, label: '08', rev: 26000, pur: 11500, exp: 1100, cashIn: 22000, cashOut: 8500, expDesc: 'Second floor slab & MEP rough-ins' },
+      { month: 9, label: '09', rev: 18000, pur: 7800, exp: 700, cashIn: 15000, cashOut: 5500, expDesc: 'External plastering & perimeter works' },
+    ];
+
+    const fuelHead = this.state.expenseHeads.find((h) => h.name.includes('Site') || h.name.includes('Fuel')) || this.state.expenseHeads[0];
+
+    months.forEach((m, idx) => {
+      const dateStr = `${currentYear}-${m.label}-15`;
+      const numStr = String(idx + 1).padStart(3, '0');
+
+      // 1. Client Invoice IPC
+      const inv = this.createClientInvoice({
+        invoiceType: 'IPC',
+        invoiceNumber: `IPC-BSH-${numStr}`,
+        date: dateStr,
+        customerId: customer.id,
+        projectId: project.id,
+        description: `IPC #${idx + 1} - ${m.expDesc}`,
+        amount: m.rev,
+        documentRef: `IPC-BSH-${numStr}`,
+        remarks: 'Monthly certified progress bill',
+      });
+
+      // 2. Client Payment Received (Money In)
+      this.recordMoneyIn({
+        transactionDate: `${currentYear}-${m.label}-22`,
+        receivedFrom: customer.name,
+        customerId: customer.id,
+        projectId: project.id,
+        against: 'invoice',
+        invoiceId: inv.id,
+        amount: m.cashIn,
+        receivedInto: 'bank',
+        accountId: bank.id,
+        documentRef: `BR-BSH-${numStr}`,
+        remarks: `Client settlement for IPC-BSH-${numStr}`,
+      });
+
+      // 3. Vendor Material Purchase
+      const pur = this.createPurchase({
+        purchaseInvoiceNumber: `PUR-BSH-${numStr}`,
+        date: `${currentYear}-${m.label}-10`,
+        vendorId: vendor.id,
+        projectId: project.id,
+        purchaseCategory: 'Materials',
+        description: `Construction materials & certified batches - ${m.expDesc}`,
+        amount: m.pur,
+        documentRef: `PUR-BSH-${numStr}`,
+        remarks: 'Direct supplier delivery voucher',
+      });
+
+      // 4. Vendor Payment Out
+      this.recordMoneyOut({
+        transactionDate: `${currentYear}-${m.label}-25`,
+        paidTo: vendor.name,
+        vendorId: vendor.id,
+        projectId: project.id,
+        paymentFor: 'purchase',
+        purchaseId: pur.id,
+        amount: m.cashOut,
+        paidFrom: 'bank',
+        accountId: bank.id,
+        documentRef: `PV-BSH-${numStr}`,
+        remarks: `Progress vendor payment on PUR-BSH-${numStr}`,
+      });
+
+      // 5. Direct Site Expense
+      this.createDirectExpense({
+        expenseDate: `${currentYear}-${m.label}-18`,
+        projectId: project.id,
+        expenseHeadId: fuelHead.id,
+        description: `Direct site machinery fuel & supervision - ${m.expDesc}`,
+        amount: m.exp,
+        paidFrom: 'petty_cash',
+        accountId: petty.id,
+        documentRef: `EXP-BSH-${numStr}`,
+        remarks: 'Site custodian petty cash voucher',
+      });
+    });
+
+    this.addAuditLog(
+      'HISTORICAL_TREND_DATA_SEEDED',
+      'System',
+      'Populated 6-month historical revenue and expense transactions for Bausher Commercial Plaza.'
     );
 
     this.saveState();
