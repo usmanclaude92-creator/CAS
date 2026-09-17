@@ -38,6 +38,7 @@ const INITIAL_USERS: UserProfile[] = [
     assignedProjectIds: [],
     isAllProjects: true,
     remarks: 'Chief Executive & System Super Administrator with unrestricted governance',
+    isDemo: true,
     lastLogin: '2026-09-14T08:00:00Z',
     createdAt: '2026-01-01T00:00:00Z',
   },
@@ -56,6 +57,7 @@ const INITIAL_USERS: UserProfile[] = [
     assignedProjectIds: [],
     isAllProjects: true,
     remarks: 'Head of Accounting Operations; manages workflows, approvals, and day-to-day accounts',
+    isDemo: true,
     lastLogin: '2026-09-13T14:30:00Z',
     createdAt: '2026-01-05T00:00:00Z',
   },
@@ -74,6 +76,7 @@ const INITIAL_USERS: UserProfile[] = [
     assignedProjectIds: [],
     isAllProjects: true,
     remarks: 'Financial controller overseeing budgets, audits, and approvals up to OMR 10,000',
+    isDemo: true,
     lastLogin: '2026-09-12T11:20:00Z',
     createdAt: '2026-01-10T00:00:00Z',
   },
@@ -92,6 +95,7 @@ const INITIAL_USERS: UserProfile[] = [
     assignedProjectIds: [],
     isAllProjects: true,
     remarks: 'Senior site & transaction accountant handling vouchers, IPCs, and bills',
+    isDemo: true,
     lastLogin: '2026-09-14T07:15:00Z',
     createdAt: '2026-01-15T00:00:00Z',
   },
@@ -110,6 +114,7 @@ const INITIAL_USERS: UserProfile[] = [
     assignedProjectIds: ['prj-akv-001'], // Explicitly restricted to Al Khoudh Villa Project only!
     isAllProjects: false,
     remarks: 'Assigned solely to PRJ-AKV-001 (Al Khoudh Villa Project). Cannot access Bausher Plaza.',
+    isDemo: true,
     lastLogin: '2026-09-11T09:00:00Z',
     createdAt: '2026-02-01T00:00:00Z',
   },
@@ -128,6 +133,7 @@ const INITIAL_USERS: UserProfile[] = [
     assignedProjectIds: [],
     isAllProjects: true,
     remarks: 'Disburses cash, manages petty cash envelopes and commercial bank transfers',
+    isDemo: true,
     lastLogin: '2026-09-10T16:45:00Z',
     createdAt: '2026-02-10T00:00:00Z',
   },
@@ -146,6 +152,7 @@ const INITIAL_USERS: UserProfile[] = [
     assignedProjectIds: [],
     isAllProjects: true,
     remarks: 'Read-only compliance auditor with strictly no write, edit, reverse, or approve permissions',
+    isDemo: true,
     lastLogin: '2026-09-08T10:00:00Z',
     createdAt: '2026-03-01T00:00:00Z',
   },
@@ -164,6 +171,7 @@ const INITIAL_USERS: UserProfile[] = [
     assignedProjectIds: [],
     isAllProjects: true,
     remarks: 'Deactivated account for testing access blocking and inactive login prevention',
+    isDemo: true,
     lastLogin: '2026-05-01T12:00:00Z',
     createdAt: '2026-01-01T00:00:00Z',
   },
@@ -199,12 +207,17 @@ class AuthService {
     try {
       const savedUsers = localStorage.getItem(AUTH_USERS_STORAGE_KEY);
       if (savedUsers) {
-        this.users = JSON.parse(savedUsers);
+        const parsed: UserProfile[] = JSON.parse(savedUsers);
+        const demoIds = new Set(INITIAL_USERS.map((u) => u.id));
+        this.users = parsed.map((u) => {
+          const isDemo = demoIds.has(u.id) || u.email.endsWith('@construction.om');
+          return { ...u, isDemo: isDemo ? true : (u.isDemo ?? false) };
+        });
       } else {
-        this.users = [...INITIAL_USERS];
+        this.users = INITIAL_USERS.map((u) => ({ ...u, isDemo: true }));
       }
     } catch {
-      this.users = [...INITIAL_USERS];
+      this.users = INITIAL_USERS.map((u) => ({ ...u, isDemo: true }));
     }
 
     // 3. Workflow Settings
@@ -457,6 +470,27 @@ class AuthService {
 
   public getUsers(): UserProfile[] {
     return [...this.users];
+  }
+
+  /**
+   * Returns isolated demo sandbox test accounts
+   */
+  public getDemoUsers(): UserProfile[] {
+    return this.users.filter((u) => u.isDemo === true);
+  }
+
+  /**
+   * Returns real registered corporate users
+   */
+  public getRealUsers(): UserProfile[] {
+    return this.users.filter((u) => !u.isDemo);
+  }
+
+  /**
+   * Indicates whether the active logged-in session is a demo sandbox user
+   */
+  public isDemoSession(): boolean {
+    return Boolean(this.currentUser?.isDemo);
   }
 
   public getRoles(): Role[] {
@@ -716,6 +750,7 @@ class AuthService {
       employeeId: data.employeeId?.trim(),
       assignedProjectIds: data.isAllProjects ? [] : data.assignedProjectIds,
       isAllProjects: data.isAllProjects,
+      isDemo: false,
       remarks: data.remarks?.trim(),
       createdAt: new Date().toISOString(),
     };

@@ -125,8 +125,10 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
     };
   }, []);
 
-  // Filter users
+  // Filter users: isolate demo users from real users; do not show demo users once signed in
   const filteredUsers = users.filter((u) => {
+    if (u.isDemo && (!currentUser?.isDemo || u.id !== currentUser?.id)) return false;
+
     const matchesSearch =
       u.fullName.toLowerCase().includes(userSearch.toLowerCase()) ||
       u.email.toLowerCase().includes(userSearch.toLowerCase()) ||

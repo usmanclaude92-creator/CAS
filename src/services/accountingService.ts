@@ -30,8 +30,13 @@ import { addMoney, subtractMoney } from '../utils/formatters';
 import { getSupabaseClient } from './supabaseClient';
 import { authService } from './authService';
 
-// Key for local relational mirror
-const STORAGE_KEY = 'construction_accounting_db_v1';
+// Storage keys for strict isolation between Demo Sandbox and Real Production databases
+const STORAGE_KEY_DEMO = 'construction_accounting_db_demo_v2';
+const STORAGE_KEY_REAL = 'construction_accounting_db_real_v2';
+const STORAGE_KEY_ACTIVE_MODE = 'construction_accounting_active_db_mode_v2';
+const STORAGE_KEY_LEGACY = 'construction_accounting_db_v1';
+
+export type DatabaseMode = 'demo' | 'real';
 
 let globalMonotonicCounter = 0;
 
@@ -252,22 +257,120 @@ const initialSeedState: AppDatabaseState = {
   ],
 };
 
+// Initial clean state for Real Enterprise Database (strictly isolated from demo sandbox data)
+const initialRealEnterpriseState: AppDatabaseState = {
+  currentUser: {
+    id: 'usr-real-admin',
+    name: 'Corporate Administrator',
+    email: 'admin@company.om',
+    role: 'admin',
+  },
+  projects: [],
+  customers: [],
+  vendors: [],
+  bankAccounts: [
+    {
+      id: 'bank-corp-001',
+      bankName: 'Corporate Operating Bank',
+      accountName: 'Main Corporate Operating Account',
+      accountNumber: '0000-00000000-001',
+      currency: 'OMR',
+      openingBalance: 0.0,
+      currentBalance: 0.0,
+      openingDate: '2026-01-01',
+      status: 'active',
+      remarks: 'Primary enterprise operating treasury account',
+      createdAt: '2026-01-01T00:00:00Z',
+    },
+  ],
+  cashAccounts: [
+    {
+      id: 'cash-corp-001',
+      accountName: 'Main Cash in Hand',
+      openingBalance: 0.0,
+      currentBalance: 0.0,
+      openingDate: '2026-01-01',
+      status: 'active',
+      remarks: 'Corporate office cash account',
+      createdAt: '2026-01-01T00:00:00Z',
+    },
+  ],
+  pettyCashAccounts: [],
+  expenseHeads: [
+    { id: 'exp-head-site', name: 'Site Expenses', category: 'Direct Project Cost', status: 'active' },
+    { id: 'exp-head-fuel', name: 'Fuel & Transport', category: 'Direct Project Cost', status: 'active' },
+    { id: 'exp-head-wages', name: 'Salaries & Wages', category: 'Direct Labor', status: 'active' },
+    { id: 'exp-head-materials', name: 'Materials', category: 'Direct Project Cost', status: 'active' },
+    { id: 'exp-head-rent', name: 'Rent', category: 'Overhead', status: 'active' },
+    { id: 'exp-head-utilities', name: 'Utilities', category: 'Overhead', status: 'active' },
+    { id: 'exp-head-office', name: 'Office Expenses', category: 'Overhead', status: 'active' },
+    { id: 'exp-head-repairs', name: 'Repairs & Maintenance', category: 'Direct Project Cost', status: 'active' },
+    { id: 'exp-head-equipment', name: 'Equipment', category: 'Direct Project Cost', status: 'active' },
+    { id: 'exp-head-other', name: 'Other Expenses', category: 'Miscellaneous', status: 'active' },
+  ],
+  clientInvoices: [],
+  purchases: [],
+  moneyInList: [],
+  moneyOutList: [],
+  directExpenses: [],
+  transfers: [],
+  openingBalances: [],
+  journalEntries: [],
+  auditLogs: [
+    {
+      id: 'log-real-init-001',
+      timestamp: new Date().toISOString(),
+      userId: 'usr-real-admin',
+      userName: 'Corporate Administrator',
+      userRole: 'admin',
+      action: 'PRODUCTION_DB_INITIALIZED',
+      module: 'Settings',
+      details: 'Real Production Accounting Database initialized with clean Chart of Accounts.',
+    },
+  ],
+};
+
 class AccountingService {
   private state: AppDatabaseState;
   private listeners: (() => void)[] = [];
+  private activeDbMode: DatabaseMode = 'demo';
 
   constructor() {
     console.log('[AccountingService] Initializing accounting engine service entry point...');
+
+    try {
+      const savedMode = localStorage.getItem(STORAGE_KEY_ACTIVE_MODE) as DatabaseMode | null;
+      if (savedMode === 'demo' || savedMode === 'real') {
+        this.activeDbMode = savedMode;
+      }
+    } catch {
+      this.activeDbMode = 'demo';
+    }
+
     this.state = this.loadState();
 
-    // Auto-seed historical monthly data for PRJ-BSH-002 if the database is currently empty of transactions
-    // This provides immediate multi-month trend visualization while leaving PRJ-AKV-001 clean for acceptance testing
-    if ((!this.state.clientInvoices || this.state.clientInvoices.length === 0) &&
-        (!this.state.purchases || this.state.purchases.length === 0)) {
-      this.seedHistoricalMonthlyData();
+    // Auto-seed historical monthly data for PRJ-BSH-002 only if demo database is empty of transactions
+    if (this.activeDbMode === 'demo') {
+      if ((!this.state.clientInvoices || this.state.clientInvoices.length === 0) &&
+          (!this.state.purchases || this.state.purchases.length === 0)) {
+        this.seedHistoricalMonthlyData();
+      }
+    }
+
+    // Subscribe to auth service changes so database mode stays in sync with current user type
+    try {
+      authService.subscribe(() => {
+        const user = authService.getCurrentUser();
+        if (user) {
+          this.syncWithUser(user);
+        }
+      });
+    } catch (e) {
+      console.warn('[AccountingService] Could not register authService subscriber:', e);
     }
 
     console.log('[AccountingService] Engine state initialized successfully without failures.', {
+      databaseMode: this.activeDbMode,
       currentUser: this.state.currentUser.name,
       projectsCount: this.state.projects?.length ?? 0,
       bankAccountsCount: this.state.bankAccounts?.length ?? 0,
@@ -283,22 +386,60 @@ class AccountingService {
     });
   }
 
-  private loadState(): AppDatabaseState {
+  public getStorageKey(): string {
+    return this.activeDbMode === 'demo' ? STORAGE_KEY_DEMO : STORAGE_KEY_REAL;
+  }
+
+  public getDatabaseMode(): DatabaseMode {
+    return this.activeDbMode;
+  }
+
+  public setDatabaseMode(mode: DatabaseMode): void {
+    if (this.activeDbMode === mode) return;
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      localStorage.setItem(this.getStorageKey(), JSON.stringify(this.state));
+    } catch (e) {
+      console.warn('Could not save state before switching database mode:', e);
+    }
+    this.activeDbMode = mode;
+    try {
+      localStorage.setItem(STORAGE_KEY_ACTIVE_MODE, mode);
+    } catch {
+      // ignore
+    }
+    this.state = this.loadState();
+    if (mode === 'demo' && (!this.state.clientInvoices || this.state.clientInvoices.length === 0)) {
+      this.seedHistoricalMonthlyData();
+    }
+    this.notify();
+  }
+
+  public syncWithUser(user: { isDemo?: boolean } | null): void {
+    if (!user) return;
+    const targetMode: DatabaseMode = user.isDemo ? 'demo' : 'real';
+    if (this.activeDbMode !== targetMode) {
+      this.setDatabaseMode(targetMode);
+    }
+  }
+
+  private loadState(): AppDatabaseState {
+    const key = this.getStorageKey();
+    const baseState = this.activeDbMode === 'demo' ? initialSeedState : initialRealEnterpriseState;
+
+    try {
+      const saved = localStorage.getItem(key);
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Ensure all arrays exist
         const merged: AppDatabaseState = {
-          ...initialSeedState,
+          ...baseState,
           ...parsed,
-          currentUser: parsed.currentUser || initialSeedState.currentUser,
+          currentUser: parsed.currentUser || baseState.currentUser,
         };
 
         const { state: cleanState, modified } = this.sanitizeAndDeduplicateState(merged);
         if (modified) {
           try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanState));
+            localStorage.setItem(key, JSON.stringify(cleanState));
             console.log('[AccountingService] Repaired and deduplicated corrupted stored IDs successfully.');
           } catch (err) {
             console.warn('[AccountingService] Could not persist sanitized state:', err);
@@ -306,10 +447,30 @@ class AccountingService {
         }
         return cleanState;
       }
+
+      // If in demo mode and legacy key exists, migrate legacy to demo storage
+      if (this.activeDbMode === 'demo') {
+        const legacy = localStorage.getItem(STORAGE_KEY_LEGACY);
+        if (legacy) {
+          const parsed = JSON.parse(legacy);
+          const merged: AppDatabaseState = {
+            ...initialSeedState,
+            ...parsed,
+            currentUser: parsed.currentUser || initialSeedState.currentUser,
+          };
+          const { state: cleanState } = this.sanitizeAndDeduplicateState(merged);
+          try {
+            localStorage.setItem(STORAGE_KEY_DEMO, JSON.stringify(cleanState));
+          } catch {
+            // ignore
+          }
+          return cleanState;
+        }
+      }
     } catch (e) {
-      console.warn('Failed to parse saved state from storage:', e);
+      console.warn('Failed to parse saved state from storage for key:', key, e);
     }
-    return JSON.parse(JSON.stringify(initialSeedState));
+    return JSON.parse(JSON.stringify(baseState));
   }
 
   /**
@@ -485,7 +646,7 @@ class AccountingService {
 
   private saveState() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      localStorage.setItem(this.getStorageKey(), JSON.stringify(this.state));
     } catch (e) {
       console.error('Failed to persist database state:', e);
     }
@@ -2701,10 +2862,32 @@ class AccountingService {
   }
 
   /**
-   * Reset data to initial clean seed state
+   * Reset data to initial clean seed state (mode-aware)
    */
   public resetToSeedData() {
+    if (this.activeDbMode === 'demo') {
+      this.resetDemoData();
+    } else {
+      this.resetRealData();
+    }
+  }
+
+  /**
+   * Reset only the isolated Demo Sandbox database
+   */
+  public resetDemoData() {
+    this.activeDbMode = 'demo';
     this.state = JSON.parse(JSON.stringify(initialSeedState));
+    this.seedHistoricalMonthlyData();
+    this.saveState();
+  }
+
+  /**
+   * Reset only the isolated Real Production database
+   */
+  public resetRealData() {
+    this.activeDbMode = 'real';
+    this.state = JSON.parse(JSON.stringify(initialRealEnterpriseState));
     this.saveState();
   }
 }

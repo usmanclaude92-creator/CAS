@@ -176,8 +176,9 @@ export const UsersView: React.FC = () => {
     }
   };
 
-  // Filter users
+  // Filter users: isolate demo users from real users; do not show demo users once signed in
   const filteredUsers = users.filter((u) => {
+    if (u.isDemo && (!currentUser?.isDemo || u.id !== currentUser?.id)) return false;
     if (selectedRoleFilter !== 'ALL' && u.roleCode !== selectedRoleFilter) return false;
     if (selectedStatusFilter !== 'ALL' && u.status !== selectedStatusFilter) return false;
     if (searchQuery.trim()) {

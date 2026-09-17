@@ -29,6 +29,7 @@ import {
   Layers,
   Activity,
   Calendar,
+  Palette,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -77,11 +78,217 @@ export interface DashboardViewProps {
   onNavigateToProjectsList?: (projectId?: string) => void;
 }
 
-const CustomMonthlyTooltip = ({ active, payload, label }: any) => {
+export interface TrendPalette {
+  id: string;
+  name: string;
+  desc: string;
+  revenue: {
+    from: string;
+    to: string;
+    solid: string;
+    stroke: string;
+    cardBg: string;
+    cardBorder: string;
+    cardText: string;
+  };
+  cost: {
+    from: string;
+    to: string;
+    solid: string;
+    stroke: string;
+    cardBg: string;
+    cardBorder: string;
+    cardText: string;
+  };
+  profit: {
+    line: string;
+    dot: string;
+    cardBg: string;
+    cardBorder: string;
+    cardText: string;
+  };
+  purchases: {
+    from: string;
+    to: string;
+    solid: string;
+  };
+  directExpenses: {
+    from: string;
+    to: string;
+    solid: string;
+  };
+}
+
+export const TREND_PALETTES: Record<string, TrendPalette> = {
+  royal_amber: {
+    id: 'royal_amber',
+    name: 'Executive Amber',
+    desc: 'Royal Blue Revenue & Warm Amber Cost',
+    revenue: {
+      from: '#2563eb',
+      to: '#1d4ed8',
+      solid: '#2563eb',
+      stroke: '#1d4ed8',
+      cardBg: 'bg-blue-50/50 dark:bg-blue-950/20',
+      cardBorder: 'border-blue-100 dark:border-blue-900/40',
+      cardText: 'text-blue-600 dark:text-blue-400',
+    },
+    cost: {
+      from: '#f59e0b',
+      to: '#d97706',
+      solid: '#f59e0b',
+      stroke: '#d97706',
+      cardBg: 'bg-amber-50/50 dark:bg-amber-950/20',
+      cardBorder: 'border-amber-100 dark:border-amber-900/40',
+      cardText: 'text-amber-600 dark:text-amber-400',
+    },
+    profit: {
+      line: '#10b981',
+      dot: '#10b981',
+      cardBg: 'bg-emerald-50/50 dark:bg-emerald-950/20',
+      cardBorder: 'border-emerald-100 dark:border-emerald-900/40',
+      cardText: 'text-emerald-600 dark:text-emerald-400',
+    },
+    purchases: {
+      from: '#b45309',
+      to: '#78350f',
+      solid: '#b45309',
+    },
+    directExpenses: {
+      from: '#8b5cf6',
+      to: '#6d28d9',
+      solid: '#8b5cf6',
+    },
+  },
+  cyan_terracotta: {
+    id: 'cyan_terracotta',
+    name: 'Blueprint Terracotta',
+    desc: 'Deep Cyan Revenue & Earthy Terracotta Cost',
+    revenue: {
+      from: '#0284c7',
+      to: '#0369a1',
+      solid: '#0284c7',
+      stroke: '#0369a1',
+      cardBg: 'bg-cyan-50/50 dark:bg-cyan-950/20',
+      cardBorder: 'border-cyan-100 dark:border-cyan-900/40',
+      cardText: 'text-cyan-600 dark:text-cyan-400',
+    },
+    cost: {
+      from: '#ea580c',
+      to: '#c2410c',
+      solid: '#ea580c',
+      stroke: '#c2410c',
+      cardBg: 'bg-orange-50/50 dark:bg-orange-950/20',
+      cardBorder: 'border-orange-100 dark:border-orange-900/40',
+      cardText: 'text-orange-600 dark:text-orange-400',
+    },
+    profit: {
+      line: '#059669',
+      dot: '#059669',
+      cardBg: 'bg-emerald-50/50 dark:bg-emerald-950/20',
+      cardBorder: 'border-emerald-100 dark:border-emerald-900/40',
+      cardText: 'text-emerald-600 dark:text-emerald-400',
+    },
+    purchases: {
+      from: '#d97706',
+      to: '#b45309',
+      solid: '#d97706',
+    },
+    directExpenses: {
+      from: '#6366f1',
+      to: '#4f46e5',
+      solid: '#6366f1',
+    },
+  },
+  emerald_slate: {
+    id: 'emerald_slate',
+    name: 'Emerald & Slate',
+    desc: 'Forest Jade Revenue & Slate Stone Cost',
+    revenue: {
+      from: '#059669',
+      to: '#047857',
+      solid: '#059669',
+      stroke: '#047857',
+      cardBg: 'bg-emerald-50/50 dark:bg-emerald-950/20',
+      cardBorder: 'border-emerald-100 dark:border-emerald-900/40',
+      cardText: 'text-emerald-600 dark:text-emerald-400',
+    },
+    cost: {
+      from: '#64748b',
+      to: '#475569',
+      solid: '#64748b',
+      stroke: '#475569',
+      cardBg: 'bg-slate-100/70 dark:bg-slate-800/50',
+      cardBorder: 'border-slate-200 dark:border-slate-700',
+      cardText: 'text-slate-700 dark:text-slate-300',
+    },
+    profit: {
+      line: '#d97706',
+      dot: '#d97706',
+      cardBg: 'bg-amber-50/50 dark:bg-amber-950/20',
+      cardBorder: 'border-amber-100 dark:border-amber-900/40',
+      cardText: 'text-amber-600 dark:text-amber-400',
+    },
+    purchases: {
+      from: '#475569',
+      to: '#334155',
+      solid: '#475569',
+    },
+    directExpenses: {
+      from: '#0284c7',
+      to: '#0369a1',
+      solid: '#0284c7',
+    },
+  },
+  indigo_coral: {
+    id: 'indigo_coral',
+    name: 'Indigo & Coral',
+    desc: 'Deep Indigo Revenue & Coral Pink Cost',
+    revenue: {
+      from: '#4f46e5',
+      to: '#3730a3',
+      solid: '#4f46e5',
+      stroke: '#3730a3',
+      cardBg: 'bg-indigo-50/50 dark:bg-indigo-950/20',
+      cardBorder: 'border-indigo-100 dark:border-indigo-900/40',
+      cardText: 'text-indigo-600 dark:text-indigo-400',
+    },
+    cost: {
+      from: '#f43f5e',
+      to: '#be123c',
+      solid: '#f43f5e',
+      stroke: '#be123c',
+      cardBg: 'bg-rose-50/50 dark:bg-rose-950/20',
+      cardBorder: 'border-rose-100 dark:border-rose-900/40',
+      cardText: 'text-rose-600 dark:text-rose-400',
+    },
+    profit: {
+      line: '#10b981',
+      dot: '#10b981',
+      cardBg: 'bg-emerald-50/50 dark:bg-emerald-950/20',
+      cardBorder: 'border-emerald-100 dark:border-emerald-900/40',
+      cardText: 'text-emerald-600 dark:text-emerald-400',
+    },
+    purchases: {
+      from: '#f59e0b',
+      to: '#b45309',
+      solid: '#f59e0b',
+    },
+    directExpenses: {
+      from: '#8b5cf6',
+      to: '#6d28d9',
+      solid: '#8b5cf6',
+    },
+  },
+};
+
+const CustomMonthlyTooltip = ({ active, payload, label, palette }: any) => {
   if (!active || !payload || !payload.length) return null;
 
   const data = payload[0]?.payload;
   if (!data) return null;
+
+  const activePal: TrendPalette = palette || TREND_PALETTES.royal_amber;
 
   return (
     <div className="bg-slate-900/95 backdrop-blur-xs border border-slate-700/90 rounded-xl p-3.5 shadow-2xl text-slate-100 min-w-[250px]">
@@ -100,28 +307,28 @@ const CustomMonthlyTooltip = ({ active, payload, label }: any) => {
       <div className="space-y-1.5 text-xs">
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1.5 text-slate-300">
-            <span className="w-2.5 h-2.5 rounded-sm bg-blue-500 inline-block" />
+            <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ backgroundColor: activePal.revenue.solid }} />
             Invoiced Revenue:
           </span>
-          <span className="font-mono font-bold text-blue-400">{formatOMR(data.revenue)}</span>
+          <span className="font-mono font-bold" style={{ color: activePal.revenue.solid }}>{formatOMR(data.revenue)}</span>
         </div>
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1.5 text-slate-300">
-            <span className="w-2.5 h-2.5 rounded-sm bg-rose-500 inline-block" />
+            <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ backgroundColor: activePal.cost.solid }} />
             Total Project Cost:
           </span>
-          <span className="font-mono font-bold text-rose-400">{formatOMR(data.totalExpenses)}</span>
+          <span className="font-mono font-bold" style={{ color: activePal.cost.solid }}>{formatOMR(data.totalExpenses)}</span>
         </div>
         {data.purchases > 0 && (
           <div className="flex items-center justify-between pl-4 text-[11px] text-slate-400">
             <span>• Purchases &amp; Materials:</span>
-            <span className="font-mono text-amber-300">{formatOMR(data.purchases)}</span>
+            <span className="font-mono" style={{ color: activePal.purchases.solid }}>{formatOMR(data.purchases)}</span>
           </div>
         )}
         {data.directExpenses > 0 && (
           <div className="flex items-center justify-between pl-4 text-[11px] text-slate-400">
             <span>• Direct Site Expenses:</span>
-            <span className="font-mono text-purple-300">{formatOMR(data.directExpenses)}</span>
+            <span className="font-mono" style={{ color: activePal.directExpenses.solid }}>{formatOMR(data.directExpenses)}</span>
           </div>
         )}
         <div className="border-t border-slate-800 pt-1.5 mt-1 flex items-center justify-between">
@@ -185,6 +392,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [trendTimeframe, setTrendTimeframe] = useState<'6m' | '12m' | 'all'>('6m');
   const [trendMetricView, setTrendMetricView] = useState<'combined' | 'detailed' | 'cashflow'>('combined');
   const [showProfitOverlay, setShowProfitOverlay] = useState<boolean>(true);
+  const [trendPaletteId, setTrendPaletteId] = useState<string>('royal_amber');
+  const [showPaletteMenu, setShowPaletteMenu] = useState<boolean>(false);
+  const activePalette = TREND_PALETTES[trendPaletteId] || TREND_PALETTES.royal_amber;
 
   // Compute active date range
   const dateRange = useMemo(() => {
@@ -1123,29 +1333,89 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span className={`w-2 h-2 rounded-full ${showProfitOverlay ? 'bg-emerald-500' : 'bg-slate-400'}`} />
               <span>Profit Curve</span>
             </button>
+
+            {/* Color Palette Selector */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowPaletteMenu(!showPaletteMenu)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-white dark:bg-slate-850 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-2xs transition-colors cursor-pointer"
+                title="Change chart color scheme"
+              >
+                <Palette className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                <span className="hidden md:inline text-slate-500 dark:text-slate-400">Palette:</span>
+                <span className="font-semibold">{activePalette.name}</span>
+                <div className="flex items-center -space-x-1 ml-0.5">
+                  <span className="w-2.5 h-2.5 rounded-full border border-white dark:border-slate-900" style={{ backgroundColor: activePalette.revenue.solid }} />
+                  <span className="w-2.5 h-2.5 rounded-full border border-white dark:border-slate-900" style={{ backgroundColor: activePalette.cost.solid }} />
+                  <span className="w-2.5 h-2.5 rounded-full border border-white dark:border-slate-900" style={{ backgroundColor: activePalette.profit.line }} />
+                </div>
+              </button>
+
+              {showPaletteMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-20"
+                    onClick={() => setShowPaletteMenu(false)}
+                  />
+                  <div className="absolute right-0 mt-1.5 w-64 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 py-1.5 z-30 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                      Chart Color Scheme
+                    </div>
+                    <div className="p-1 space-y-0.5">
+                      {Object.values(TREND_PALETTES).map((pal) => (
+                        <button
+                          key={pal.id}
+                          type="button"
+                          onClick={() => {
+                            setTrendPaletteId(pal.id);
+                            setShowPaletteMenu(false);
+                          }}
+                          className={`w-full px-2.5 py-2 rounded-lg text-xs flex items-center justify-between hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors cursor-pointer text-left ${
+                            trendPaletteId === pal.id
+                              ? 'bg-blue-50/80 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-semibold'
+                              : 'text-slate-700 dark:text-slate-300'
+                          }`}
+                        >
+                          <div>
+                            <div className="font-medium text-[12px]">{pal.name}</div>
+                            <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">{pal.desc}</div>
+                          </div>
+                          <div className="flex items-center -space-x-1 shrink-0 ml-2">
+                            <span className="w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900 shadow-2xs" style={{ backgroundColor: pal.revenue.solid }} />
+                            <span className="w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900 shadow-2xs" style={{ backgroundColor: pal.cost.solid }} />
+                            <span className="w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900 shadow-2xs" style={{ backgroundColor: pal.profit.line }} />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Quick KPI Strip inside Trend Card */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 rounded-xl border border-blue-100 dark:border-blue-900/40">
-            <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 block">Period Revenue</span>
+          <div className={`p-3 rounded-xl border transition-colors ${activePalette.revenue.cardBg} ${activePalette.revenue.cardBorder}`}>
+            <span className={`text-[11px] font-medium block ${activePalette.revenue.cardText}`}>Period Revenue</span>
             <span className="text-base font-bold font-mono text-slate-900 dark:text-slate-100 mt-0.5 block">
               {formatOMR(trendSummary.totalRev)}
             </span>
             <span className="text-[10px] text-slate-500 dark:text-slate-400">Billed client progress</span>
           </div>
 
-          <div className="p-3 bg-rose-50/50 dark:bg-rose-950/20 rounded-xl border border-rose-100 dark:border-rose-900/40">
-            <span className="text-[11px] font-medium text-rose-600 dark:text-rose-400 block">Total Project Cost</span>
+          <div className={`p-3 rounded-xl border transition-colors ${activePalette.cost.cardBg} ${activePalette.cost.cardBorder}`}>
+            <span className={`text-[11px] font-medium block ${activePalette.cost.cardText}`}>Total Project Cost</span>
             <span className="text-base font-bold font-mono text-slate-900 dark:text-slate-100 mt-0.5 block">
               {formatOMR(trendSummary.totalExp)}
             </span>
             <span className="text-[10px] text-slate-500 dark:text-slate-400">Purchases &amp; site costs</span>
           </div>
 
-          <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
-            <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 block">Net Operating Profit</span>
+          <div className={`p-3 rounded-xl border transition-colors ${activePalette.profit.cardBg} ${activePalette.profit.cardBorder}`}>
+            <span className={`text-[11px] font-medium block ${activePalette.profit.cardText}`}>Net Operating Profit</span>
             <span className={`text-base font-bold font-mono mt-0.5 block ${trendSummary.netProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-400'}`}>
               {formatOMR(trendSummary.netProfit)}
             </span>
@@ -1178,20 +1448,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <ComposedChart data={monthlyRevenueExpenseTrends} margin={{ top: 15, right: 15, left: -5, bottom: 15 }}>
                 <defs>
                   <linearGradient id="colorRevBar" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.9} />
-                    <stop offset="100%" stopColor="#1d4ed8" stopOpacity={0.7} />
+                    <stop offset="0%" stopColor={activePalette.revenue.from} stopOpacity={0.9} />
+                    <stop offset="100%" stopColor={activePalette.revenue.to} stopOpacity={0.7} />
                   </linearGradient>
                   <linearGradient id="colorExpBar" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.9} />
-                    <stop offset="100%" stopColor="#be123c" stopOpacity={0.7} />
+                    <stop offset="0%" stopColor={activePalette.cost.from} stopOpacity={0.9} />
+                    <stop offset="100%" stopColor={activePalette.cost.to} stopOpacity={0.7} />
                   </linearGradient>
                   <linearGradient id="colorPurBar" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.9} />
-                    <stop offset="100%" stopColor="#b45309" stopOpacity={0.7} />
+                    <stop offset="0%" stopColor={activePalette.purchases.from} stopOpacity={0.9} />
+                    <stop offset="100%" stopColor={activePalette.purchases.to} stopOpacity={0.7} />
                   </linearGradient>
                   <linearGradient id="colorDirBar" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.9} />
-                    <stop offset="100%" stopColor="#6d28d9" stopOpacity={0.7} />
+                    <stop offset="0%" stopColor={activePalette.directExpenses.from} stopOpacity={0.9} />
+                    <stop offset="100%" stopColor={activePalette.directExpenses.to} stopOpacity={0.7} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" strokeOpacity={0.4} />
@@ -1209,7 +1479,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   axisLine={{ stroke: '#cbd5e1' }}
                   tickLine={false}
                 />
-                <Tooltip content={<CustomMonthlyTooltip />} />
+                <Tooltip content={<CustomMonthlyTooltip palette={activePalette} />} />
                 <Legend
                   wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
                   iconType="circle"
@@ -1311,9 +1581,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     type="monotone"
                     dataKey="netProfit"
                     name="Net Operating Profit"
-                    stroke="#10b981"
+                    stroke={activePalette.profit.line}
                     strokeWidth={2.5}
-                    dot={{ r: 4, fill: '#10b981', strokeWidth: 1.5, stroke: '#ffffff' }}
+                    dot={{ r: 4, fill: activePalette.profit.dot, strokeWidth: 1.5, stroke: '#ffffff' }}
                     activeDot={{ r: 6 }}
                   />
                 )}
@@ -1322,23 +1592,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <AreaChart data={monthlyRevenueExpenseTrends} margin={{ top: 15, right: 15, left: -5, bottom: 15 }}>
                 <defs>
                   <linearGradient id="areaRev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
+                    <stop offset="5%" stopColor={activePalette.revenue.from} stopOpacity={0.4} />
+                    <stop offset="95%" stopColor={activePalette.revenue.from} stopOpacity={0.0} />
                   </linearGradient>
                   <linearGradient id="areaExp" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0.0} />
+                    <stop offset="5%" stopColor={activePalette.cost.from} stopOpacity={0.4} />
+                    <stop offset="95%" stopColor={activePalette.cost.from} stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" strokeOpacity={0.4} />
                 <XAxis dataKey="monthLabel" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={{ stroke: '#cbd5e1' }} tickLine={false} dy={6} />
                 <YAxis tickFormatter={(val) => `${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={{ stroke: '#cbd5e1' }} tickLine={false} />
-                <Tooltip content={<CustomMonthlyTooltip />} />
+                <Tooltip content={<CustomMonthlyTooltip palette={activePalette} />} />
                 <Legend wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }} iconType="circle" />
-                <Area type="monotone" dataKey="revenue" name="Invoiced Revenue" stroke="#2563eb" strokeWidth={2.5} fillOpacity={1} fill="url(#areaRev)" />
-                <Area type="monotone" dataKey="totalExpenses" name="Total Project Cost" stroke="#e11d48" strokeWidth={2.5} fillOpacity={1} fill="url(#areaExp)" />
+                <Area type="monotone" dataKey="revenue" name="Invoiced Revenue" stroke={activePalette.revenue.stroke} strokeWidth={2.5} fillOpacity={1} fill="url(#areaRev)" />
+                <Area type="monotone" dataKey="totalExpenses" name="Total Project Cost" stroke={activePalette.cost.stroke} strokeWidth={2.5} fillOpacity={1} fill="url(#areaExp)" />
                 {showProfitOverlay && (
-                  <Line type="monotone" dataKey="netProfit" name="Net Operating Profit" stroke="#10b981" strokeWidth={2} dot={{ r: 4, fill: '#10b981' }} />
+                  <Line type="monotone" dataKey="netProfit" name="Net Operating Profit" stroke={activePalette.profit.line} strokeWidth={2} dot={{ r: 4, fill: activePalette.profit.dot }} />
                 )}
               </AreaChart>
             ) : (
@@ -1346,18 +1616,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" strokeOpacity={0.4} />
                 <XAxis dataKey="monthLabel" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={{ stroke: '#cbd5e1' }} tickLine={false} dy={6} />
                 <YAxis tickFormatter={(val) => `${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`} tick={{ fontSize: 11, fill: '#64748b' }} axisLine={{ stroke: '#cbd5e1' }} tickLine={false} />
-                <Tooltip content={<CustomMonthlyTooltip />} />
+                <Tooltip content={<CustomMonthlyTooltip palette={activePalette} />} />
                 <Legend wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }} iconType="circle" />
-                <Line type="monotone" dataKey="revenue" name="Invoiced Revenue" stroke="#2563eb" strokeWidth={2.5} dot={{ r: 4, fill: '#2563eb' }} activeDot={{ r: 6 }} />
-                <Line type="monotone" dataKey="totalExpenses" name="Total Project Cost" stroke="#e11d48" strokeWidth={2.5} dot={{ r: 4, fill: '#e11d48' }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="revenue" name="Invoiced Revenue" stroke={activePalette.revenue.stroke} strokeWidth={2.5} dot={{ r: 4, fill: activePalette.revenue.stroke }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="totalExpenses" name="Total Project Cost" stroke={activePalette.cost.stroke} strokeWidth={2.5} dot={{ r: 4, fill: activePalette.cost.stroke }} activeDot={{ r: 6 }} />
                 {trendMetricView === 'detailed' && (
                   <>
-                    <Line type="monotone" dataKey="purchases" name="Purchases" stroke="#f59e0b" strokeWidth={1.8} strokeDasharray="4 4" dot={{ r: 3 }} />
-                    <Line type="monotone" dataKey="directExpenses" name="Direct Site Expenses" stroke="#8b5cf6" strokeWidth={1.8} strokeDasharray="4 4" dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="purchases" name="Purchases" stroke={activePalette.purchases.solid} strokeWidth={1.8} strokeDasharray="4 4" dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="directExpenses" name="Direct Site Expenses" stroke={activePalette.directExpenses.solid} strokeWidth={1.8} strokeDasharray="4 4" dot={{ r: 3 }} />
                   </>
                 )}
                 {showProfitOverlay && (
-                  <Line type="monotone" dataKey="netProfit" name="Net Operating Profit" stroke="#10b981" strokeWidth={2.5} dot={{ r: 4, fill: '#10b981' }} />
+                  <Line type="monotone" dataKey="netProfit" name="Net Operating Profit" stroke={activePalette.profit.line} strokeWidth={2.5} dot={{ r: 4, fill: activePalette.profit.dot }} />
                 )}
               </LineChart>
             )}

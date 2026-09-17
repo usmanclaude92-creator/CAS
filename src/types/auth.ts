@@ -40,6 +40,7 @@ export interface UserProfile {
   roleCode: string;
   roleName: string;
   status: UserStatus;
+  isDemo?: boolean; // Isolated sandbox demo user
   password?: string;
   lastPasswordChange?: string;
   forcePasswordReset?: boolean;
