@@ -109,11 +109,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         }`}
       >
         {/* Company Header - Artify Construction Accounting System Logo Image */}
-        <div className="p-3 border-b border-slate-800 bg-[#070c1e] flex items-center justify-center">
+        <div className="w-full border-b border-slate-800 bg-[#070c1e] flex items-center justify-center overflow-hidden">
           <img
             src="/artify-logo.png"
             alt="Artify Construction Accounting System"
-            className="w-full h-auto max-h-12 object-contain hover:opacity-95 transition-opacity select-none"
+            className="w-full h-auto object-contain block hover:opacity-95 transition-opacity select-none"
             referrerPolicy="no-referrer"
             onError={(e) => {
               const target = e.currentTarget;
