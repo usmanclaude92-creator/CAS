@@ -139,18 +139,16 @@
     <text
       x="0"
       y="0"
-      font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+      font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Liberation Sans', sans-serif"
       font-size="33"
       font-weight="800"
       fill="#FFFFFF"
       letter-spacing="-0.5"
-    >
-      Artify
-    </text>
+    >Art&#305;fy</text>
     <circle
-      cx="90"
-      cy="-24"
-      r="6"
+      cx="47.5"
+      cy="-27"
+      r="5.5"
       fill="url(#artify-banner-i-dot)"
       filter="url(#artify-banner-dot-glow)"
     />

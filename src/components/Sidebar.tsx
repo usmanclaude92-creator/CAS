@@ -21,7 +21,6 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { authService } from '../services/authService';
-import { ArtifyLogo } from './ArtifyLogo';
 
 export type NavView =
   | 'dashboard'
@@ -109,9 +108,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Company Header - Replaced with Artify Construction Accounting System Logo (Image 1) */}
+        {/* Company Header - Artify Construction Accounting System Logo Image */}
         <div className="p-3 border-b border-slate-800 bg-[#070c1e] flex items-center justify-center">
-          <ArtifyLogo className="w-full h-auto max-h-12 hover:opacity-95 transition-opacity" />
+          <img
+            src="/artify-logo.png"
+            alt="Artify Construction Accounting System"
+            className="w-full h-auto max-h-12 object-contain hover:opacity-95 transition-opacity select-none"
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (!target.src.endsWith('/image.png')) {
+                target.src = '/image.png';
+              }
+            }}
+          />
         </div>
 
         {/* User Profile & Project Scope Badge */}

@@ -210,9 +210,12 @@ function AppContent() {
 
       {/* Main Content Area */}
       <div className="flex-1 lg:pl-64 flex flex-col min-w-0">
-        {/* Header Bar with Theme Toggle, Global Search & User Switcher */}
+        {/* Header Bar with Theme Toggle, Global Search, Export Data & User Switcher */}
         <Header
           activeView={activeView}
+          selectedProjectId={selectedProjectId}
+          selectedCustomerId={selectedCustomerId}
+          selectedVendorId={selectedVendorId}
           onNavigateView={(view) => setActiveView(view)}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           onSelectProject={(id) => {
@@ -363,6 +366,10 @@ function AppContent() {
                     setIsPurchaseOpen(true);
                   }}
                   onOpenMoneyOut={() => setIsMoneyOutOpen(true)}
+                  onSelectProject={(id) => {
+                    setSelectedProjectId(id);
+                    setActiveView('projects');
+                  }}
                 />
               )}
 

@@ -20,10 +20,14 @@ import {
   Users,
   ArrowRight,
   CornerDownLeft,
+  Download,
+  FileSpreadsheet,
+  CheckCircle2,
 } from 'lucide-react';
 import { NavView } from './Sidebar';
 import { authService } from '../services/authService';
 import { accountingService } from '../services/accountingService';
+import { exportActiveView, ExportFormat, getActiveViewExportData } from '../services/exportService';
 import { formatOMR } from '../utils/formatters';
 import { ThemeToggle } from './ThemeToggle';
 import { HeaderNotifications } from './HeaderNotifications';
@@ -31,6 +35,9 @@ import { UserProfile } from '../types/auth';
 
 interface HeaderProps {
   activeView: NavView;
+  selectedProjectId?: string | null;
+  selectedCustomerId?: string | null;
+  selectedVendorId?: string | null;
   onToggleSidebar: () => void;
   onOpenMoneyIn: () => void;
   onOpenMoneyOut: () => void;
@@ -58,6 +65,9 @@ type SearchResultItem = {
 
 export const Header: React.FC<HeaderProps> = ({
   activeView,
+  selectedProjectId,
+  selectedCustomerId,
+  selectedVendorId,
   onToggleSidebar,
   onOpenMoneyIn,
   onOpenMoneyOut,
@@ -73,6 +83,8 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectVendor,
 }) => {
   const [isQuickOpen, setIsQuickOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [lastExportStatus, setLastExportStatus] = useState<string | null>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(authService.getCurrentUser());
   const [allUsers, setAllUsers] = useState<UserProfile[]>(authService.getUsers());
@@ -85,6 +97,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [accountingData, setAccountingData] = useState(() => accountingService.getState());
 
   const quickMenuRef = useRef<HTMLDivElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -113,6 +126,9 @@ export const Header: React.FC<HeaderProps> = ({
       if (quickMenuRef.current && !quickMenuRef.current.contains(event.target as Node)) {
         setIsQuickOpen(false);
       }
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setIsExportOpen(false);
+      }
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setIsUserMenuOpen(false);
       }
@@ -123,6 +139,38 @@ export const Header: React.FC<HeaderProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Active view table metadata for export preview
+  const activeExportMeta = useMemo(() => {
+    const exportOpts = getActiveViewExportData(activeView, {
+      projectId: selectedProjectId,
+      customerId: selectedCustomerId,
+      vendorId: selectedVendorId,
+    });
+    return {
+      title: exportOpts.title,
+      recordCount: exportOpts.data.length,
+    };
+  }, [activeView, selectedProjectId, selectedCustomerId, selectedVendorId, accountingData]);
+
+  // Handle triggered export for active view table data
+  const handleExport = (format: ExportFormat) => {
+    try {
+      const result = exportActiveView(format, activeView, {
+        projectId: selectedProjectId,
+        customerId: selectedCustomerId,
+        vendorId: selectedVendorId,
+      });
+      setLastExportStatus(`Downloaded ${result.recordCount} rows as ${format.toUpperCase()}`);
+      setTimeout(() => {
+        setIsExportOpen(false);
+        setLastExportStatus(null);
+      }, 1600);
+    } catch (err: any) {
+      console.error('Export failed:', err);
+      setLastExportStatus(`Export failed: ${err.message || 'Unknown error'}`);
+    }
+  };
 
   // Keyboard shortcut listener (/ or Cmd+K / Ctrl+K)
   useEffect(() => {
@@ -606,10 +654,117 @@ export const Header: React.FC<HeaderProps> = ({
         )}
       </div>
 
-      {/* Right controls: Theme Toggle, Quick Transaction, User Switcher */}
+      {/* Right controls: Theme Toggle, Export Data, Quick Transaction, User Switcher */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Global Dark / Light Theme Toggle */}
         <ThemeToggle variant="simple" />
+
+        {/* Export Data Button with CSV / Excel / PDF Options for Active View Table */}
+        <div className="relative" ref={exportMenuRef}>
+          <button
+            type="button"
+            id="header-export-data-btn"
+            onClick={() => setIsExportOpen(!isExportOpen)}
+            className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer shadow-xs"
+            title={`Export visible ${activeExportMeta.recordCount} rows in ${activeView}`}
+            aria-label="Export Data"
+          >
+            <Download className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+            <span className="hidden sm:inline">Export Data</span>
+            <span className="sm:hidden">Export</span>
+            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-150 ${isExportOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {isExportOpen && (
+            <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-1.5 z-50 text-xs animate-in fade-in">
+              {/* Active View Preview */}
+              <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-900/40">
+                <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">
+                  Active View Table
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[155px]" title={activeExportMeta.title}>
+                    {activeExportMeta.title.replace('Artify - ', '')}
+                  </span>
+                  <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/40 shrink-0">
+                    {activeExportMeta.recordCount} rows
+                  </span>
+                </div>
+              </div>
+
+              {/* Format Options */}
+              <div className="p-1 space-y-0.5">
+                {/* Excel Export */}
+                <button
+                  type="button"
+                  onClick={() => handleExport('xlsx')}
+                  className="w-full px-2.5 py-2 text-left flex items-center justify-between rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/40 group transition-colors cursor-pointer text-slate-700 dark:text-slate-200"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-md bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                      <FileSpreadsheet className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs text-slate-800 dark:text-slate-100 truncate">Excel (.xlsx)</div>
+                      <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate">Auto-formatted workbook</div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded bg-emerald-100/50 dark:bg-emerald-900/30 shrink-0">
+                    XLSX
+                  </span>
+                </button>
+
+                {/* CSV Export */}
+                <button
+                  type="button"
+                  onClick={() => handleExport('csv')}
+                  className="w-full px-2.5 py-2 text-left flex items-center justify-between rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/40 group transition-colors cursor-pointer text-slate-700 dark:text-slate-200"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-md bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 flex items-center justify-center shrink-0">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs text-slate-800 dark:text-slate-100 truncate">CSV (.csv)</div>
+                      <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate">UTF-8 comma-separated</div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded bg-blue-100/50 dark:bg-blue-950/30 shrink-0">
+                    CSV
+                  </span>
+                </button>
+
+                {/* PDF Export */}
+                <button
+                  type="button"
+                  onClick={() => handleExport('pdf')}
+                  className="w-full px-2.5 py-2 text-left flex items-center justify-between rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 group transition-colors cursor-pointer text-slate-700 dark:text-slate-200"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-md bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 flex items-center justify-center shrink-0">
+                      <Download className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs text-slate-800 dark:text-slate-100 truncate">PDF Document (.pdf)</div>
+                      <div className="text-[10px] text-slate-400 dark:text-slate-500 truncate">Formatted printable tables</div>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded bg-rose-100/50 dark:bg-rose-950/30 shrink-0">
+                    PDF
+                  </span>
+                </button>
+              </div>
+
+              {/* Status Message */}
+              {lastExportStatus && (
+                <div className="mx-2 my-1 px-2.5 py-1.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 text-[11px] flex items-center gap-1.5 animate-in fade-in">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="truncate font-medium">{lastExportStatus}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Quick Transaction Action Dropdown (Hides if user cannot create anything, e.g. Viewer) */}
         {canCreateAny && (

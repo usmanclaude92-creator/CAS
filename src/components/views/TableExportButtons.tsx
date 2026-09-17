@@ -4,6 +4,7 @@ import { Download, FileSpreadsheet, FileText, ChevronDown } from 'lucide-react';
 interface TableExportButtonsProps {
   onExportCsv: () => void;
   onExportExcel: () => void;
+  onExportPdf?: () => void;
   tableName?: string;
   count?: number;
   className?: string;
@@ -13,6 +14,7 @@ interface TableExportButtonsProps {
 export const TableExportButtons: React.FC<TableExportButtonsProps> = ({
   onExportCsv,
   onExportExcel,
+  onExportPdf,
   tableName = 'Table',
   count,
   className = '',
@@ -80,6 +82,22 @@ export const TableExportButtons: React.FC<TableExportButtonsProps> = ({
                 <div className="text-[10px] text-slate-400 font-mono">.csv spreadsheet</div>
               </div>
             </button>
+            {onExportPdf && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  onExportPdf();
+                }}
+                className="w-full text-left px-3 py-2 text-slate-700 hover:bg-rose-50 hover:text-rose-800 flex items-center gap-2 cursor-pointer transition-colors"
+              >
+                <Download className="w-4 h-4 text-rose-600 shrink-0" />
+                <div>
+                  <div className="font-semibold">Export to PDF</div>
+                  <div className="text-[10px] text-slate-400 font-mono">.pdf document</div>
+                </div>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -107,6 +125,18 @@ export const TableExportButtons: React.FC<TableExportButtonsProps> = ({
         <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
         <span>Excel</span>
       </button>
+
+      {onExportPdf && (
+        <button
+          type="button"
+          onClick={onExportPdf}
+          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-300 shadow-xs transition-colors cursor-pointer"
+          title={`Export ${tableName} to PDF document`}
+        >
+          <Download className="w-3.5 h-3.5 text-rose-600" />
+          <span>PDF</span>
+        </button>
+      )}
     </div>
   );
 };
