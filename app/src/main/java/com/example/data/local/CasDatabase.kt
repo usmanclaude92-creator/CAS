@@ -88,7 +88,7 @@ abstract class CasDatabase : RoomDatabase() {
             }
         }
 
-        private suspend fun seedDatabase(dao: CasDao) {
+        internal suspend fun seedDatabase(dao: CasDao) {
             // Seed Customers
             val cust1 = CustomerEntity(
                 id = "cust-001",

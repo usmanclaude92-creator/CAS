@@ -41,9 +41,9 @@ fun StatCard(
         modifier = modifier
             .testTag(testTag)
             .fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Slate900),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(12.dp),
-        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(Slate800))
+        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.outline))
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -56,13 +56,13 @@ fun StatCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Slate400
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Box(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Slate800),
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -80,13 +80,13 @@ fun StatCard(
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp
                 ),
-                color = Slate50
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.labelSmall,
-                color = Slate400
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -94,13 +94,14 @@ fun StatCard(
 
 @Composable
 fun StatusBadge(status: TransactionStatus, modifier: Modifier = Modifier) {
+    val casColors = MaterialTheme.casColors
     val (bgColor, textColor) = when (status) {
-        TransactionStatus.POSTED -> Pair(EmeraldSuccessBg, EmeraldSuccess)
-        TransactionStatus.APPROVED -> Pair(Color(0xFF065F46), Color(0xFF34D399))
-        TransactionStatus.SUBMITTED -> Pair(AmberWarningBg, AmberWarning)
-        TransactionStatus.DRAFT -> Pair(Slate800, Slate400)
-        TransactionStatus.REJECTED -> Pair(RoseErrorBg, RoseError)
-        TransactionStatus.REVERSED -> Pair(Color(0xFF4C1D95), PurpleAccent)
+        TransactionStatus.POSTED -> Pair(casColors.badgePostedBg, casColors.badgePostedText)
+        TransactionStatus.APPROVED -> Pair(casColors.badgeApprovedBg, casColors.badgeApprovedText)
+        TransactionStatus.SUBMITTED -> Pair(casColors.badgeSubmittedBg, casColors.badgeSubmittedText)
+        TransactionStatus.DRAFT -> Pair(casColors.badgeDraftBg, casColors.badgeDraftText)
+        TransactionStatus.REJECTED -> Pair(casColors.badgeRejectedBg, casColors.badgeRejectedText)
+        TransactionStatus.REVERSED -> Pair(casColors.badgeReversedBg, casColors.badgeReversedText)
     }
 
     Box(
@@ -128,13 +129,13 @@ fun SectionHeader(
         Text(
             text = title,
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-            color = Slate50
+            color = MaterialTheme.colorScheme.onSurface
         )
         if (subtitle != null) {
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Slate400
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

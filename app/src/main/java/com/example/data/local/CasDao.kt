@@ -11,6 +11,9 @@ interface CasDao {
     @Query("SELECT * FROM projects ORDER BY createdAt DESC")
     fun getAllProjects(): Flow<List<ProjectEntity>>
 
+    @Query("SELECT COUNT(*) FROM projects")
+    suspend fun getProjectCount(): Int
+
     @Query("SELECT * FROM projects WHERE id = :id")
     suspend fun getProjectById(id: String): ProjectEntity?
 

@@ -24,6 +24,12 @@ class CasRepository(
     val allTransactions: Flow<List<TransactionEntity>> = dao.getAllTransactions()
     val allAuditLogs: Flow<List<AuditLogEntity>> = dao.getAllAuditLogs()
 
+    suspend fun checkAndSeedInitialData() {
+        if (dao.getProjectCount() == 0) {
+            com.example.data.local.CasDatabase.seedDatabase(dao)
+        }
+    }
+
     private fun getCurrentTimestamp(): String {
         return SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
     }

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.data.model.*
+import com.example.data.repository.AuthRepository
 import com.example.data.repository.CasRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -16,6 +17,8 @@ data class CasUiState(
     val expenseHeads: List<ExpenseHeadEntity> = emptyList(),
     val transactions: List<TransactionEntity> = emptyList(),
     val auditLogs: List<AuditLogEntity> = emptyList(),
+    val currentUserProfile: UserProfile? = null,
+    val isAuthenticated: Boolean = false,
     val currentUserRole: UserRole = UserRole.ADMIN,
     val currentUserName: String = "Chief Financial Officer",
     val searchQuery: String = "",
@@ -36,10 +39,14 @@ data class CasUiState(
     val supabaseAnonKey: String = "",
     val isSyncing: Boolean = false,
     val syncStatusMessage: String = "Database ready in embedded local mode.",
-    val userMessage: String? = null
+    val userMessage: String? = null,
+    val isDarkMode: Boolean? = null
 )
 
-class CasViewModel(private val repository: CasRepository) : ViewModel() {
+class CasViewModel(
+    private val repository: CasRepository,
+    val authRepository: AuthRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
         CasUiState(
@@ -51,6 +58,28 @@ class CasViewModel(private val repository: CasRepository) : ViewModel() {
     val uiState: StateFlow<CasUiState> = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.checkAndSeedInitialData()
+        }
+        viewModelScope.launch {
+            authRepository.currentUser.collect { user ->
+                _uiState.update { current ->
+                    if (user != null) {
+                        current.copy(
+                            currentUserProfile = user,
+                            currentUserName = user.fullName,
+                            currentUserRole = user.toUserRole(),
+                            isAuthenticated = true
+                        )
+                    } else {
+                        current.copy(
+                            currentUserProfile = null,
+                            isAuthenticated = false
+                        )
+                    }
+                }
+            }
+        }
         viewModelScope.launch {
             combine(
                 repository.allProjects,
@@ -335,13 +364,64 @@ class CasViewModel(private val repository: CasRepository) : ViewModel() {
             _uiState.update { it.copy(userMessage = "Reversed voucher ${tx.documentRef}.") }
         }
     }
+
+    fun onLoginSuccess(user: UserProfile) {
+        _uiState.update {
+            it.copy(
+                currentUserProfile = user,
+                currentUserName = user.fullName,
+                currentUserRole = user.toUserRole(),
+                isAuthenticated = true,
+                userMessage = "Welcome, ${user.fullName} (${user.roleName})"
+            )
+        }
+    }
+
+    fun logout() {
+        viewModelScope.launch {
+            authRepository.logout()
+            _uiState.update {
+                it.copy(
+                    currentUserProfile = null,
+                    isAuthenticated = false,
+                    userMessage = "Logged out successfully."
+                )
+            }
+        }
+    }
+
+    fun toggleDarkMode(currentIsDark: Boolean) {
+        _uiState.update {
+            val nextMode = !currentIsDark
+            it.copy(
+                isDarkMode = nextMode,
+                userMessage = if (nextMode) "Switched to Dark Theme" else "Switched to Light Theme"
+            )
+        }
+    }
+
+    fun setThemeMode(isDark: Boolean?) {
+        _uiState.update {
+            it.copy(
+                isDarkMode = isDark,
+                userMessage = when (isDark) {
+                    true -> "Switched to Dark Theme"
+                    false -> "Switched to Light Theme"
+                    null -> "Theme following System Settings"
+                }
+            )
+        }
+    }
 }
 
-class CasViewModelFactory(private val repository: CasRepository) : ViewModelProvider.Factory {
+class CasViewModelFactory(
+    private val repository: CasRepository,
+    private val authRepository: AuthRepository
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(CasViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return CasViewModel(repository) as T
+            return CasViewModel(repository, authRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

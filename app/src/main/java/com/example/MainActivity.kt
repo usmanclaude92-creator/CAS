@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -19,10 +20,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import com.example.data.local.CasDatabase
+import com.example.data.repository.AuthRepository
 import com.example.data.repository.CasRepository
+import com.example.theme.AmberWarning
 import com.example.theme.ConstructionAccountingTheme
 import com.example.theme.ConstructionBlueLight
 import com.example.theme.Slate400
+import com.example.theme.Slate600
 import com.example.theme.Slate900
 import com.example.theme.Slate50
 import com.example.ui.components.CasDialogsContainer
@@ -47,7 +51,8 @@ class MainActivity : ComponentActivity() {
         val supabaseClient = com.example.data.remote.SupabaseClient(applicationContext)
         val syncManager = com.example.data.sync.CasSyncManager(database.casDao(), supabaseClient)
         val repository = CasRepository(database.casDao(), supabaseClient, syncManager)
-        CasViewModelFactory(repository)
+        val authRepository = AuthRepository(applicationContext)
+        CasViewModelFactory(repository, authRepository)
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -56,77 +61,101 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            ConstructionAccountingTheme {
-                var currentScreen by remember { mutableStateOf(CasScreen.DASHBOARD) }
-                val uiState by viewModel.uiState.collectAsState()
-                val stats by viewModel.dashboardStats.collectAsState()
-                val snackbarHostState = remember { SnackbarHostState() }
+            val uiState by viewModel.uiState.collectAsState()
+            val isDark = uiState.isDarkMode ?: isSystemInDarkTheme()
 
-                LaunchedEffect(uiState.userMessage) {
-                    uiState.userMessage?.let { msg ->
-                        snackbarHostState.showSnackbar(msg)
-                        viewModel.clearUserMessage()
+            ConstructionAccountingTheme(darkTheme = isDark) {
+                if (!uiState.isAuthenticated) {
+                    LoginScreen(
+                        authRepository = viewModel.authRepository,
+                        onLoginSuccess = { user -> viewModel.onLoginSuccess(user) }
+                    )
+                } else {
+                    var currentScreen by remember { mutableStateOf(CasScreen.DASHBOARD) }
+                    val stats by viewModel.dashboardStats.collectAsState()
+                    val snackbarHostState = remember { SnackbarHostState() }
+
+                    LaunchedEffect(uiState.userMessage) {
+                        uiState.userMessage?.let { msg ->
+                            snackbarHostState.showSnackbar(msg)
+                            viewModel.clearUserMessage()
+                        }
                     }
-                }
 
-                Scaffold(
-                    modifier = Modifier.fillMaxSize().testTag("main_scaffold"),
-                    contentWindowInsets = WindowInsets.safeDrawing,
-                    snackbarHost = { SnackbarHost(snackbarHostState) },
-                    topBar = {
-                        TopAppBar(
-                            title = {
-                                Column {
-                                    Text(
-                                        text = stringResource(R.string.app_name),
-                                        style = MaterialTheme.typography.titleLarge.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 18.sp
-                                        ),
-                                        color = Slate50
-                                    )
-                                    Text(
-                                        text = "${uiState.currentUserName} (${uiState.currentUserRole.displayName})",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = ConstructionBlueLight
-                                    )
-                                }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = Slate900,
-                                titleContentColor = Slate50
-                            ),
-                            actions = {
-                                IconButton(
-                                    onClick = { viewModel.setSupabaseDialog(true) },
-                                    modifier = Modifier.size(48.dp).testTag("top_bar_supabase_btn")
-                                ) {
-                                    if (uiState.isSupabaseConfigured) {
-                                        Icon(
-                                            Icons.Default.CloudDone,
-                                            contentDescription = "Supabase Cloud Database Connected",
-                                            tint = com.example.theme.EmeraldSuccess
+                    Scaffold(
+                        modifier = Modifier.fillMaxSize().testTag("main_scaffold"),
+                        contentWindowInsets = WindowInsets.safeDrawing,
+                        snackbarHost = { SnackbarHost(snackbarHostState) },
+                        topBar = {
+                            TopAppBar(
+                                title = {
+                                    Column {
+                                        Text(
+                                            text = stringResource(R.string.app_name),
+                                            style = MaterialTheme.typography.titleLarge.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 18.sp
+                                            ),
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
-                                    } else {
-                                        Icon(
-                                            Icons.Default.CloudQueue,
-                                            contentDescription = "Connect Supabase Database",
-                                            tint = Slate400
+                                        Text(
+                                            text = "${uiState.currentUserName} (${uiState.currentUserProfile?.roleName ?: uiState.currentUserRole.displayName})",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.primary
                                         )
                                     }
+                                },
+                                colors = TopAppBarDefaults.topAppBarColors(
+                                    containerColor = MaterialTheme.colorScheme.surface,
+                                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                                ),
+                                actions = {
+                                    IconButton(
+                                        onClick = { viewModel.toggleDarkMode(isDark) },
+                                        modifier = Modifier.size(48.dp).testTag("top_bar_theme_toggle_btn")
+                                    ) {
+                                        Icon(
+                                            if (isDark) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                            contentDescription = if (isDark) "Switch to Light Mode" else "Switch to Dark Mode",
+                                            tint = if (isDark) AmberWarning else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { viewModel.setSupabaseDialog(true) },
+                                        modifier = Modifier.size(48.dp).testTag("top_bar_supabase_btn")
+                                    ) {
+                                        if (uiState.isSupabaseConfigured) {
+                                            Icon(
+                                                Icons.Default.CloudDone,
+                                                contentDescription = "Supabase Cloud Database Connected",
+                                                tint = com.example.theme.EmeraldSuccess
+                                            )
+                                        } else {
+                                            Icon(
+                                                Icons.Default.CloudQueue,
+                                                contentDescription = "Connect Supabase Database",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    IconButton(
+                                        onClick = { currentScreen = CasScreen.MASTERS },
+                                        modifier = Modifier.size(48.dp).testTag("top_bar_switch_role_btn")
+                                    ) {
+                                        Icon(Icons.Default.AccountCircle, contentDescription = "User Persona", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    IconButton(
+                                        onClick = { viewModel.logout() },
+                                        modifier = Modifier.size(48.dp).testTag("top_bar_logout_btn")
+                                    ) {
+                                        Icon(Icons.Default.Logout, contentDescription = "Sign Out", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
                                 }
-                                IconButton(
-                                    onClick = { currentScreen = CasScreen.MASTERS },
-                                    modifier = Modifier.size(48.dp).testTag("top_bar_switch_role_btn")
-                                ) {
-                                    Icon(Icons.Default.AccountCircle, contentDescription = "User Persona", tint = Slate400)
-                                }
-                            }
-                        )
-                    },
-                    bottomBar = {
+                            )
+                        },
+                        bottomBar = {
                         NavigationBar(
-                            containerColor = Slate900,
+                            containerColor = MaterialTheme.colorScheme.surface,
                             modifier = Modifier.testTag("bottom_navigation_bar")
                         ) {
                             CasScreen.values().forEach { screen ->
@@ -155,11 +184,11 @@ class MainActivity : ComponentActivity() {
                                         )
                                     },
                                     colors = NavigationBarItemDefaults.colors(
-                                        selectedIconColor = ConstructionBlueLight,
-                                        selectedTextColor = ConstructionBlueLight,
-                                        unselectedIconColor = Slate400,
-                                        unselectedTextColor = Slate400,
-                                        indicatorColor = Slate900
+                                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        indicatorColor = MaterialTheme.colorScheme.primaryContainer
                                     ),
                                     modifier = Modifier.testTag("nav_item_${screen.name.lowercase()}")
                                 )
@@ -189,6 +218,7 @@ class MainActivity : ComponentActivity() {
                         // Modal Dialogs Layer
                         CasDialogsContainer(viewModel = viewModel)
                     }
+                }
                 }
             }
         }

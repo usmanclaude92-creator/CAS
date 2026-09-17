@@ -77,6 +77,55 @@ fun MastersScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     item {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("active_user_session_card"),
+                            colors = CardDefaults.cardColors(containerColor = Slate900),
+                            border = CardDefaults.outlinedCardBorder(),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Authenticated Session",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                            color = ConstructionBlueLight
+                                        )
+                                        Text(
+                                            text = uiState.currentUserProfile?.fullName ?: uiState.currentUserName,
+                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = Slate50
+                                        )
+                                        Text(
+                                            text = "${uiState.currentUserProfile?.email ?: "Corporate Session"} • ${uiState.currentUserProfile?.department ?: "Corporate"}",
+                                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                            color = Slate400
+                                        )
+                                    }
+                                    Button(
+                                        onClick = { viewModel.logout() },
+                                        colors = ButtonDefaults.buttonColors(containerColor = RoseError),
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                        modifier = Modifier.testTag("masters_sign_out_btn")
+                                    ) {
+                                        Icon(Icons.Default.Logout, contentDescription = null, modifier = Modifier.size(14.dp), tint = androidx.compose.ui.graphics.Color.White)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Sign Out", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = androidx.compose.ui.graphics.Color.White)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text("Active Security Persona", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Slate50)
                         Text("Switch roles to test security access controls and approval rules:", color = Slate400, style = MaterialTheme.typography.bodyMedium)
                     }
