@@ -44,7 +44,6 @@ import { BackupSettingsModal } from '../modals/BackupSettingsModal';
 import { RolesView } from './RolesView';
 import { WorkflowSettingsView } from './WorkflowSettingsView';
 import { AuditLogView } from './AuditLogView';
-import { MasterImportAuditView } from './MasterImportAuditView';
 
 export type SystemConfigTab =
   | 'credentials'
