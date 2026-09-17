@@ -258,43 +258,18 @@ const initialSeedState: AppDatabaseState = {
 };
 
 // Initial clean state for Real Enterprise Database (strictly isolated from demo sandbox data)
-const initialRealEnterpriseState: AppDatabaseState = {
+export const initialRealEnterpriseState: AppDatabaseState = {
   currentUser: {
-    id: 'usr-real-admin',
-    name: 'Corporate Administrator',
-    email: 'admin@company.om',
-    role: 'admin',
+    id: 'usr-real-superadmin-artify',
+    name: 'Super Administrator',
+    email: 'admin@artifysols.com',
+    role: 'super_admin',
   },
   projects: [],
   customers: [],
   vendors: [],
-  bankAccounts: [
-    {
-      id: 'bank-corp-001',
-      bankName: 'Corporate Operating Bank',
-      accountName: 'Main Corporate Operating Account',
-      accountNumber: '0000-00000000-001',
-      currency: 'OMR',
-      openingBalance: 0.0,
-      currentBalance: 0.0,
-      openingDate: '2026-01-01',
-      status: 'active',
-      remarks: 'Primary enterprise operating treasury account',
-      createdAt: '2026-01-01T00:00:00Z',
-    },
-  ],
-  cashAccounts: [
-    {
-      id: 'cash-corp-001',
-      accountName: 'Main Cash in Hand',
-      openingBalance: 0.0,
-      currentBalance: 0.0,
-      openingDate: '2026-01-01',
-      status: 'active',
-      remarks: 'Corporate office cash account',
-      createdAt: '2026-01-01T00:00:00Z',
-    },
-  ],
+  bankAccounts: [],
+  cashAccounts: [],
   pettyCashAccounts: [],
   expenseHeads: [
     { id: 'exp-head-site', name: 'Site Expenses', category: 'Direct Project Cost', status: 'active' },
@@ -320,12 +295,12 @@ const initialRealEnterpriseState: AppDatabaseState = {
     {
       id: 'log-real-init-001',
       timestamp: new Date().toISOString(),
-      userId: 'usr-real-admin',
-      userName: 'Corporate Administrator',
-      userRole: 'admin',
-      action: 'PRODUCTION_DB_INITIALIZED',
-      module: 'Settings',
-      details: 'Real Production Accounting Database initialized with clean Chart of Accounts.',
+      userId: 'usr-real-superadmin-artify',
+      userName: 'Super Administrator',
+      userRole: 'super_admin',
+      action: 'PRODUCTION_DATABASE_INITIALIZED',
+      module: 'System Governance',
+      details: 'Artify Solutions production accounting ledger initialized in pristine blank state with zero demo transactions.',
     },
   ],
 };
@@ -339,12 +314,17 @@ class AccountingService {
     console.log('[AccountingService] Initializing accounting engine service entry point...');
 
     try {
-      const savedMode = localStorage.getItem(STORAGE_KEY_ACTIVE_MODE) as DatabaseMode | null;
-      if (savedMode === 'demo' || savedMode === 'real') {
-        this.activeDbMode = savedMode;
+      const currentUser = authService.getCurrentUser();
+      if (currentUser && !currentUser.isDemo) {
+        this.activeDbMode = 'real';
+      } else {
+        const savedMode = localStorage.getItem(STORAGE_KEY_ACTIVE_MODE) as DatabaseMode | null;
+        if (savedMode === 'demo' || savedMode === 'real') {
+          this.activeDbMode = savedMode;
+        }
       }
     } catch {
-      this.activeDbMode = 'demo';
+      this.activeDbMode = 'real';
     }
 
     this.state = this.loadState();
@@ -414,11 +394,20 @@ class AccountingService {
     this.notify();
   }
 
-  public syncWithUser(user: { isDemo?: boolean } | null): void {
+  public syncWithUser(user: { isDemo?: boolean; email?: string; fullName?: string } | null): void {
     if (!user) return;
     const targetMode: DatabaseMode = user.isDemo ? 'demo' : 'real';
     if (this.activeDbMode !== targetMode) {
       this.setDatabaseMode(targetMode);
+    }
+    if (targetMode === 'real' && user.email?.toLowerCase() === 'admin@artifysols.com') {
+      this.state.currentUser = {
+        id: 'usr-real-superadmin-artify',
+        name: user.fullName || 'Super Administrator',
+        email: 'admin@artifysols.com',
+        role: 'super_admin',
+      };
+      this.saveState();
     }
   }
 
@@ -430,6 +419,19 @@ class AccountingService {
       const saved = localStorage.getItem(key);
       if (saved) {
         const parsed = JSON.parse(saved);
+
+        // If in real mode and previously had legacy mock corporate admin, reset to pristine blank production state
+        if (this.activeDbMode === 'real') {
+          if (
+            parsed.currentUser?.email === 'admin@company.om' ||
+            !localStorage.getItem('artify_blank_real_db_v2')
+          ) {
+            localStorage.setItem('artify_blank_real_db_v2', 'true');
+            localStorage.setItem(key, JSON.stringify(initialRealEnterpriseState));
+            return JSON.parse(JSON.stringify(initialRealEnterpriseState));
+          }
+        }
+
         const merged: AppDatabaseState = {
           ...baseState,
           ...parsed,

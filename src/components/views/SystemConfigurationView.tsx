@@ -38,6 +38,7 @@ import {
 } from '../../services/backupService';
 import { supabaseService } from '../../services/supabaseClient';
 import { accountingService } from '../../services/accountingService';
+import { sessionSecurityService } from '../../services/sessionSecurityService';
 import { useToast } from '../../context/ToastContext';
 import { BackupSettingsModal } from '../modals/BackupSettingsModal';
 import { RolesView } from './RolesView';
@@ -74,6 +75,16 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
   const [roles, setRoles] = useState<Role[]>(authService.getRoles());
   const [userSearch, setUserSearch] = useState('');
   const [selectedUserStatusFilter, setSelectedUserStatusFilter] = useState('ALL');
+  const [sessionTimeoutMins, setSessionTimeoutMins] = useState(sessionSecurityService.getTimeoutMinutes());
+
+  const handleUpdateTimeout = (mins: number) => {
+    sessionSecurityService.setTimeoutMinutes(mins);
+    setSessionTimeoutMins(mins);
+    toast.success(
+      'Session Security Updated',
+      `Idle auto-logout duration set to ${mins} minutes with mandatory 60-second warning.`
+    );
+  };
 
   // Password reset modal state
   const [passwordModalUser, setPasswordModalUser] = useState<UserProfile | null>(null);
@@ -491,6 +502,58 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
             </button>
           </div>
 
+          {/* Session Security & Inactivity Timeout Configuration Card */}
+          <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-200 dark:border-amber-900/60 mt-0.5">
+                <Clock className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white">
+                    Session Security &amp; Auto-Logout Policy
+                  </h3>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+                    60s Warning Active
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Automatically terminates idle sessions to protect financial ledgers. A mandatory warning modal triggers exactly 60 seconds before expiration.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-end md:self-auto shrink-0">
+              <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                Idle Limit:
+              </label>
+              <select
+                value={sessionTimeoutMins}
+                onChange={(e) => handleUpdateTimeout(Number(e.target.value))}
+                className="text-xs py-1.5 px-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-semibold cursor-pointer"
+              >
+                <option value={2}>2 minutes (Fast test)</option>
+                <option value={5}>5 minutes</option>
+                <option value={10}>10 minutes</option>
+                <option value={15}>15 minutes (Standard)</option>
+                <option value={30}>30 minutes</option>
+                <option value={60}>60 minutes</option>
+              </select>
+
+              <button
+                type="button"
+                onClick={() => {
+                  sessionSecurityService.simulateWarningCountdown(60);
+                }}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold text-amber-800 dark:text-amber-300 bg-amber-100/70 hover:bg-amber-100 dark:bg-amber-950/70 dark:hover:bg-amber-900/80 border border-amber-300 dark:border-amber-800 transition-colors flex items-center gap-1.5 cursor-pointer"
+                title="Trigger the 60-second warning modal immediately to test behavior"
+              >
+                <ShieldAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                <span>Test 60s Modal</span>
+              </button>
+            </div>
+          </div>
+
           {/* User Directory Table */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
@@ -520,11 +583,20 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
                               {u.fullName.charAt(0)}
                             </div>
                             <div>
-                              <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                              <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
                                 <span>{u.fullName}</span>
                                 {isSelf && (
-                                  <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                  <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
                                     YOU
+                                  </span>
+                                )}
+                                {!u.isDemo ? (
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                    REAL PRODUCTION
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                    DEMO
                                   </span>
                                 )}
                               </div>

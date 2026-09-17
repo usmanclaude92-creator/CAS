@@ -39,10 +39,12 @@ import { NewCustomerModal } from './components/modals/NewCustomerModal';
 import { NewVendorModal } from './components/modals/NewVendorModal';
 import { NewBankAccountModal } from './components/modals/NewBankAccountModal';
 import { SupabaseSettingsModal } from './components/modals/SupabaseSettingsModal';
+import { SessionWarningModal } from './components/modals/SessionWarningModal';
 
 import { accountingService } from './services/accountingService';
 import { authService } from './services/authService';
 import { supabaseService } from './services/supabaseClient';
+import { sessionSecurityService, SessionSecurityState } from './services/sessionSecurityService';
 import { Transaction } from './types';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
 
@@ -75,6 +77,10 @@ function AppContent() {
   const [isNewBankAccountOpen, setIsNewBankAccountOpen] = useState(false);
   const [isSupabaseSettingsOpen, setIsSupabaseSettingsOpen] = useState(false);
 
+  // Session Security & Inactivity Timeout
+  const [sessionSecurity, setSessionSecurity] = useState<SessionSecurityState>(sessionSecurityService.getState());
+  const [sessionExpiredNotice, setSessionExpiredNotice] = useState<string | null>(null);
+
   // Preselected project for modal forms
   const [modalProjectId, setModalProjectId] = useState<string | undefined>(undefined);
 
@@ -105,10 +111,43 @@ function AppContent() {
     };
   }, []);
 
+  // Track session security and auto-logout lifecycle
+  useEffect(() => {
+    if (!isAuthenticated) {
+      sessionSecurityService.stopTracking();
+      return;
+    }
+
+    sessionSecurityService.startTracking();
+
+    const unsubSecurity = sessionSecurityService.subscribe((state) => {
+      setSessionSecurity(state);
+    });
+
+    const unsubExpired = sessionSecurityService.onSessionExpired(() => {
+      authService.logout();
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+      setSessionExpiredNotice(
+        'Your session expired due to inactivity. For your security and financial data protection, you have been automatically logged out.'
+      );
+    });
+
+    return () => {
+      unsubSecurity();
+      unsubExpired();
+    };
+  }, [isAuthenticated]);
+
   const handleLogout = () => {
+    sessionSecurityService.stopTracking();
     authService.logout();
     setIsAuthenticated(false);
     setCurrentUser(null);
+  };
+
+  const handleExtendSession = () => {
+    sessionSecurityService.extendSession();
   };
 
   const handleOpenReverse = (txn: Transaction) => {
@@ -140,7 +179,10 @@ function AppContent() {
   if (!isAuthenticated || !currentUser) {
     return (
       <LoginView
+        sessionExpiredNotice={sessionExpiredNotice}
+        onClearExpiredNotice={() => setSessionExpiredNotice(null)}
         onLoginSuccess={() => {
+          setSessionExpiredNotice(null);
           setIsAuthenticated(true);
           setCurrentUser(authService.getCurrentUser());
         }}
@@ -516,6 +558,14 @@ function AppContent() {
       <SupabaseSettingsModal
         isOpen={isSupabaseSettingsOpen}
         onClose={() => setIsSupabaseSettingsOpen(false)}
+      />
+
+      {/* 60-Second Security Timeout Pre-Expiration Warning Modal */}
+      <SessionWarningModal
+        isOpen={sessionSecurity.isWarningOpen}
+        remainingSeconds={sessionSecurity.remainingSeconds}
+        onExtendSession={handleExtendSession}
+        onLogoutNow={handleLogout}
       />
     </div>
   );

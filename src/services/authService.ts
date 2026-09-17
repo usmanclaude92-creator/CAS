@@ -21,8 +21,29 @@ const AUTH_SETTINGS_STORAGE_KEY = 'construction_auth_settings_v2';
 const AUTH_CURRENT_SESSION_KEY = 'construction_current_session_v2';
 const MASTER_IMPORT_AUDIT_KEY = 'construction_master_import_audits_v1';
 
+export const REAL_PRODUCTION_SUPERADMIN: UserProfile = {
+  id: 'usr-real-superadmin-artify',
+  email: 'admin@artifysols.com',
+  username: 'artify.admin',
+  fullName: 'Super Administrator',
+  mobile: '+968 9000 0001',
+  roleId: 'role-super-admin',
+  roleCode: 'super_admin',
+  roleName: 'Super Administrator',
+  status: 'active',
+  department: 'Executive Board',
+  employeeId: 'ARTIFY-001',
+  assignedProjectIds: [],
+  isAllProjects: true,
+  remarks: 'Primary Real Production Super Administrator for Artify Solutions. Full enterprise governance and isolated blank production database.',
+  isDemo: false, // Strictly REAL corporate user (isolated from demo sandbox)
+  lastLogin: '2026-09-17T11:00:00Z',
+  createdAt: '2026-01-01T00:00:00Z',
+};
+
 // Initial pre-seeded users representing all system roles and test scenarios
 const INITIAL_USERS: UserProfile[] = [
+  REAL_PRODUCTION_SUPERADMIN,
   {
     id: 'usr-super-admin',
     email: 'superadmin@construction.om',
@@ -208,16 +229,48 @@ class AuthService {
       const savedUsers = localStorage.getItem(AUTH_USERS_STORAGE_KEY);
       if (savedUsers) {
         const parsed: UserProfile[] = JSON.parse(savedUsers);
-        const demoIds = new Set(INITIAL_USERS.map((u) => u.id));
+        const demoIds = new Set(INITIAL_USERS.filter((u) => u.isDemo).map((u) => u.id));
         this.users = parsed.map((u) => {
+          if (u.email.toLowerCase() === 'admin@artifysols.com') {
+            return {
+              ...u,
+              ...REAL_PRODUCTION_SUPERADMIN,
+              isDemo: false,
+              roleCode: 'super_admin',
+              roleId: 'role-super-admin',
+              roleName: 'Super Administrator',
+              status: 'active',
+              isAllProjects: true,
+            };
+          }
           const isDemo = demoIds.has(u.id) || u.email.endsWith('@construction.om');
           return { ...u, isDemo: isDemo ? true : (u.isDemo ?? false) };
         });
       } else {
-        this.users = INITIAL_USERS.map((u) => ({ ...u, isDemo: true }));
+        this.users = INITIAL_USERS.map((u) => ({ ...u }));
       }
     } catch {
-      this.users = INITIAL_USERS.map((u) => ({ ...u, isDemo: true }));
+      this.users = INITIAL_USERS.map((u) => ({ ...u }));
+    }
+
+    // Ensure real production superadmin always exists, is active, and is not flagged as demo
+    const realSuperAdminIndex = this.users.findIndex(
+      (u) => u.email.toLowerCase() === 'admin@artifysols.com'
+    );
+    if (realSuperAdminIndex === -1) {
+      this.users.unshift({ ...REAL_PRODUCTION_SUPERADMIN });
+    } else {
+      this.users[realSuperAdminIndex] = {
+        ...this.users[realSuperAdminIndex],
+        ...REAL_PRODUCTION_SUPERADMIN,
+        email: 'admin@artifysols.com',
+        roleId: 'role-super-admin',
+        roleCode: 'super_admin',
+        roleName: 'Super Administrator',
+        status: 'active',
+        isDemo: false,
+        isAllProjects: true,
+      };
     }
 
     // 3. Workflow Settings
@@ -261,8 +314,11 @@ class AuthService {
       // ignore
     }
 
-    // Default to Super Administrator for seamless development preview
-    const defaultAdmin = this.users.find((u) => u.roleCode === 'super_admin' && u.status === 'active');
+    // Default to Real Production Super Administrator (admin@artifysols.com)
+    const realSuperAdmin = this.users.find(
+      (u) => u.email.toLowerCase() === 'admin@artifysols.com' && u.status === 'active'
+    );
+    const defaultAdmin = realSuperAdmin || this.users.find((u) => u.roleCode === 'super_admin' && u.status === 'active');
     this.currentUser = defaultAdmin || this.users[0];
     if (this.currentUser) {
       try {
@@ -484,6 +540,14 @@ class AuthService {
    */
   public getRealUsers(): UserProfile[] {
     return this.users.filter((u) => !u.isDemo);
+  }
+
+  /**
+   * Returns the primary real production superadmin profile
+   */
+  public getRealSuperAdmin(): UserProfile {
+    const found = this.users.find((u) => u.email.toLowerCase() === 'admin@artifysols.com');
+    return found || REAL_PRODUCTION_SUPERADMIN;
   }
 
   /**

@@ -23,10 +23,12 @@ import {
   Download,
   FileSpreadsheet,
   CheckCircle2,
+  Clock,
 } from 'lucide-react';
 import { NavView } from './Sidebar';
 import { authService } from '../services/authService';
 import { accountingService } from '../services/accountingService';
+import { sessionSecurityService } from '../services/sessionSecurityService';
 import { exportActiveView, ExportFormat, getActiveViewExportData } from '../services/exportService';
 import { formatOMR } from '../utils/formatters';
 import { ThemeToggle } from './ThemeToggle';
@@ -944,7 +946,34 @@ export const Header: React.FC<HeaderProps> = ({
                     Active &amp; Authenticated
                   </span>
                 </div>
+                <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+                  <span className="text-slate-400 dark:text-slate-500">Auto-Logout:</span>
+                  <span className="font-medium text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-amber-500" />
+                    <span>{sessionSecurityService.getTimeoutMinutes()}m idle</span>
+                    <span className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold">(60s alert)</span>
+                  </span>
+                </div>
               </div>
+
+              {/* Quick Trigger to Test 60s Warning Modal */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsUserMenuOpen(false);
+                  sessionSecurityService.simulateWarningCountdown(60);
+                }}
+                className="w-full px-3 py-1.5 rounded-xl text-left flex items-center justify-between text-amber-800 dark:text-amber-300 bg-amber-50/80 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-200/80 dark:border-amber-800/60 transition-colors text-xs font-semibold cursor-pointer"
+                title="Immediately triggers the 60-second pre-expiration security modal"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  Test 60s Warning Modal
+                </span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-200 dark:bg-amber-800/70 font-mono">
+                  60s
+                </span>
+              </button>
 
               {/* Quick Navigation to Settings if authorized */}
               {onNavigateView && (authService.hasPermission('settings.view') || authService.isSuperAdmin()) && (
