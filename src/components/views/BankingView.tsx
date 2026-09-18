@@ -27,6 +27,8 @@ import {
   isDateInRange,
 } from '../../utils/reportFilters';
 import { TreasuryAccountType } from '../../types';
+import { TableDensityToggle } from '../TableDensityToggle';
+import { useTableDensity } from '../../context/TableDensityContext';
 
 interface BankingViewProps {
   onOpenTransfer: () => void;
@@ -62,6 +64,8 @@ export const BankingView: React.FC<BankingViewProps> = ({
   const [activeTab, setActiveTab] = useState<'treasury_ledger' | 'transfers'>('treasury_ledger');
   const [isExportMenuOpen, setIsExportMenuOpen] = useState<boolean>(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  const { isCompact, cellPadding, headerPadding, fontSize } = useTableDensity();
 
   // Close export dropdown when clicking outside
   useEffect(() => {
@@ -523,7 +527,10 @@ export const BankingView: React.FC<BankingViewProps> = ({
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 mr-1">
+              <TableDensityToggle variant="segmented" />
+            </div>
             <span className="text-xs text-slate-500">Filter Account:</span>
             <select
               value={selectedAccountId}

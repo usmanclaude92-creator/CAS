@@ -32,6 +32,7 @@ import { sessionSecurityService } from '../services/sessionSecurityService';
 import { exportActiveView, ExportFormat, getActiveViewExportData } from '../services/exportService';
 import { formatOMR } from '../utils/formatters';
 import { ThemeToggle } from './ThemeToggle';
+import { TableDensityToggle } from './TableDensityToggle';
 import { HeaderNotifications } from './HeaderNotifications';
 import { UserProfile } from '../types/auth';
 
@@ -651,8 +652,11 @@ export const Header: React.FC<HeaderProps> = ({
         )}
       </div>
 
-      {/* Right controls: Theme Toggle, Export Data, Quick Transaction, User Switcher */}
+      {/* Right controls: Density Toggle, Theme Toggle, Export Data, Quick Transaction, User Switcher */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        {/* Table Row Spacing Density Toggle (Comfortable vs Compact) */}
+        <TableDensityToggle variant="header" />
+
         {/* Global Dark / Light Theme Toggle */}
         <ThemeToggle variant="simple" />
 

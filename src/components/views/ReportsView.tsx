@@ -31,6 +31,8 @@ import { exportToExcel, exportToCsv, exportMultiSheetExcel } from '../../utils/e
 import { toast } from '../../context/ToastContext';
 import { ArtifyLogo } from '../ArtifyLogo';
 import { TableExportButtons } from './TableExportButtons';
+import { TableDensityToggle } from '../TableDensityToggle';
+import { useTableDensity } from '../../context/TableDensityContext';
 import { PrintPreviewModal, PrintPreviewColumn } from '../modals/PrintPreviewModal';
 import {
   DatePreset,
@@ -54,6 +56,7 @@ type ReportType =
 
 export const ReportsView: React.FC = () => {
   const [selectedReport, setSelectedReport] = useState<ReportType>('profitability');
+  const { isCompact, cellPadding, headerPadding, fontSize } = useTableDensity();
 
   // -------------------------------------------------------------
   // GLOBAL QUICK FILTERS (Applicable across reports)
@@ -1382,24 +1385,33 @@ export const ReportsView: React.FC = () => {
             )}
           </div>
 
-          {/* Project Selector Quick Filter */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-700 flex items-center gap-1 whitespace-nowrap">
-              <Building2 className="w-3.5 h-3.5 text-indigo-600" />
-              Project:
-            </span>
-            <select
-              value={filterProjectId}
-              onChange={(e) => setFilterProjectId(e.target.value)}
-              className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white text-slate-800 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[240px]"
-            >
-              <option value="all">All Projects (Consolidated)</option>
-              {state.projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.code} - {p.name}
-                </option>
-              ))}
-            </select>
+          {/* Project Selector Quick Filter & Density Toggle */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-700 flex items-center gap-1 whitespace-nowrap">
+                <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+                Project:
+              </span>
+              <select
+                value={filterProjectId}
+                onChange={(e) => setFilterProjectId(e.target.value)}
+                className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white text-slate-800 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[240px]"
+              >
+                <option value="all">All Projects (Consolidated)</option>
+                {state.projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.code} - {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+              <span className="text-xs font-bold text-slate-700 whitespace-nowrap">
+                Row Spacing:
+              </span>
+              <TableDensityToggle variant="segmented" />
+            </div>
           </div>
         </div>
 
@@ -1510,6 +1522,7 @@ export const ReportsView: React.FC = () => {
                   count={filteredProfitabilities.length}
                   onExportCsv={() => handleExport('csv', 'profitability')}
                   onExportExcel={() => handleExport('excel', 'profitability')}
+                  showDensityToggle={true}
                 />
               </div>
             </div>
@@ -1692,6 +1705,7 @@ export const ReportsView: React.FC = () => {
                   tableName="Income Statement"
                   onExportCsv={() => handleExport('csv', 'income_statement')}
                   onExportExcel={() => handleExport('excel', 'income_statement')}
+                  showDensityToggle={true}
                 />
               </div>
             </div>
@@ -1828,6 +1842,7 @@ export const ReportsView: React.FC = () => {
                   tableName="Balance Sheet"
                   onExportCsv={() => handleExport('csv', 'balance_sheet')}
                   onExportExcel={() => handleExport('excel', 'balance_sheet')}
+                  showDensityToggle={true}
                 />
               </div>
             </div>
@@ -1970,6 +1985,7 @@ export const ReportsView: React.FC = () => {
                   tableName="Trial Balance"
                   onExportCsv={() => handleExport('csv', 'trial_balance')}
                   onExportExcel={() => handleExport('excel', 'trial_balance')}
+                  showDensityToggle={true}
                 />
               </div>
             </div>
@@ -2025,6 +2041,7 @@ export const ReportsView: React.FC = () => {
                 tableName="Cash Flow Statement"
                 onExportCsv={() => handleExport('csv', 'cash_flow')}
                 onExportExcel={() => handleExport('excel', 'cash_flow')}
+                showDensityToggle={true}
               />
             </div>
 
@@ -2100,6 +2117,7 @@ export const ReportsView: React.FC = () => {
                   count={filteredArAging.length}
                   onExportCsv={() => handleExport('csv', 'ar_aging')}
                   onExportExcel={() => handleExport('excel', 'ar_aging')}
+                  showDensityToggle={true}
                 />
               </div>
             </div>
@@ -2330,6 +2348,7 @@ export const ReportsView: React.FC = () => {
                   count={filteredApAging.length}
                   onExportCsv={() => handleExport('csv', 'ap_aging')}
                   onExportExcel={() => handleExport('excel', 'ap_aging')}
+                  showDensityToggle={true}
                 />
               </div>
             </div>
@@ -2585,6 +2604,7 @@ export const ReportsView: React.FC = () => {
                   count={journalTotals.count}
                   onExportCsv={() => handleExport('csv', 'general_journal')}
                   onExportExcel={() => handleExport('excel', 'general_journal')}
+                  showDensityToggle={true}
                 />
               </div>
             </div>

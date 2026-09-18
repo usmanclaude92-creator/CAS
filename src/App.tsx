@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
+import { TableDensityProvider } from './context/TableDensityContext';
 import { Sidebar, NavView } from './components/Sidebar';
 import { Header } from './components/Header';
 import { LoginView } from './components/auth/LoginView';
@@ -611,9 +612,11 @@ function AppContent() {
 export default function App() {
   return (
     <ThemeProvider>
-      <ToastProvider>
-        <AppContent />
-      </ToastProvider>
+      <TableDensityProvider>
+        <ToastProvider>
+          <AppContent />
+        </ToastProvider>
+      </TableDensityProvider>
     </ThemeProvider>
   );
 }
