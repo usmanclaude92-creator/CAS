@@ -410,14 +410,16 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
             )}
           </button>
 
-          <button
-            type="button"
-            onClick={onOpenSupabaseSettings}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 transition-colors cursor-pointer"
-          >
-            <Database className="w-3.5 h-3.5" />
-            <span>DB Config</span>
-          </button>
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={onOpenSupabaseSettings}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-700 transition-colors cursor-pointer"
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span>DB Config</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -1008,13 +1010,15 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
                   )}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={onOpenSupabaseSettings}
-                  className="px-3.5 py-2 text-xs font-semibold rounded-xl text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 cursor-pointer"
-                >
-                  Configure Supabase Keys
-                </button>
+                {isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={onOpenSupabaseSettings}
+                    className="px-3.5 py-2 text-xs font-semibold rounded-xl text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 cursor-pointer"
+                  >
+                    Configure Supabase Keys
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1055,21 +1059,23 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
                 </div>
               </div>
 
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm('Reset all demo entities to official standard seed data?')) {
-                      accountingService.resetToSeedData();
-                      toast.success('Seed Data Reloaded', 'Default construction entities and ledger restored.');
-                    }
-                  }}
-                  className="px-3.5 py-2 text-xs font-semibold rounded-xl text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 hover:bg-rose-100 cursor-pointer flex items-center gap-1.5"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  Reload Standard Seed Data
-                </button>
-              </div>
+              {isSuperAdmin && (
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm('Reset all demo entities to official standard seed data?')) {
+                        accountingService.resetToSeedData();
+                        toast.success('Seed Data Reloaded', 'Default construction entities and ledger restored.');
+                      }
+                    }}
+                    className="px-3.5 py-2 text-xs font-semibold rounded-xl text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 hover:bg-rose-100 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Reload Standard Seed Data
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

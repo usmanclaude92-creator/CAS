@@ -51,9 +51,29 @@ import { ShieldAlert, ArrowLeft } from 'lucide-react';
 function AppContent() {
   const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
   const [currentUser, setCurrentUser] = useState(authService.getCurrentUser());
-  const [activeView, setActiveView] = useState<NavView>('dashboard');
+  const [activeView, setActiveView] = useState<NavView>(() => {
+    try {
+      const saved = localStorage.getItem('construction_active_view');
+      if (saved) return saved as NavView;
+    } catch {
+      // ignore
+    }
+    return 'dashboard';
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(supabaseService.isConfigured());
+
+  const handleSelectView = (v: NavView) => {
+    setActiveView(v);
+    try {
+      localStorage.setItem('construction_active_view', v);
+    } catch {
+      // ignore
+    }
+    if (v !== 'projects') setSelectedProjectId(null);
+    if (v !== 'customers') setSelectedCustomerId(null);
+    if (v !== 'purchases') setSelectedVendorId(null);
+  };
 
   // Deep linking selections
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -144,6 +164,11 @@ function AppContent() {
     authService.logout();
     setIsAuthenticated(false);
     setCurrentUser(null);
+    try {
+      localStorage.removeItem('construction_active_view');
+    } catch {
+      // ignore
+    }
   };
 
   const handleExtendSession = () => {
@@ -237,12 +262,7 @@ function AppContent() {
       {/* Sidebar Navigation with dynamic RBAC filtering */}
       <Sidebar
         activeView={activeView}
-        onSelectView={(v) => {
-          setActiveView(v);
-          if (v !== 'projects') setSelectedProjectId(null);
-          if (v !== 'customers') setSelectedCustomerId(null);
-          if (v !== 'purchases') setSelectedVendorId(null);
-        }}
+        onSelectView={handleSelectView}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         isSupabaseConnected={isSupabaseConnected}
@@ -258,19 +278,19 @@ function AppContent() {
           selectedProjectId={selectedProjectId}
           selectedCustomerId={selectedCustomerId}
           selectedVendorId={selectedVendorId}
-          onNavigateView={(view) => setActiveView(view)}
+          onNavigateView={(view) => handleSelectView(view)}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           onSelectProject={(id) => {
             setSelectedProjectId(id);
-            setActiveView('projects');
+            handleSelectView('projects');
           }}
           onSelectCustomer={(id) => {
             setSelectedCustomerId(id);
-            setActiveView('customers');
+            handleSelectView('customers');
           }}
           onSelectVendor={(id) => {
             setSelectedVendorId(id);
-            setActiveView('purchases');
+            handleSelectView('purchases');
           }}
           onOpenMoneyIn={() => {
             setModalProjectId(undefined);
@@ -556,7 +576,7 @@ function AppContent() {
       />
 
       <SupabaseSettingsModal
-        isOpen={isSupabaseSettingsOpen}
+        isOpen={isSupabaseSettingsOpen && authService.isSuperAdmin()}
         onClose={() => setIsSupabaseSettingsOpen(false)}
       />
 

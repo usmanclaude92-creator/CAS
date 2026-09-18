@@ -54,6 +54,7 @@ export const MastersView: React.FC<MastersViewProps> = ({
 
   const state = accountingService.getState();
   const currentUser = authService.getCurrentUser();
+  const isSuperAdmin = authService.isSuperAdmin();
 
   // STRICT UI SECURITY REQUIREMENT:
   // Import buttons must NOT be shown to any user except Super Administrator!
@@ -71,6 +72,7 @@ export const MastersView: React.FC<MastersViewProps> = ({
   }, []);
 
   const handleResetToSeed = () => {
+    if (!isSuperAdmin) return;
     if (window.confirm('Reset all demo data and reload standard initial seed data?')) {
       accountingService.resetToSeedData();
     }
@@ -93,21 +95,23 @@ export const MastersView: React.FC<MastersViewProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onOpenSupabaseSettings}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-200 dark:border-emerald-800 cursor-pointer"
-          >
-            Supabase DB Config
-          </button>
-          <button
-            onClick={handleResetToSeed}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 cursor-pointer"
-          >
-            <RefreshCw className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-            Reload Standard Seed
-          </button>
-        </div>
+        {isSuperAdmin && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onOpenSupabaseSettings}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-200 dark:border-emerald-800 cursor-pointer"
+            >
+              Supabase DB Config
+            </button>
+            <button
+              onClick={handleResetToSeed}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+              Reload Standard Seed
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}

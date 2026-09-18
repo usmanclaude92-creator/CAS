@@ -300,13 +300,23 @@ class AuthService {
   }
 
   private initSession() {
-    // Default to unauthenticated: Login screen is the default landing screen
-    this.currentUser = null;
     try {
-      localStorage.removeItem(AUTH_CURRENT_SESSION_KEY);
-    } catch {
-      // ignore
+      const savedSessionUserId = localStorage.getItem(AUTH_CURRENT_SESSION_KEY);
+      if (savedSessionUserId) {
+        const existingUser = this.users.find(
+          (u) => u.id === savedSessionUserId && u.status === 'active'
+        );
+        if (existingUser) {
+          this.currentUser = existingUser;
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('[AuthService] Error restoring active session:', e);
     }
+
+    // Default to unauthenticated if no valid session found
+    this.currentUser = null;
   }
 
   private saveData() {

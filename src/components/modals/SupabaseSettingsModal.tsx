@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Database, CheckCircle, AlertCircle, Copy, Check, ExternalLink, RefreshCw } from 'lucide-react';
 import { supabaseClientManager } from '../../services/supabaseClient';
+import { authService } from '../../services/authService';
 
 interface SupabaseSettingsModalProps {
   isOpen: boolean;
@@ -15,7 +16,7 @@ export const SupabaseSettingsModal: React.FC<SupabaseSettingsModalProps> = ({ is
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
-  if (!isOpen) return null;
+  if (!isOpen || !authService.isSuperAdmin()) return null;
 
   const handleSaveAndTest = async (e: React.FormEvent) => {
     e.preventDefault();
