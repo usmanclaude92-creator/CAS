@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { ThemeToggle } from '../ThemeToggle';
-import { ArtifyLogo } from '../ArtifyLogo';
 import { DemoUsersModal } from '../modals/DemoUsersModal';
 import { UserProfile } from '../../types/auth';
 
@@ -123,11 +122,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col justify-between transition-colors duration-200">
       {/* Top Header Bar with Theme Toggle */}
-      <header className="p-4 sm:p-6 flex items-center justify-between max-w-7xl w-full mx-auto">
-        <div className="flex items-center gap-3">
-          <ArtifyLogo className="h-10 w-auto rounded-lg shadow-sm" />
-        </div>
-
+      <header className="p-4 sm:p-6 flex items-center justify-end max-w-7xl w-full mx-auto">
         {/* Visible Dark/Light Theme Toggle on Login Screen (Mandatory Requirement) */}
         <div className="flex items-center gap-2">
           <span className="hidden sm:inline text-[11px] text-slate-500 dark:text-slate-400">Appearance:</span>
@@ -176,41 +171,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
               <span>{errorMessage}</span>
             </div>
           )}
-
-          {/* Real Super Administrator Account Card */}
-          <div className="p-3 rounded-xl border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/70 dark:bg-emerald-950/30 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <ShieldCheck className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs font-bold text-emerald-950 dark:text-emerald-100">
-                    Real Super Administrator
-                  </span>
-                  <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded-md bg-emerald-200/70 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200">
-                    Blank Production DB
-                  </span>
-                </div>
-                <p className="text-[11px] text-emerald-700 dark:text-emerald-300 truncate">
-                  admin@artifysols.com (Unrestricted Enterprise Governance)
-                </p>
-              </div>
-            </div>
-            {email.toLowerCase() !== 'admin@artifysols.com' ? (
-              <button
-                type="button"
-                onClick={handleSelectRealAdmin}
-                className="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer shadow-xs transition-colors shrink-0"
-              >
-                Use Real Admin
-              </button>
-            ) : (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white shrink-0">
-                Selected
-              </span>
-            )}
-          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email Field */}
@@ -305,19 +265,12 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
           {/* Demo Users Quick Access - Grouped Under One Button */}
           <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center mb-3">
               <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                 Demo Users (Sandbox Database)
               </span>
-              <span className="text-[9px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
-                Isolated Demo
-              </span>
             </div>
-
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2.5 leading-relaxed">
-              Explore role permissions, approval limits, and site restrictions across predefined profiles.
-            </p>
 
             {/* The single button grouping all demo users */}
             <button
