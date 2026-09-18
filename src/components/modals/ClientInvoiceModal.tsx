@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { X, Upload, AlertCircle } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { uploadAttachmentFile } from '../../services/supabaseClient';
+import { notificationCenter } from '../../services/notificationCenter';
+import { formatOMR } from '../../utils/formatters';
 
 interface ClientInvoiceModalProps {
   isOpen: boolean;
@@ -100,6 +102,12 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
         attachmentName,
         remarks: remarks.trim() || undefined,
       });
+
+      notificationCenter.recordSaved(
+        invoiceType === 'IPC' ? 'Client Interim Certificate (IPC)' : 'Client Invoice',
+        invoiceNumber.trim(),
+        `Invoice of ${formatOMR(numericAmount)} committed to receivables.`
+      );
 
       onClose();
     } catch (err: any) {

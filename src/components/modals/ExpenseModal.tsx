@@ -5,6 +5,7 @@ import { uploadAttachmentFile } from '../../services/supabaseClient';
 import { TreasuryAccountType, ExpenseHead } from '../../types';
 import { formatOMR } from '../../utils/formatters';
 import { AddExpenseCategoryModal } from './AddExpenseCategoryModal';
+import { notificationCenter } from '../../services/notificationCenter';
 
 interface ExpenseModalProps {
   isOpen: boolean;
@@ -97,6 +98,12 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
         attachmentName,
         remarks: remarks.trim() || undefined,
       });
+
+      notificationCenter.recordSaved(
+        'Direct Expense Voucher',
+        documentRef.trim() || 'Expense Voucher',
+        `Disbursement of ${formatOMR(numericAmount)} posted against project cost.`
+      );
 
       onClose();
     } catch (err: any) {

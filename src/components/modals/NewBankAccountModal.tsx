@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
+import { notificationCenter } from '../../services/notificationCenter';
 
 interface NewBankAccountModalProps {
   isOpen: boolean;
@@ -36,6 +37,12 @@ export const NewBankAccountModal: React.FC<NewBankAccountModalProps> = ({ isOpen
         openingBalance: parseFloat(openingBalance) || 0,
         status: 'active',
       });
+
+      notificationCenter.recordSaved(
+        'Bank Account Master',
+        `${bankName.trim()} - ${accountNumber.trim()}`,
+        `Account added with opening balance OMR ${(parseFloat(openingBalance) || 0).toFixed(3)}.`
+      );
 
       onClose();
     } catch (err: any) {

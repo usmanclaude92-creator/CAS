@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
+import { notificationCenter } from '../../services/notificationCenter';
 
 interface NewProjectModalProps {
   isOpen: boolean;
@@ -55,6 +56,12 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({ isOpen, onClos
         status,
         remarks: remarks.trim() || undefined,
       });
+
+      notificationCenter.recordSaved(
+        'Project Master',
+        name.trim(),
+        `Project code ${code.trim()} registered with contract value OMR ${contractVal.toFixed(3)}.`
+      );
 
       onClose();
     } catch (err: any) {

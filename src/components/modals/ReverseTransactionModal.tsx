@@ -3,6 +3,7 @@ import { X, AlertTriangle } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { Transaction } from '../../types';
 import { formatOMR } from '../../utils/formatters';
+import { notificationCenter } from '../../services/notificationCenter';
 
 interface ReverseTransactionModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ export const ReverseTransactionModal: React.FC<ReverseTransactionModalProps> = (
     setIsSubmitting(true);
     try {
       accountingService.reverseTransaction(transaction.id, reason.trim());
+      notificationCenter.recordReversed(transaction.documentRef, reason.trim());
       onClose();
     } catch (err: any) {
       setError(err?.message || 'Failed to reverse transaction.');

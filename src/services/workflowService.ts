@@ -2,6 +2,7 @@ import { Transaction, TransactionType } from '../types';
 import { accountingService } from './accountingService';
 import { authService } from './authService';
 import { notificationService } from './notificationService';
+import { notificationCenter } from './notificationCenter';
 
 export interface WorkflowActionResult {
   success: boolean;
@@ -87,6 +88,7 @@ class WorkflowService {
 
     // Verify project access
     if (!authService.canAccessProject(txn.projectId)) {
+      notificationCenter.unauthorized('Project Scope Access', 'Access denied: You are not authorized for this project.');
       return { success: false, error: 'Access denied: You are not authorized for this project.' };
     }
 
@@ -94,6 +96,7 @@ class WorkflowService {
     const creatorId = txn.createdBy || txn.submittedBy;
     const check = authService.canApproveTransaction(txn.amount, creatorId);
     if (!check.allowed) {
+      notificationCenter.unauthorized('Approval Policy Violation', check.reason || 'Approval denied due to security policy.');
       return { success: false, error: check.reason || 'Approval denied due to security policy.' };
     }
 
@@ -120,6 +123,7 @@ class WorkflowService {
 
     // Alert status update
     notificationService.notifyStatusChange(txn, 'submitted', 'approved', currentUser.fullName);
+    notificationCenter.workflowAction('approved', txn.documentRef, `Approved by ${currentUser.fullName}. Ready to post.`);
 
     return {
       success: true,
@@ -154,6 +158,7 @@ class WorkflowService {
 
     // Check reject permission
     if (!authService.hasPermission('approvals.reject') && !authService.isSuperAdmin() && !authService.isAccountsManager()) {
+      notificationCenter.unauthorized('Privilege Check', 'Missing required privilege: approvals.reject');
       return { success: false, error: 'Missing required privilege: approvals.reject' };
     }
 
@@ -176,6 +181,7 @@ class WorkflowService {
 
     // Alert rejection status update
     notificationService.notifyStatusChange(txn, 'submitted', 'rejected', currentUser.fullName, reason.trim());
+    notificationCenter.workflowAction('rejected', txn.documentRef, `Rejected by ${currentUser.fullName}. Reason: ${reason.trim()}`);
 
     return {
       success: true,
@@ -190,6 +196,7 @@ class WorkflowService {
   public postTransaction(transactionId: string, transactionType: TransactionType): WorkflowActionResult {
     const currentUser = authService.getCurrentUser();
     if (!currentUser || currentUser.status !== 'active') {
+      notificationCenter.unauthorized('Ledger Posting', 'Active user session required.');
       return { success: false, error: 'Unauthorized: Active user session required.' };
     }
 
@@ -224,6 +231,7 @@ class WorkflowService {
 
     // Alert posting status update
     notificationService.notifyStatusChange(txn, 'approved', 'posted', currentUser.fullName);
+    notificationCenter.workflowAction('posted', txn.documentRef, `Committed to General Ledger by ${currentUser.fullName}.`);
 
     return {
       success: true,

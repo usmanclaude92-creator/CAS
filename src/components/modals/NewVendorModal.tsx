@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
+import { notificationCenter } from '../../services/notificationCenter';
 
 interface NewVendorModalProps {
   isOpen: boolean;
@@ -41,6 +42,12 @@ export const NewVendorModal: React.FC<NewVendorModalProps> = ({ isOpen, onClose 
         status: 'active',
         remarks: remarks.trim() || undefined,
       });
+
+      notificationCenter.recordSaved(
+        'Vendor Master',
+        name.trim(),
+        `Vendor code ${code.trim()} registered with opening balance OMR ${(parseFloat(openingBalance) || 0).toFixed(3)}.`
+      );
 
       onClose();
     } catch (err: any) {

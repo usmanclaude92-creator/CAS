@@ -1507,6 +1507,46 @@ class AccountingService {
     return bank;
   }
 
+  public createCashAccount(data: Omit<CashAccount, 'id' | 'currentBalance' | 'createdAt'>): CashAccount {
+    if (!data.accountName?.trim()) throw new Error('Cash Account Name is required.');
+
+    const cash: CashAccount = {
+      id: generateUniqueId('cash'),
+      accountName: data.accountName.trim(),
+      openingBalance: Number(data.openingBalance) || 0,
+      currentBalance: Number(data.openingBalance) || 0,
+      openingDate: data.openingDate || new Date().toISOString().split('T')[0],
+      status: data.status || 'active',
+      remarks: data.remarks?.trim() || undefined,
+      createdAt: new Date().toISOString(),
+    };
+
+    this.state.cashAccounts.push(cash);
+    this.addAuditLog('CREATE_CASH_ACCOUNT', 'Banking & Treasury', `Created Cash in Hand account "${cash.accountName}"`, 'Cash in Hand', cash.id);
+    this.saveState();
+    return cash;
+  }
+
+  public createPettyCashAccount(data: Omit<PettyCashAccount, 'id' | 'currentBalance' | 'createdAt'>): PettyCashAccount {
+    if (!data.accountName?.trim()) throw new Error('Petty Cash Account Name is required.');
+
+    const petty: PettyCashAccount = {
+      id: generateUniqueId('petty'),
+      accountName: data.accountName.trim(),
+      openingBalance: Number(data.openingBalance) || 0,
+      currentBalance: Number(data.openingBalance) || 0,
+      openingDate: data.openingDate || new Date().toISOString().split('T')[0],
+      status: data.status || 'active',
+      remarks: data.remarks?.trim() || undefined,
+      createdAt: new Date().toISOString(),
+    };
+
+    this.state.pettyCashAccounts.push(petty);
+    this.addAuditLog('CREATE_PETTY_CASH_ACCOUNT', 'Banking & Treasury', `Created Petty Cash account "${petty.accountName}"`, 'Petty Cash', petty.id);
+    this.saveState();
+    return petty;
+  }
+
   public createExpenseHead(data: Omit<ExpenseHead, 'id'>): ExpenseHead {
     if (!data.name?.trim()) throw new Error('Expense category name is required.');
     const trimmedName = data.name.trim();

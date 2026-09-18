@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { Sidebar, NavView } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -40,6 +40,8 @@ import { NewVendorModal } from './components/modals/NewVendorModal';
 import { NewBankAccountModal } from './components/modals/NewBankAccountModal';
 import { SupabaseSettingsModal } from './components/modals/SupabaseSettingsModal';
 import { SessionWarningModal } from './components/modals/SessionWarningModal';
+import { ToastProvider } from './context/ToastContext';
+import { notificationCenter } from './services/notificationCenter';
 
 import { accountingService } from './services/accountingService';
 import { authService } from './services/authService';
@@ -63,7 +65,15 @@ function AppContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(supabaseService.isConfigured());
 
+  const prevWarningOpenRef = useRef(false);
+
   const handleSelectView = (v: NavView) => {
+    if (!verifyViewPermission(v)) {
+      notificationCenter.unauthorized(
+        `Navigation to "${v.replace(/_/g, ' ').toUpperCase()}"`,
+        `Your current role (${currentUser?.roleName || 'User'}) does not have authorization to access the ${v} module.`
+      );
+    }
     setActiveView(v);
     try {
       localStorage.setItem('construction_active_view', v);
@@ -142,9 +152,14 @@ function AppContent() {
 
     const unsubSecurity = sessionSecurityService.subscribe((state) => {
       setSessionSecurity(state);
+      if (state.isWarningOpen && !prevWarningOpenRef.current) {
+        notificationCenter.sessionWarning(state.remainingSeconds, handleExtendSession);
+      }
+      prevWarningOpenRef.current = state.isWarningOpen;
     });
 
     const unsubExpired = sessionSecurityService.onSessionExpired(() => {
+      notificationCenter.sessionExpired();
       authService.logout();
       setIsAuthenticated(false);
       setCurrentUser(null);
@@ -173,6 +188,8 @@ function AppContent() {
 
   const handleExtendSession = () => {
     sessionSecurityService.extendSession();
+    prevWarningOpenRef.current = false;
+    notificationCenter.sessionExtended();
   };
 
   const handleOpenReverse = (txn: Transaction) => {
@@ -594,7 +611,9 @@ function AppContent() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
     </ThemeProvider>
   );
 }

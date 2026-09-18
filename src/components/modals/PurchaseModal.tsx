@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { X, Upload, AlertCircle } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { uploadAttachmentFile } from '../../services/supabaseClient';
+import { notificationCenter } from '../../services/notificationCenter';
+import { formatOMR } from '../../utils/formatters';
 
 interface PurchaseModalProps {
   isOpen: boolean;
@@ -83,6 +85,12 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
         attachmentName,
         remarks: remarks.trim() || undefined,
       });
+
+      notificationCenter.recordSaved(
+        'Purchase Invoice (Bill)',
+        purchaseInvoiceNumber.trim(),
+        `Vendor bill of ${formatOMR(numericAmount)} committed to payables.`
+      );
 
       onClose();
     } catch (err: any) {

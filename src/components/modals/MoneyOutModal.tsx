@@ -4,6 +4,7 @@ import { accountingService } from '../../services/accountingService';
 import { uploadAttachmentFile } from '../../services/supabaseClient';
 import { TreasuryAccountType } from '../../types';
 import { formatOMR } from '../../utils/formatters';
+import { notificationCenter } from '../../services/notificationCenter';
 
 interface MoneyOutModalProps {
   isOpen: boolean;
@@ -118,6 +119,12 @@ export const MoneyOutModal: React.FC<MoneyOutModalProps> = ({ isOpen, onClose, p
         attachmentName,
         remarks: remarks.trim() || undefined,
       });
+
+      notificationCenter.recordSaved(
+        'Payment Voucher (Money Out)',
+        documentRef.trim() || 'Payment Voucher',
+        `Disbursement of ${formatOMR(numericAmount)} posted to treasury & payables.`
+      );
 
       onClose();
     } catch (err: any) {

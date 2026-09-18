@@ -4,6 +4,7 @@ import { accountingService } from '../../services/accountingService';
 import { uploadAttachmentFile } from '../../services/supabaseClient';
 import { TreasuryAccountType } from '../../types';
 import { formatOMR } from '../../utils/formatters';
+import { notificationCenter } from '../../services/notificationCenter';
 
 interface MoneyInModalProps {
   isOpen: boolean;
@@ -120,6 +121,12 @@ export const MoneyInModal: React.FC<MoneyInModalProps> = ({ isOpen, onClose, pre
         attachmentName,
         remarks: remarks.trim() || undefined,
       });
+
+      notificationCenter.recordSaved(
+        'Receipt Voucher (Money In)',
+        documentRef.trim() || 'Receipt Voucher',
+        `Receipt of ${formatOMR(numericAmount)} posted to treasury & receivables.`
+      );
 
       onClose();
     } catch (err: any) {

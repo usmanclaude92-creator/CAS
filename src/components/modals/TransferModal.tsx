@@ -4,6 +4,7 @@ import { accountingService } from '../../services/accountingService';
 import { uploadAttachmentFile } from '../../services/supabaseClient';
 import { TreasuryAccountType } from '../../types';
 import { formatOMR } from '../../utils/formatters';
+import { notificationCenter } from '../../services/notificationCenter';
 
 interface TransferModalProps {
   isOpen: boolean;
@@ -81,6 +82,12 @@ export const TransferModal: React.FC<TransferModalProps> = ({ isOpen, onClose })
         attachmentName,
         remarks: remarks.trim() || undefined,
       });
+
+      notificationCenter.recordSaved(
+        'Treasury Fund Transfer',
+        documentRef.trim() || 'Fund Transfer',
+        `Internal transfer of ${formatOMR(numericAmount)} processed between treasury accounts.`
+      );
 
       onClose();
     } catch (err: any) {
