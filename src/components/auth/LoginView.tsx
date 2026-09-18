@@ -328,6 +328,27 @@ export const LoginView: React.FC<LoginViewProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Developer Attribution */}
+        <div className="text-center text-xs text-slate-500 dark:text-slate-400 pt-1 space-y-1">
+          <p>
+            This Software is designed and developed by{' '}
+            <strong className="font-bold text-black dark:text-white">
+              Artify Solutions
+            </strong>.
+          </p>
+          <p>
+            Visit{' '}
+            <a
+              href="https://artifysols.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="italic text-blue-600 dark:text-blue-400 hover:underline inline-block font-medium"
+            >
+              www.artifysols.com
+            </a>
+          </p>
+        </div>
         </div>
       </main>
 
