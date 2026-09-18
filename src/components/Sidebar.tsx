@@ -15,9 +15,8 @@ import {
   Clock,
   UserCheck,
   Shield,
-  Sliders,
+  Settings,
   FileSpreadsheet,
-  LogOut,
   BarChart3,
 } from 'lucide-react';
 import { authService } from '../services/authService';
@@ -69,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     icon: React.FC<{ className?: string }>;
     permission?: string;
     superAdminOnly?: boolean;
-    section?: 'main' | 'masters' | 'system';
+    section?: 'main' | 'masters' | 'audit';
     badge?: string;
   }[] = [
     { id: 'dashboard', label: 'Executive Dashboard', icon: LayoutDashboard, permission: 'dashboard.view', section: 'main' },
@@ -81,8 +80,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'expenses', label: 'Direct Site Expenses', icon: Coins, permission: 'expenses.view', section: 'main' },
     { id: 'reports', label: 'Financial Reports', icon: FileBarChart, permission: 'reports.view', section: 'main' },
     { id: 'masters', label: 'Business Masters', icon: Layers, permission: 'settings.view', section: 'masters' },
-    { id: 'system_config', label: 'System Configuration', icon: Sliders, permission: 'settings.view', section: 'system' },
-    { id: 'audit', label: 'Immutable Audit Log', icon: ShieldAlert, permission: 'audit.view', section: 'system' },
+    { id: 'audit', label: 'Immutable Audit Log', icon: ShieldAlert, permission: 'audit.view', section: 'audit' },
   ];
 
   // Filter based on user permissions
@@ -91,6 +89,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (!item.permission) return true;
     return authService.hasPermission(item.permission);
   });
+
+  const canAccessSystemConfig = isSuperAdmin || authService.hasPermission('settings.view');
 
   return (
     <>
@@ -140,9 +140,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     Master Data
                   </div>
                 )}
-                {isNewSection && item.section === 'system' && (
+                {isNewSection && item.section === 'audit' && (
                   <div className="pt-3 pb-1 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Administration &amp; Setup
+                    Audit &amp; Authentication
                   </div>
                 )}
                 <button
@@ -167,16 +167,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </nav>
 
-        {/* Footer: Logout */}
-        <div className="p-3 border-t border-slate-800">
-          <button
-            onClick={onLogout}
-            className="w-full px-3 py-2 rounded-lg text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/50 border border-transparent hover:border-rose-900 flex items-center justify-center gap-2 transition-colors cursor-pointer"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Sign Out</span>
-          </button>
-        </div>
+        {/* Footer: System Configuration (Replacing Sign Out) */}
+        {canAccessSystemConfig && (
+          <div className="p-3 border-t border-slate-800">
+            <button
+              onClick={() => {
+                onSelectView('system_config');
+                onClose();
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                activeView === 'system_config'
+                  ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-2.5 truncate">
+                <Settings className={`w-4 h-4 shrink-0 ${activeView === 'system_config' ? 'text-white' : 'text-slate-400'}`} />
+                <span className="truncate">System Configuration</span>
+              </div>
+              {activeView === 'system_config' && <ChevronRight className="w-3.5 h-3.5 text-blue-200 shrink-0" />}
+            </button>
+          </div>
+        )}
       </aside>
     </>
   );

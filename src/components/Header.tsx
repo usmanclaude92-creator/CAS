@@ -975,21 +975,6 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               </button>
 
-              {/* Quick Navigation to Settings if authorized */}
-              {onNavigateView && (authService.hasPermission('settings.view') || authService.isSuperAdmin()) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsUserMenuOpen(false);
-                    onNavigateView('system_config');
-                  }}
-                  className="w-full px-3 py-2 rounded-xl text-left flex items-center justify-between text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                >
-                  <span className="font-medium">System Configuration &amp; Directory</span>
-                  <ChevronDown className="w-3.5 h-3.5 -rotate-90 text-slate-400" />
-                </button>
-              )}
-
               {/* Log Out Button */}
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
