@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   FileSpreadsheet,
   TrendingUp,
@@ -23,6 +23,7 @@ import {
   Printer,
   FileText,
   FolderDown,
+  Eye,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { formatOMR, formatPercent, addMoney } from '../../utils/formatters';
@@ -30,6 +31,7 @@ import { exportToExcel, exportToCsv, exportMultiSheetExcel } from '../../utils/e
 import { toast } from '../../context/ToastContext';
 import { ArtifyLogo } from '../ArtifyLogo';
 import { TableExportButtons } from './TableExportButtons';
+import { PrintPreviewModal, PrintPreviewColumn } from '../modals/PrintPreviewModal';
 import {
   DatePreset,
   getDateRangeFromPreset,
@@ -105,12 +107,53 @@ export const ReportsView: React.FC = () => {
   const [journalEntityTrace, setJournalEntityTrace] = useState<'all' | 'project' | 'customer' | 'vendor' | 'internal'>('all');
   const [journalSearch, setJournalSearch] = useState<string>('');
 
+  // Multi-Record Selection States for Combined PDF Printing
+  const [selectedJournalIds, setSelectedJournalIds] = useState<Set<string>>(new Set());
+  const [isJournalPrintSelectedOnly, setIsJournalPrintSelectedOnly] = useState<boolean>(false);
+
+  const [selectedArIds, setSelectedArIds] = useState<Set<string>>(new Set());
+  const [isArPrintSelectedOnly, setIsArPrintSelectedOnly] = useState<boolean>(false);
+
+  const [selectedApIds, setSelectedApIds] = useState<Set<string>>(new Set());
+  const [isApPrintSelectedOnly, setIsApPrintSelectedOnly] = useState<boolean>(false);
+
+  const [printTimestamp, setPrintTimestamp] = useState<string>('');
+  const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState<boolean>(false);
+  const [previewSelectedOnly, setPreviewSelectedOnly] = useState<boolean>(false);
+
+  const getFormattedTimestamp = () => {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-GB', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+    const timeStr = now.toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    });
+    return `${dateStr} ${timeStr}`;
+  };
+
+  useEffect(() => {
+    const handleAfterPrint = () => {
+      setIsJournalPrintSelectedOnly(false);
+      setIsArPrintSelectedOnly(false);
+      setIsApPrintSelectedOnly(false);
+    };
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => window.removeEventListener('afterprint', handleAfterPrint);
+  }, []);
+
   // Reset all filters
   const handleResetFilters = () => {
     setDatePreset('all');
     setCustomStartDate('');
     setCustomEndDate('');
-    setFilterProjectId('all');
+    filterProjectId !== 'all' && setFilterProjectId('all');
     setProfitMarginFilter('all');
     setProfitSearch('');
     setProfitSort('profit_desc');
@@ -132,6 +175,9 @@ export const ReportsView: React.FC = () => {
     setJournalStatus('all');
     setJournalEntityTrace('all');
     setJournalSearch('');
+    setSelectedJournalIds(new Set());
+    setSelectedArIds(new Set());
+    setSelectedApIds(new Set());
   };
 
   const isAnyFilterActive =
@@ -704,9 +750,453 @@ export const ReportsView: React.FC = () => {
     );
   };
 
-  const handlePrint = () => {
-    window.print();
+  // -------------------------------------------------------------
+  // SELECTION HELPERS & ACTIONS FOR MULTI-RECORD PDF PRINTING
+  // -------------------------------------------------------------
+  const selectedJournalSum = useMemo(() => {
+    return filteredJournalEntries
+      .filter((je) => selectedJournalIds.has(je.id))
+      .reduce((sum, je) => addMoney(sum, je.amount), 0);
+  }, [filteredJournalEntries, selectedJournalIds]);
+
+  const currentSelectionCount = useMemo(() => {
+    if (selectedReport === 'general_journal') return selectedJournalIds.size;
+    if (selectedReport === 'ar_aging') return selectedArIds.size;
+    if (selectedReport === 'ap_aging') return selectedApIds.size;
+    return 0;
+  }, [selectedReport, selectedJournalIds.size, selectedArIds.size, selectedApIds.size]);
+
+  // Journal selection helpers
+  const handleToggleJournalSelect = (id: string) => {
+    setSelectedJournalIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
+
+  const isAllJournalSelected =
+    filteredJournalEntries.length > 0 &&
+    filteredJournalEntries.every((je) => selectedJournalIds.has(je.id));
+
+  const handleSelectAllJournal = () => {
+    if (isAllJournalSelected) {
+      setSelectedJournalIds(new Set());
+    } else {
+      setSelectedJournalIds(new Set(filteredJournalEntries.map((je) => je.id)));
+    }
+  };
+
+  // AR selection helpers
+  const handleToggleArSelect = (id: string) => {
+    setSelectedArIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const isAllArSelected =
+    filteredArAging.length > 0 && filteredArAging.every((inv) => selectedArIds.has(inv.id));
+
+  const handleSelectAllAr = () => {
+    if (isAllArSelected) {
+      setSelectedArIds(new Set());
+    } else {
+      setSelectedArIds(new Set(filteredArAging.map((inv) => inv.id)));
+    }
+  };
+
+  // AP selection helpers
+  const handleToggleApSelect = (id: string) => {
+    setSelectedApIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const isAllApSelected =
+    filteredApAging.length > 0 && filteredApAging.every((p) => selectedApIds.has(p.id));
+
+  const handleSelectAllAp = () => {
+    if (isAllApSelected) {
+      setSelectedApIds(new Set());
+    } else {
+      setSelectedApIds(new Set(filteredApAging.map((p) => p.id)));
+    }
+  };
+
+  const handlePrint = (selectedOnly: boolean = false) => {
+    setPrintTimestamp(getFormattedTimestamp());
+    if (selectedReport === 'general_journal' && selectedOnly && selectedJournalIds.size > 0) {
+      setIsJournalPrintSelectedOnly(true);
+    } else if (selectedReport === 'ar_aging' && selectedOnly && selectedArIds.size > 0) {
+      setIsArPrintSelectedOnly(true);
+    } else if (selectedReport === 'ap_aging' && selectedOnly && selectedApIds.size > 0) {
+      setIsApPrintSelectedOnly(true);
+    } else {
+      setIsJournalPrintSelectedOnly(false);
+      setIsArPrintSelectedOnly(false);
+      setIsApPrintSelectedOnly(false);
+    }
+    setTimeout(() => {
+      window.print();
+    }, 60);
+  };
+
+  const handleOpenPrintPreview = (selectedOnly: boolean = false) => {
+    setPrintTimestamp(getFormattedTimestamp());
+    setPreviewSelectedOnly(selectedOnly);
+    setIsPrintPreviewOpen(true);
+  };
+
+  const handleConfirmPrintFromModal = () => {
+    setIsPrintPreviewOpen(false);
+    handlePrint(previewSelectedOnly);
+  };
+
+  // -------------------------------------------------------------
+  // PRINT PREVIEW CONFIGURATION BY REPORT TYPE
+  // -------------------------------------------------------------
+  const journalEntriesForPreview = useMemo(() => {
+    return previewSelectedOnly && selectedJournalIds.size > 0
+      ? filteredJournalEntries.filter((je) => selectedJournalIds.has(je.id))
+      : filteredJournalEntries;
+  }, [previewSelectedOnly, selectedJournalIds, filteredJournalEntries]);
+
+  const arAgingForPreview = useMemo(() => {
+    return previewSelectedOnly && selectedArIds.size > 0
+      ? filteredArAging.filter((inv) => selectedArIds.has(inv.id))
+      : filteredArAging;
+  }, [previewSelectedOnly, selectedArIds, filteredArAging]);
+
+  const apAgingForPreview = useMemo(() => {
+    return previewSelectedOnly && selectedApIds.size > 0
+      ? filteredApAging.filter((p) => selectedApIds.has(p.id))
+      : filteredApAging;
+  }, [previewSelectedOnly, selectedApIds, filteredApAging]);
+
+  const journalPreviewColumns: PrintPreviewColumn<any>[] = [
+    { header: 'Entry #', accessor: (je) => je.entryNumber, isMono: true, width: 'w-24' },
+    { header: 'Date', accessor: (je) => je.date, isMono: true, width: 'w-24' },
+    { header: 'Source Type', accessor: (je) => je.sourceType, width: 'w-28' },
+    { header: 'Debit Account', accessor: (je) => je.debitAccount },
+    { header: 'Credit Account', accessor: (je) => je.creditAccount },
+    {
+      header: 'Amount (OMR)',
+      accessor: (je) => <span className="font-bold text-slate-900">{formatOMR(je.amount)}</span>,
+      align: 'right',
+      isMono: true,
+      width: 'w-28',
+    },
+    {
+      header: 'Status',
+      accessor: (je) => (
+        <span
+          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
+            je.status === 'POSTED'
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              : 'bg-slate-100 text-slate-600 border-slate-200'
+          }`}
+        >
+          {je.status.toUpperCase()}
+        </span>
+      ),
+      align: 'center',
+      width: 'w-20',
+    },
+  ];
+
+  const arPreviewColumns: PrintPreviewColumn<any>[] = [
+    { header: 'Invoice #', accessor: (inv) => inv.invoiceNumber, isMono: true, width: 'w-24' },
+    { header: 'Date', accessor: (inv) => inv.date, isMono: true, width: 'w-24' },
+    {
+      header: 'Customer',
+      accessor: (inv) => <span className="font-semibold text-slate-800">{inv.customerName}</span>,
+    },
+    { header: 'Project', accessor: (inv) => inv.projectName },
+    {
+      header: 'Invoiced (OMR)',
+      accessor: (inv) => formatOMR(inv.amount),
+      align: 'right',
+      isMono: true,
+    },
+    {
+      header: 'Received (OMR)',
+      accessor: (inv) => <span className="text-emerald-700">{formatOMR(inv.receivedAmount)}</span>,
+      align: 'right',
+      isMono: true,
+    },
+    {
+      header: 'Outstanding (OMR)',
+      accessor: (inv) => (
+        <span className="font-bold text-blue-700">{formatOMR(inv.outstandingAmount)}</span>
+      ),
+      align: 'right',
+      isMono: true,
+    },
+    {
+      header: 'Aging Bracket',
+      accessor: (inv) => (
+        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${inv.badgeClass}`}>
+          {inv.bracketLabel}
+        </span>
+      ),
+      align: 'center',
+      width: 'w-28',
+    },
+  ];
+
+  const apPreviewColumns: PrintPreviewColumn<any>[] = [
+    { header: 'Bill #', accessor: (p) => p.purchaseInvoiceNumber, isMono: true, width: 'w-24' },
+    { header: 'Date', accessor: (p) => p.date, isMono: true, width: 'w-24' },
+    {
+      header: 'Vendor',
+      accessor: (p) => <span className="font-semibold text-slate-800">{p.vendorName}</span>,
+    },
+    { header: 'Project', accessor: (p) => p.projectName },
+    {
+      header: 'Category',
+      accessor: (p) => (
+        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700">
+          {p.purchaseCategory || 'General'}
+        </span>
+      ),
+    },
+    {
+      header: 'Bill Amount (OMR)',
+      accessor: (p) => formatOMR(p.amount),
+      align: 'right',
+      isMono: true,
+    },
+    {
+      header: 'Settled (OMR)',
+      accessor: (p) => <span className="text-emerald-700">{formatOMR(p.paidAmount)}</span>,
+      align: 'right',
+      isMono: true,
+    },
+    {
+      header: 'Outstanding (OMR)',
+      accessor: (p) => (
+        <span className="font-bold text-amber-700">{formatOMR(p.outstandingAmount)}</span>
+      ),
+      align: 'right',
+      isMono: true,
+    },
+    {
+      header: 'Aging Bracket',
+      accessor: (p) => (
+        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${p.badgeClass}`}>
+          {p.bracketLabel}
+        </span>
+      ),
+      align: 'center',
+      width: 'w-28',
+    },
+  ];
+
+  const profitabilityPreviewColumns: PrintPreviewColumn<any>[] = [
+    {
+      header: 'Project Code & Name',
+      accessor: (p) => `${p.projectCode} - ${p.projectName}`,
+      width: 'w-44',
+    },
+    { header: 'Customer', accessor: (p) => p.customerName },
+    {
+      header: 'Contract (OMR)',
+      accessor: (p) => formatOMR(p.contractValue),
+      align: 'right',
+      isMono: true,
+    },
+    {
+      header: 'Invoiced (OMR)',
+      accessor: (p) => formatOMR(p.totalInvoiced),
+      align: 'right',
+      isMono: true,
+    },
+    {
+      header: 'Cost (OMR)',
+      accessor: (p) => formatOMR(p.totalProjectCost),
+      align: 'right',
+      isMono: true,
+    },
+    {
+      header: 'Gross Profit (OMR)',
+      accessor: (p) => <span className="font-bold">{formatOMR(p.grossProfit)}</span>,
+      align: 'right',
+      isMono: true,
+    },
+    {
+      header: 'Margin',
+      accessor: (p) => formatPercent(p.profitMarginPercent),
+      align: 'right',
+      isMono: true,
+    },
+  ];
+
+  const journalPreviewSummary = (
+    <tr className="bg-slate-100 font-bold border-t-2 border-t-slate-800 border-b-4 border-b-double border-b-slate-900">
+      <td colSpan={5} className="py-2.5 px-3 uppercase tracking-wider text-slate-900 text-right">
+        Total Amount ({journalEntriesForPreview.length} records):
+      </td>
+      <td className="py-2.5 px-3 text-right font-mono text-slate-900 font-extrabold">
+        {formatOMR(journalEntriesForPreview.reduce((sum, je) => addMoney(sum, je.amount), 0))}
+      </td>
+      <td></td>
+    </tr>
+  );
+
+  const arPreviewSummary = (() => {
+    const totAmt = arAgingForPreview.reduce((s, r) => addMoney(s, r.amount), 0);
+    const totRcv = arAgingForPreview.reduce((s, r) => addMoney(s, r.receivedAmount), 0);
+    const totOut = arAgingForPreview.reduce((s, r) => addMoney(s, r.outstandingAmount), 0);
+    return (
+      <tr className="bg-slate-100 font-bold border-t-2 border-t-slate-800 border-b-4 border-b-double border-b-slate-900">
+        <td colSpan={4} className="py-2.5 px-3 uppercase tracking-wider text-slate-900 text-right">
+          Totals ({arAgingForPreview.length} records):
+        </td>
+        <td className="py-2.5 px-3 text-right font-mono text-slate-900 font-bold">
+          {formatOMR(totAmt)}
+        </td>
+        <td className="py-2.5 px-3 text-right font-mono text-emerald-700 font-bold">
+          {formatOMR(totRcv)}
+        </td>
+        <td className="py-2.5 px-3 text-right font-mono text-blue-700 font-extrabold">
+          {formatOMR(totOut)}
+        </td>
+        <td></td>
+      </tr>
+    );
+  })();
+
+  const apPreviewSummary = (() => {
+    const totAmt = apAgingForPreview.reduce((s, r) => addMoney(s, r.amount), 0);
+    const totPaid = apAgingForPreview.reduce((s, r) => addMoney(s, r.paidAmount), 0);
+    const totOut = apAgingForPreview.reduce((s, r) => addMoney(s, r.outstandingAmount), 0);
+    return (
+      <tr className="bg-slate-100 font-bold border-t-2 border-t-slate-800 border-b-4 border-b-double border-b-slate-900">
+        <td colSpan={5} className="py-2.5 px-3 uppercase tracking-wider text-slate-900 text-right">
+          Totals ({apAgingForPreview.length} records):
+        </td>
+        <td className="py-2.5 px-3 text-right font-mono text-slate-900 font-bold">
+          {formatOMR(totAmt)}
+        </td>
+        <td className="py-2.5 px-3 text-right font-mono text-emerald-700 font-bold">
+          {formatOMR(totPaid)}
+        </td>
+        <td className="py-2.5 px-3 text-right font-mono text-amber-700 font-extrabold">
+          {formatOMR(totOut)}
+        </td>
+        <td></td>
+      </tr>
+    );
+  })();
+
+  const profitPreviewSummary = (
+    <tr className="bg-slate-100 font-bold border-t-2 border-t-slate-800 border-b-4 border-b-double border-b-slate-900">
+      <td colSpan={2} className="py-2.5 px-3 uppercase tracking-wider text-slate-900 text-right">
+        Portfolio Totals:
+      </td>
+      <td className="py-2.5 px-3 text-right font-mono text-slate-900">
+        {formatOMR(profitKpis.totalContract)}
+      </td>
+      <td className="py-2.5 px-3 text-right font-mono text-slate-900">
+        {formatOMR(profitKpis.totalInvoiced)}
+      </td>
+      <td className="py-2.5 px-3 text-right font-mono text-slate-900">
+        {formatOMR(profitKpis.totalCost)}
+      </td>
+      <td className="py-2.5 px-3 text-right font-mono text-slate-900 font-extrabold">
+        {formatOMR(profitKpis.totalProfit)}
+      </td>
+      <td className="py-2.5 px-3 text-right font-mono text-slate-900 font-bold">
+        {formatPercent(profitKpis.avgMargin)}
+      </td>
+    </tr>
+  );
+
+  const getPreviewConfig = () => {
+    if (selectedReport === 'general_journal') {
+      return {
+        title:
+          previewSelectedOnly && selectedJournalIds.size > 0
+            ? 'General Journal - Selected Transaction Records'
+            : 'General Journal & Audit Ledger',
+        docRef: `DOC-GJ-${new Date().getFullYear()}-${journalEntriesForPreview.length}`,
+        scope:
+          previewSelectedOnly && selectedJournalIds.size > 0
+            ? `Selected Transactions (${selectedJournalIds.size} records, ${formatOMR(
+                selectedJournalSum
+              )})`
+            : selectedProjectObj
+            ? `${selectedProjectObj.name} (${selectedProjectObj.code})`
+            : 'All Projects Consolidated',
+        columns: journalPreviewColumns,
+        data: journalEntriesForPreview,
+        summaryRow: journalPreviewSummary,
+        emptyMessage: 'No journal transaction entries selected for preview.',
+      };
+    }
+
+    if (selectedReport === 'ar_aging') {
+      return {
+        title:
+          previewSelectedOnly && selectedArIds.size > 0
+            ? 'Accounts Receivable (AR) - Selected Invoices'
+            : 'Accounts Receivable (AR) Aging Summary',
+        docRef: `DOC-AR-${new Date().getFullYear()}-${arAgingForPreview.length}`,
+        scope:
+          previewSelectedOnly && selectedArIds.size > 0
+            ? `Selected Invoices (${selectedArIds.size} items)`
+            : selectedProjectObj
+            ? `${selectedProjectObj.name} (${selectedProjectObj.code})`
+            : 'All Projects Consolidated',
+        columns: arPreviewColumns,
+        data: arAgingForPreview,
+        summaryRow: arPreviewSummary,
+        emptyMessage: 'No receivable invoices selected for preview.',
+      };
+    }
+
+    if (selectedReport === 'ap_aging') {
+      return {
+        title:
+          previewSelectedOnly && selectedApIds.size > 0
+            ? 'Accounts Payable (AP) - Selected Bills'
+            : 'Accounts Payable (AP) Aging Summary',
+        docRef: `DOC-AP-${new Date().getFullYear()}-${apAgingForPreview.length}`,
+        scope:
+          previewSelectedOnly && selectedApIds.size > 0
+            ? `Selected Bills (${selectedApIds.size} items)`
+            : selectedProjectObj
+            ? `${selectedProjectObj.name} (${selectedProjectObj.code})`
+            : 'All Projects Consolidated',
+        columns: apPreviewColumns,
+        data: apAgingForPreview,
+        summaryRow: apPreviewSummary,
+        emptyMessage: 'No payable bills selected for preview.',
+      };
+    }
+
+    // Profitability & Cost Analysis
+    return {
+      title: 'Project Profitability & Cost Analysis',
+      docRef: `DOC-PRF-${new Date().getFullYear()}-${filteredProfitabilities.length}`,
+      scope: selectedProjectObj
+        ? `${selectedProjectObj.name} (${selectedProjectObj.code})`
+        : 'All Projects Consolidated',
+      columns: profitabilityPreviewColumns,
+      data: filteredProfitabilities,
+      summaryRow: profitPreviewSummary,
+      emptyMessage: 'No project profitability records to preview.',
+    };
+  };
+
+  const previewConfig = getPreviewConfig();
 
   return (
     <div className="space-y-5">
@@ -736,15 +1226,49 @@ export const ReportsView: React.FC = () => {
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 transition-colors cursor-pointer shadow-xs"
-            title="Print report (PDF / Printer)"
-          >
-            <Printer className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-            Print Report
-          </button>
+          {currentSelectionCount > 0 ? (
+            <>
+              <button
+                type="button"
+                onClick={() => handleOpenPrintPreview(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 transition-colors cursor-pointer shadow-xs"
+                title="Preview print layout before printing selected records"
+              >
+                <Eye className="w-4 h-4 text-blue-600" />
+                Print Preview ({currentSelectionCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePrint(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg text-white bg-slate-900 hover:bg-slate-800 transition-colors cursor-pointer shadow-xs"
+                title="Print selected records as a single combined PDF document"
+              >
+                <Printer className="w-4 h-4 text-blue-300" />
+                Print Selected ({currentSelectionCount}) as PDF
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => handleOpenPrintPreview(false)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 transition-colors cursor-pointer shadow-xs"
+                title="Preview print layout before printing"
+              >
+                <Eye className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                Print Preview
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePrint(false)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 transition-colors cursor-pointer shadow-xs"
+                title="Print report (PDF / Printer)"
+              >
+                <Printer className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                Print Report
+              </button>
+            </>
+          )}
 
           <button
             type="button"
@@ -931,9 +1455,9 @@ export const ReportsView: React.FC = () => {
                   {selectedReport === 'balance_sheet' && 'Statement of Financial Position (Balance Sheet)'}
                   {selectedReport === 'trial_balance' && 'Trial Balance Statement'}
                   {selectedReport === 'cash_flow' && 'Statement of Cash Flows'}
-                  {selectedReport === 'ar_aging' && 'Accounts Receivable (AR) Aging Summary'}
-                  {selectedReport === 'ap_aging' && 'Accounts Payable (AP) Aging Summary'}
-                  {selectedReport === 'general_journal' && 'General Journal & Audit Ledger'}
+                  {selectedReport === 'ar_aging' && (isArPrintSelectedOnly && selectedArIds.size > 0 ? 'Accounts Receivable (AR) - Selected Invoices' : 'Accounts Receivable (AR) Aging Summary')}
+                  {selectedReport === 'ap_aging' && (isApPrintSelectedOnly && selectedApIds.size > 0 ? 'Accounts Payable (AP) - Selected Bills' : 'Accounts Payable (AP) Aging Summary')}
+                  {selectedReport === 'general_journal' && (isJournalPrintSelectedOnly && selectedJournalIds.size > 0 ? 'General Journal - Selected Transaction Records' : 'General Journal & Audit Ledger')}
                 </h1>
                 <p className="text-xs font-medium text-slate-600 mt-1">
                   Artify Construction Accounting System &bull; Sultanate of Oman &bull; IFRS &amp; GAAP Compliant
@@ -942,9 +1466,25 @@ export const ReportsView: React.FC = () => {
             </div>
             <div className="text-right text-xs text-slate-700 space-y-0.5 shrink-0 pl-4">
               <div><span className="text-slate-500">Period:</span> <strong>{dateRange.label}</strong></div>
-              <div><span className="text-slate-500">Scope:</span> <strong>{selectedProjectObj ? `${selectedProjectObj.name} (${selectedProjectObj.code})` : 'All Projects Consolidated'}</strong></div>
+              <div>
+                <span className="text-slate-500">Scope:</span>{' '}
+                <strong>
+                  {selectedReport === 'general_journal' && isJournalPrintSelectedOnly && selectedJournalIds.size > 0
+                    ? `Selected Transactions (${selectedJournalIds.size} records, ${formatOMR(selectedJournalSum)})`
+                    : selectedReport === 'ar_aging' && isArPrintSelectedOnly && selectedArIds.size > 0
+                    ? `Selected Invoices (${selectedArIds.size} items)`
+                    : selectedReport === 'ap_aging' && isApPrintSelectedOnly && selectedApIds.size > 0
+                    ? `Selected Bills (${selectedApIds.size} items)`
+                    : selectedProjectObj
+                    ? `${selectedProjectObj.name} (${selectedProjectObj.code})`
+                    : 'All Projects Consolidated'}
+                </strong>
+              </div>
               <div><span className="text-slate-500">Currency:</span> <strong>OMR (Numeric 18, 3)</strong></div>
-              <div><span className="text-slate-500">Printed:</span> <strong>{new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</strong></div>
+              <div className="print-timestamp-badge">
+                <span className="text-slate-500">Printed:</span>{' '}
+                <strong className="font-mono text-slate-900">{printTimestamp || getFormattedTimestamp()}</strong>
+              </div>
             </div>
           </div>
         </div>
@@ -1657,11 +2197,56 @@ export const ReportsView: React.FC = () => {
               </div>
             </div>
 
+            {/* Selection Banner for AR Invoices */}
+            {selectedArIds.size > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 px-4 flex flex-wrap items-center justify-between gap-3 shadow-xs print:hidden">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse"></span>
+                  <span className="text-xs font-semibold text-blue-900">
+                    {selectedArIds.size} of {filteredArAging.length} receivables selected for combined printing
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPrintPreview(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-blue-300 text-blue-900 hover:bg-blue-100/60 cursor-pointer shadow-xs transition-colors"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-blue-600" />
+                    Print Preview
+                  </button>
+                  <button
+                    onClick={() => handlePrint(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 cursor-pointer shadow-xs transition-colors"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    Print Selected Invoices as PDF
+                  </button>
+                  <button
+                    onClick={() => setSelectedArIds(new Set())}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-white border border-blue-200 text-blue-800 hover:bg-blue-100/50 cursor-pointer transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                    Clear Selection
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* AR Aging Table */}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                    <th className="py-2.5 px-3 w-10 text-center print:hidden">
+                      <input
+                        type="checkbox"
+                        checked={isAllArSelected}
+                        onChange={handleSelectAllAr}
+                        title={isAllArSelected ? 'Deselect all' : 'Select all'}
+                        className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                      />
+                    </th>
                     <th className="py-2.5 px-3">Invoice #</th>
                     <th className="py-2.5 px-3">Date</th>
                     <th className="py-2.5 px-3">Customer</th>
@@ -1675,27 +2260,50 @@ export const ReportsView: React.FC = () => {
                 <tbody className="divide-y divide-slate-100">
                   {filteredArAging.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-slate-400">
+                      <td colSpan={9} className="py-8 text-center text-slate-400">
                         No outstanding receivables match the current filters.
                       </td>
                     </tr>
                   ) : (
-                    filteredArAging.map((inv, idx) => (
-                      <tr key={`${inv.id}-${idx}`} className="hover:bg-slate-50">
-                        <td className="py-2.5 px-3 font-mono font-medium text-slate-900">{inv.invoiceNumber}</td>
-                        <td className="py-2.5 px-3 font-mono text-slate-600">{inv.date}</td>
-                        <td className="py-2.5 px-3 font-semibold text-slate-800">{inv.customerName}</td>
-                        <td className="py-2.5 px-3 text-slate-700">{inv.projectName}</td>
-                        <td className="py-2.5 px-3 text-right font-mono text-slate-700">{formatOMR(inv.amount)}</td>
-                        <td className="py-2.5 px-3 text-right font-mono text-emerald-700">{formatOMR(inv.receivedAmount)}</td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-blue-700">{formatOMR(inv.outstandingAmount)}</td>
-                        <td className="py-2.5 px-3 text-center">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${inv.badgeClass}`}>
-                            {inv.bracketLabel}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
+                    (isArPrintSelectedOnly && selectedArIds.size > 0
+                      ? filteredArAging.filter((inv) => selectedArIds.has(inv.id))
+                      : filteredArAging
+                    ).map((inv, idx) => {
+                      const isSelected = selectedArIds.has(inv.id);
+                      return (
+                        <tr
+                          key={`${inv.id}-${idx}`}
+                          onClick={() => handleToggleArSelect(inv.id)}
+                          className={`cursor-pointer transition-colors ${
+                            isSelected ? 'bg-blue-50/70 hover:bg-blue-50' : 'hover:bg-slate-50'
+                          }`}
+                        >
+                          <td
+                            className="py-2.5 px-3 text-center print:hidden"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleArSelect(inv.id)}
+                              className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                            />
+                          </td>
+                          <td className="py-2.5 px-3 font-mono font-medium text-slate-900">{inv.invoiceNumber}</td>
+                          <td className="py-2.5 px-3 font-mono text-slate-600">{inv.date}</td>
+                          <td className="py-2.5 px-3 font-semibold text-slate-800">{inv.customerName}</td>
+                          <td className="py-2.5 px-3 text-slate-700">{inv.projectName}</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-slate-700">{formatOMR(inv.amount)}</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-emerald-700">{formatOMR(inv.receivedAmount)}</td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-blue-700">{formatOMR(inv.outstandingAmount)}</td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${inv.badgeClass}`}>
+                              {inv.bracketLabel}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -1836,11 +2444,56 @@ export const ReportsView: React.FC = () => {
               </div>
             </div>
 
+            {/* Selection Banner for AP Bills */}
+            {selectedApIds.size > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 px-4 flex flex-wrap items-center justify-between gap-3 shadow-xs print:hidden">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse"></span>
+                  <span className="text-xs font-semibold text-blue-900">
+                    {selectedApIds.size} of {filteredApAging.length} payable bills selected for combined printing
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPrintPreview(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-blue-300 text-blue-900 hover:bg-blue-100/60 cursor-pointer shadow-xs transition-colors"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-blue-600" />
+                    Print Preview
+                  </button>
+                  <button
+                    onClick={() => handlePrint(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 cursor-pointer shadow-xs transition-colors"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    Print Selected Bills as PDF
+                  </button>
+                  <button
+                    onClick={() => setSelectedApIds(new Set())}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-white border border-blue-200 text-blue-800 hover:bg-blue-100/50 cursor-pointer transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                    Clear Selection
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* AP Aging Table */}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                    <th className="py-2.5 px-3 w-10 text-center print:hidden">
+                      <input
+                        type="checkbox"
+                        checked={isAllApSelected}
+                        onChange={handleSelectAllAp}
+                        title={isAllApSelected ? 'Deselect all' : 'Select all'}
+                        className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                      />
+                    </th>
                     <th className="py-2.5 px-3">Bill #</th>
                     <th className="py-2.5 px-3">Date</th>
                     <th className="py-2.5 px-3">Vendor</th>
@@ -1855,32 +2508,55 @@ export const ReportsView: React.FC = () => {
                 <tbody className="divide-y divide-slate-100">
                   {filteredApAging.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-8 text-center text-slate-400">
+                      <td colSpan={10} className="py-8 text-center text-slate-400">
                         No outstanding payables match the current filters.
                       </td>
                     </tr>
                   ) : (
-                    filteredApAging.map((p, idx) => (
-                      <tr key={`${p.id}-${idx}`} className="hover:bg-slate-50">
-                        <td className="py-2.5 px-3 font-mono font-medium text-slate-900">{p.purchaseInvoiceNumber}</td>
-                        <td className="py-2.5 px-3 font-mono text-slate-600">{p.date}</td>
-                        <td className="py-2.5 px-3 font-semibold text-slate-800">{p.vendorName}</td>
-                        <td className="py-2.5 px-3 text-slate-700">{p.projectName}</td>
-                        <td className="py-2.5 px-3">
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700">
-                            {p.purchaseCategory || 'General'}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-mono text-slate-700">{formatOMR(p.amount)}</td>
-                        <td className="py-2.5 px-3 text-right font-mono text-emerald-700">{formatOMR(p.paidAmount)}</td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-amber-700">{formatOMR(p.outstandingAmount)}</td>
-                        <td className="py-2.5 px-3 text-center">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${p.badgeClass}`}>
-                            {p.bracketLabel}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
+                    (isApPrintSelectedOnly && selectedApIds.size > 0
+                      ? filteredApAging.filter((p) => selectedApIds.has(p.id))
+                      : filteredApAging
+                    ).map((p, idx) => {
+                      const isSelected = selectedApIds.has(p.id);
+                      return (
+                        <tr
+                          key={`${p.id}-${idx}`}
+                          onClick={() => handleToggleApSelect(p.id)}
+                          className={`cursor-pointer transition-colors ${
+                            isSelected ? 'bg-blue-50/70 hover:bg-blue-50' : 'hover:bg-slate-50'
+                          }`}
+                        >
+                          <td
+                            className="py-2.5 px-3 text-center print:hidden"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleApSelect(p.id)}
+                              className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                            />
+                          </td>
+                          <td className="py-2.5 px-3 font-mono font-medium text-slate-900">{p.purchaseInvoiceNumber}</td>
+                          <td className="py-2.5 px-3 font-mono text-slate-600">{p.date}</td>
+                          <td className="py-2.5 px-3 font-semibold text-slate-800">{p.vendorName}</td>
+                          <td className="py-2.5 px-3 text-slate-700">{p.projectName}</td>
+                          <td className="py-2.5 px-3">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700">
+                              {p.purchaseCategory || 'General'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono text-slate-700">{formatOMR(p.amount)}</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-emerald-700">{formatOMR(p.paidAmount)}</td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-amber-700">{formatOMR(p.outstandingAmount)}</td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${p.badgeClass}`}>
+                              {p.bracketLabel}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -1996,11 +2672,82 @@ export const ReportsView: React.FC = () => {
               </div>
             </div>
 
+            {/* Selection Banner for General Journal Transactions */}
+            {selectedJournalIds.size > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 px-4 flex flex-wrap items-center justify-between gap-3 shadow-xs print:hidden">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse"></span>
+                  <span className="text-xs font-semibold text-blue-900">
+                    {selectedJournalIds.size} of {filteredJournalEntries.length} transactions selected &bull; Total: {formatOMR(selectedJournalSum)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPrintPreview(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-blue-300 text-blue-900 hover:bg-blue-100/60 cursor-pointer shadow-xs transition-colors"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-blue-600" />
+                    Print Preview
+                  </button>
+                  <button
+                    onClick={() => handlePrint(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 cursor-pointer shadow-xs transition-colors"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    Print Selected Transactions as Combined PDF
+                  </button>
+                  <button
+                    onClick={() => {
+                      const targetEntries = filteredJournalEntries.filter((je) => selectedJournalIds.has(je.id));
+                      const data = targetEntries.map((je) => ({
+                        'Entry #': je.entryNumber,
+                        'Date': je.date,
+                        'Source Type': je.sourceType,
+                        'Debit Account': je.debitAccount,
+                        'Credit Account': je.creditAccount,
+                        'Amount (OMR)': je.amount,
+                        'Status': je.status,
+                      }));
+                      exportToExcel({
+                        filename: `Journal_Selected_${new Date().toISOString().split('T')[0]}`,
+                        sheetName: 'Selected Entries',
+                        title: 'SELECTED JOURNAL TRANSACTIONS',
+                        companyName: 'Al Tasneem & Partners Construction LLC - Muscat, Oman',
+                        currency: 'OMR',
+                        data,
+                      });
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-blue-200 text-blue-800 hover:bg-blue-100/50 cursor-pointer transition-colors"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                    Export Selected (Excel)
+                  </button>
+                  <button
+                    onClick={() => setSelectedJournalIds(new Set())}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-white border border-blue-200 text-blue-800 hover:bg-blue-100/50 cursor-pointer transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                    Clear Selection
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* General Journal Table */}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                    <th className="py-2.5 px-3 w-10 text-center print:hidden">
+                      <input
+                        type="checkbox"
+                        checked={isAllJournalSelected}
+                        onChange={handleSelectAllJournal}
+                        title={isAllJournalSelected ? 'Deselect all' : 'Select all'}
+                        className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                      />
+                    </th>
                     <th className="py-2.5 px-3">Entry #</th>
                     <th className="py-2.5 px-3">Date</th>
                     <th className="py-2.5 px-3">Source Type</th>
@@ -2014,18 +2761,39 @@ export const ReportsView: React.FC = () => {
                 <tbody className="divide-y divide-slate-100">
                   {filteredJournalEntries.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-slate-400">
+                      <td colSpan={9} className="py-8 text-center text-slate-400">
                         No journal entries match the selected filters.
                       </td>
                     </tr>
                   ) : (
-                    filteredJournalEntries.map((je, idx) => {
+                    (isJournalPrintSelectedOnly && selectedJournalIds.size > 0
+                      ? filteredJournalEntries.filter((je) => selectedJournalIds.has(je.id))
+                      : filteredJournalEntries
+                    ).map((je, idx) => {
+                      const isSelected = selectedJournalIds.has(je.id);
                       const prj = state.projects.find((p) => p.id === je.projectId);
                       const cust = state.customers.find((c) => c.id === je.customerId);
                       const vend = state.vendors.find((v) => v.id === je.vendorId);
 
                       return (
-                        <tr key={`${je.id}-${idx}`} className="hover:bg-slate-50">
+                        <tr
+                          key={`${je.id}-${idx}`}
+                          onClick={() => handleToggleJournalSelect(je.id)}
+                          className={`cursor-pointer transition-colors ${
+                            isSelected ? 'bg-blue-50/70 hover:bg-blue-50' : 'hover:bg-slate-50'
+                          }`}
+                        >
+                          <td
+                            className="py-2.5 px-3 text-center print:hidden"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleJournalSelect(je.id)}
+                              className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                            />
+                          </td>
                           <td className="py-2.5 px-3 font-mono font-medium text-slate-900">{je.entryNumber}</td>
                           <td className="py-2.5 px-3 font-mono text-slate-600">{je.date}</td>
                           <td className="py-2.5 px-3">
@@ -2107,12 +2875,34 @@ export const ReportsView: React.FC = () => {
               <p className="text-[10px] text-slate-400 font-mono">Corporate Seal &amp; Date</p>
             </div>
           </div>
-          <div className="mt-6 pt-3 border-t border-slate-200 flex justify-between items-center text-[9px] text-slate-400 font-mono">
+          <div className="print-timestamp-footer mt-6 pt-3 border-t border-slate-200 flex justify-between items-center text-[9px] text-slate-500 font-mono">
             <span>Artify Construction Accounting System &bull; Computer Generated Official Report (Sultanate of Oman)</span>
-            <span>Ref: ART-REP-{selectedReport.toUpperCase()}-{new Date().getFullYear()} &bull; Page 1</span>
+            <span>Printed: {printTimestamp || getFormattedTimestamp()} &bull; Ref: ART-REP-{selectedReport.toUpperCase()}-{new Date().getFullYear()}</span>
           </div>
         </div>
       </div>
+
+      {/* Print Preview Modal */}
+      <PrintPreviewModal
+        isOpen={isPrintPreviewOpen}
+        onClose={() => setIsPrintPreviewOpen(false)}
+        onConfirmPrint={handleConfirmPrintFromModal}
+        title={previewConfig.title}
+        subtitle="Al Tasneem & Partners Construction LLC • Sultanate of Oman • IFRS & GAAP Governance"
+        docRef={previewConfig.docRef}
+        scope={previewConfig.scope}
+        period={
+          datePreset !== 'all'
+            ? `${dateRange.startDate || '—'} to ${dateRange.endDate || '—'}`
+            : 'Fiscal Year to Date'
+        }
+        timestamp={printTimestamp || getFormattedTimestamp()}
+        columns={previewConfig.columns}
+        data={previewConfig.data}
+        summaryRow={previewConfig.summaryRow}
+        emptyMessage={previewConfig.emptyMessage}
+        customFooterNote="Artify Construction Accounting System • Computer Generated Official Report (Sultanate of Oman)"
+      />
     </div>
   );
 };

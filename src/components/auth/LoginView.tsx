@@ -30,8 +30,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
   sessionExpiredNotice,
   onClearExpiredNotice,
 }) => {
-  const [email, setEmail] = useState('admin@artifysols.com');
-  const [password, setPassword] = useState('Artify@2026');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -131,14 +131,32 @@ export const LoginView: React.FC<LoginViewProps> = ({
       </header>
 
       {/* Main Login Card */}
-      <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
-        <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl p-6 sm:p-8 space-y-6">
+      <main className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6">
+        <div className="w-full max-w-md space-y-4">
+          {/* Brand Logo Header - 60% of container width, background matching screen */}
+          <div className="w-full flex justify-center items-center py-1">
+            {/* Light Mode Logo */}
+            <img
+              src="/artify-logo-light.png"
+              alt="Artify Construction Accounting System"
+              className="w-[60%] h-auto object-contain block dark:hidden select-none bg-transparent"
+            />
+            {/* Dark Mode Logo */}
+            <img
+              src="/artify-logo.png"
+              alt="Artify Construction Accounting System"
+              className="w-[60%] h-auto object-contain hidden dark:block select-none bg-transparent"
+            />
+          </div>
+
+          {/* Sign In Container */}
+          <div className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl p-6 sm:p-8 space-y-6">
           <div className="text-center space-y-1">
             <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
               Sign In to Your Account
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Enter your corporate credentials to access the financial ledger
+              Enter your credentials to access Enter your corporate account
             </p>
           </div>
 
@@ -265,10 +283,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
           {/* Demo Users Quick Access - Grouped Under One Button */}
           <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-            <div className="flex items-center mb-3">
+            <div className="flex items-center justify-center mb-3">
               <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                Demo Users (Sandbox Database)
+                Want to Explore
               </span>
             </div>
 
@@ -286,7 +304,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                        Choose Demo User by Role
+                        Access Demo User by Role
                       </span>
                       <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded-md bg-blue-100 dark:bg-blue-900/80 text-blue-700 dark:text-blue-300">
                         {demoUsers.length} Profiles
@@ -309,6 +327,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </div>
             </button>
           </div>
+        </div>
         </div>
       </main>
 

@@ -300,32 +300,12 @@ class AuthService {
   }
 
   private initSession() {
-    // Check if session stored
+    // Default to unauthenticated: Login screen is the default landing screen
+    this.currentUser = null;
     try {
-      const currentSessionId = localStorage.getItem(AUTH_CURRENT_SESSION_KEY);
-      if (currentSessionId) {
-        const found = this.users.find((u) => u.id === currentSessionId && u.status === 'active');
-        if (found) {
-          this.currentUser = found;
-          return;
-        }
-      }
+      localStorage.removeItem(AUTH_CURRENT_SESSION_KEY);
     } catch {
       // ignore
-    }
-
-    // Default to Real Production Super Administrator (admin@artifysols.com)
-    const realSuperAdmin = this.users.find(
-      (u) => u.email.toLowerCase() === 'admin@artifysols.com' && u.status === 'active'
-    );
-    const defaultAdmin = realSuperAdmin || this.users.find((u) => u.roleCode === 'super_admin' && u.status === 'active');
-    this.currentUser = defaultAdmin || this.users[0];
-    if (this.currentUser) {
-      try {
-        localStorage.setItem(AUTH_CURRENT_SESSION_KEY, this.currentUser.id);
-      } catch {
-        // ignore
-      }
     }
   }
 

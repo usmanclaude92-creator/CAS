@@ -275,5 +275,46 @@
     padding-top: 10pt !important;
     border-top: 1pt solid #cbd5e1 !important;
   }
+
+  /* Automatic Printed Timestamp & Document Verification */
+  .print-timestamp-header,
+  .print-timestamp-footer,
+  .print-timestamp-bar {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-size: 7.5pt !important;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace !important;
+    color: #475569 !important;
+    padding: 3pt 0 !important;
+  }
+
+  .print-timestamp-header {
+    border-bottom: 0.5pt solid #cbd5e1 !important;
+    margin-bottom: 8pt !important;
+  }
+
+  .print-timestamp-footer {
+    border-top: 0.5pt solid #cbd5e1 !important;
+    margin-top: 10pt !important;
+  }
+
+  /* Fixed Print Footer with Automatic Timestamp on Every Page */
+  .print-fixed-timestamp-footer {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-size: 7pt !important;
+    font-family: "SFMono-Regular", Consolas, monospace !important;
+    color: #64748b !important;
+    background: #ffffff !important;
+    border-top: 0.5pt solid #e2e8f0 !important;
+    padding: 2.5pt 0 !important;
+    z-index: 9999 !important;
+  }
 }
 
