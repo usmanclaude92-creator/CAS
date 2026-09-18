@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Landmark,
   Wallet,
@@ -15,21 +15,26 @@ import {
   X,
   Calendar,
   RotateCcw,
+  ChevronDown,
+  Download,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { formatOMR, addMoney } from '../../utils/formatters';
-import { exportToExcel } from '../../utils/exportToExcel';
+import { exportData } from '../../services/exportService';
 import {
   DatePreset,
   getDateRangeFromPreset,
   isDateInRange,
 } from '../../utils/reportFilters';
+import { TreasuryAccountType } from '../../types';
 
 interface BankingViewProps {
   onOpenTransfer: () => void;
   onOpenNewBankAccount: () => void;
   onOpenMoneyIn: () => void;
   onOpenMoneyOut: () => void;
+  selectedAccountId?: string;
+  onSelectAccount?: (id: string) => void;
 }
 
 export const BankingView: React.FC<BankingViewProps> = ({
@@ -37,9 +42,37 @@ export const BankingView: React.FC<BankingViewProps> = ({
   onOpenNewBankAccount,
   onOpenMoneyIn,
   onOpenMoneyOut,
+  selectedAccountId: controlledAccountId,
+  onSelectAccount,
 }) => {
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('all');
+  const [internalAccountId, setInternalAccountId] = useState<string>(() => {
+    return controlledAccountId || accountingService.getActiveTreasuryAccountId() || 'all';
+  });
+
+  const selectedAccountId = controlledAccountId !== undefined ? controlledAccountId : internalAccountId;
+
+  const handleSelectAccount = (id: string) => {
+    setInternalAccountId(id);
+    accountingService.setActiveTreasuryAccountId(id);
+    if (onSelectAccount) {
+      onSelectAccount(id);
+    }
+  };
+
   const [activeTab, setActiveTab] = useState<'treasury_ledger' | 'transfers'>('treasury_ledger');
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState<boolean>(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close export dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Quick filters
   const [datePreset, setDatePreset] = useState<DatePreset>('all');
@@ -55,53 +88,191 @@ export const BankingView: React.FC<BankingViewProps> = ({
   const state = accountingService.getState();
   const summary = accountingService.getDashboardSummary();
 
-  const rawTreasuryLedger = accountingService.getTreasuryLedger(
-    selectedAccountId === 'all' ? undefined : selectedAccountId
-  );
+  // Resolve selected account entity and its account type
+  const selectedAccount = useMemo(() => {
+    if (selectedAccountId === 'all' || selectedAccountId.startsWith('group:')) return null;
+    return (
+      state.bankAccounts.find((b) => b.id === selectedAccountId) ||
+      state.cashAccounts.find((c) => c.id === selectedAccountId) ||
+      state.pettyCashAccounts.find((p) => p.id === selectedAccountId) ||
+      null
+    );
+  }, [selectedAccountId, state.bankAccounts, state.cashAccounts, state.pettyCashAccounts]);
+
+  const accountTypeFilter = useMemo<TreasuryAccountType | undefined>(() => {
+    if (selectedAccountId.startsWith('group:')) {
+      return selectedAccountId.replace('group:', '') as TreasuryAccountType;
+    }
+    if (selectedAccount) {
+      if (state.bankAccounts.some((b) => b.id === selectedAccountId)) return 'bank';
+      if (state.cashAccounts.some((c) => c.id === selectedAccountId)) return 'cash';
+      if (state.pettyCashAccounts.some((p) => p.id === selectedAccountId)) return 'petty_cash';
+    }
+    return undefined;
+  }, [selectedAccountId, selectedAccount, state.bankAccounts, state.cashAccounts, state.pettyCashAccounts]);
+
+  const effectiveAccountId = selectedAccount ? selectedAccountId : undefined;
+
+  const rawTreasuryLedger = useMemo(() => {
+    return accountingService.getTreasuryLedger(accountTypeFilter, effectiveAccountId);
+  }, [accountTypeFilter, effectiveAccountId, state]);
 
   const treasuryLedger = useMemo(() => {
     return rawTreasuryLedger.filter((row) => {
       if (!isDateInRange(row.date, dateRange.startDate, dateRange.endDate)) return false;
-      if (typeFilter !== 'all' && row.type !== typeFilter) return false;
+
+      // Filter by Type (Receipts, Payments, Transfers)
+      if (typeFilter !== 'all') {
+        const typeNormalized = (row.type || '').toLowerCase();
+        if (typeFilter === 'MONEY_IN') {
+          const isReceipt =
+            typeNormalized.includes('in') ||
+            typeNormalized.includes('receipt') ||
+            typeNormalized.includes('opening') ||
+            (row.receipt !== undefined && row.receipt > 0 && (!row.payment || row.payment === 0));
+          if (!isReceipt) return false;
+        } else if (typeFilter === 'MONEY_OUT') {
+          const isPayment =
+            typeNormalized.includes('out') ||
+            typeNormalized.includes('expense') ||
+            typeNormalized.includes('payment') ||
+            (row.payment !== undefined && row.payment > 0 && (!row.receipt || row.receipt === 0));
+          if (!isPayment) return false;
+        } else if (typeFilter === 'TRANSFER') {
+          const isTransfer = typeNormalized.includes('transfer');
+          if (!isTransfer) return false;
+        }
+      }
+
+      // Search Filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchRef = row.documentRef.toLowerCase().includes(q);
-        const matchParty = (row.party || '').toLowerCase().includes(q);
-        const matchDesc = row.description.toLowerCase().includes(q);
-        const matchAcc = row.accountName.toLowerCase().includes(q);
-        if (!matchRef && !matchParty && !matchDesc && !matchAcc) return false;
+        const matchRef = (row.documentRef || '').toLowerCase().includes(q);
+        const matchParty = (row.party || row.partyName || '').toLowerCase().includes(q);
+        const matchDesc = (row.description || '').toLowerCase().includes(q);
+        const matchAcc = (row.accountName || '').toLowerCase().includes(q);
+        const matchType = (row.type || '').toLowerCase().includes(q);
+        if (!matchRef && !matchParty && !matchDesc && !matchAcc && !matchType) return false;
       }
       return true;
     });
   }, [rawTreasuryLedger, dateRange, typeFilter, searchQuery]);
 
   const ledgerTotals = useMemo(() => {
-    const totalReceipts = treasuryLedger.reduce((sum, r) => addMoney(sum, r.receipt), 0);
-    const totalPayments = treasuryLedger.reduce((sum, r) => addMoney(sum, r.payment), 0);
-    return { totalReceipts, totalPayments, count: treasuryLedger.length };
+    const totalReceipts = treasuryLedger.reduce((sum, r) => addMoney(sum, r.receipt || 0), 0);
+    const totalPayments = treasuryLedger.reduce((sum, r) => addMoney(sum, r.payment || 0), 0);
+    const closingBalance = treasuryLedger.length > 0 ? (treasuryLedger[treasuryLedger.length - 1].runningBalance ?? 0) : 0;
+    return { totalReceipts, totalPayments, closingBalance, count: treasuryLedger.length };
   }, [treasuryLedger]);
 
-  const handleExportBankBook = () => {
-    const data = treasuryLedger.map((row) => ({
-      'Date': row.date,
-      'Doc Ref': row.documentRef,
-      'Account Type': row.accountType.replace('_', ' ').toUpperCase(),
-      'Account Name': row.accountName,
-      'Type': row.type.replace('_', ' '),
-      'Party / Description': row.party ? `${row.party} — ${row.description}` : row.description,
-      'Receipt Debit (OMR)': row.receipt > 0 ? row.receipt : '',
-      'Payment Credit (OMR)': row.payment > 0 ? row.payment : '',
-      'Running Balance (OMR)': row.runningBalance,
-    }));
+  // Export visible data with identical columns and format as displayed on screen
+  const handleExportData = (format: 'xlsx' | 'csv' | 'pdf' = 'xlsx') => {
+    const dateStamp = new Date().toISOString().split('T')[0];
 
-    exportToExcel({
-      filename: `Bank_Cash_Book_${new Date().toISOString().split('T')[0]}`,
-      sheetName: 'Treasury Book',
-      title: `COMPANY TREASURY & BANK CASH BOOK STATEMENT (${dateRange.label.toUpperCase()})`,
-      companyName: 'Al Tasneem & Partners Construction LLC - Muscat, Oman',
-      currency: 'OMR',
-      data,
-    });
+    if (activeTab === 'transfers') {
+      const exportOpts = {
+        filename: `Artify_Internal_Transfers_${dateStamp}`,
+        title: 'Banking & Treasury Operations - Internal Transfers Register',
+        subtitle: `Internal transfers between corporate bank accounts, cash vaults, and site floats`,
+        sheetName: 'Internal Transfers',
+        data: state.transfers || [],
+        columns: [
+          { header: 'DATE', key: 'date', width: 14 },
+          { header: 'DOC REF', key: 'documentRef', width: 16 },
+          {
+            header: 'TRANSFER FROM',
+            key: 'transferFromName',
+            width: 24,
+            format: (val: any, row: any) => `${row.transferFromName} (${(row.transferFromType || '').replace('_', ' ')})`,
+          },
+          {
+            header: 'TRANSFER TO',
+            key: 'transferToName',
+            width: 24,
+            format: (val: any, row: any) => `${row.transferToName} (${(row.transferToType || '').replace('_', ' ')})`,
+          },
+          {
+            header: 'AMOUNT',
+            key: 'amount',
+            width: 18,
+            align: 'right' as const,
+            format: (val: any) => formatOMR(val || 0),
+          },
+          { header: 'REMARKS', key: 'remarks', width: 28, format: (val: any) => val || '—' },
+          {
+            header: 'ATTACHMENT',
+            key: 'attachmentUrl',
+            width: 16,
+            align: 'center' as const,
+            format: (val: any) => (val ? 'Attachment Available' : '—'),
+          },
+        ],
+        summaryTotals: {
+          transferFromName: 'TOTAL TRANSFERS',
+          amount: formatOMR(state.transfers.reduce((sum, tr) => sum + (tr.amount || 0), 0)),
+        },
+      };
+
+      exportData(format, exportOpts);
+      return;
+    }
+
+    // Treasury Ledger Export: Maintain the EXACT table format and data as displayed on screen
+    const accountLabel = selectedAccount
+      ? `${selectedAccount.accountName} (${(selectedAccount as any).bankName || (selectedAccount as any).accountType || 'Treasury'})`
+      : selectedAccountId.startsWith('group:')
+      ? `All ${selectedAccountId.replace('group:', '').replace('_', ' ')} accounts`
+      : 'All Bank & Cash Accounts';
+
+    const exportOpts = {
+      filename: `Artify_Bank_Cash_Book_${dateStamp}`,
+      title: 'Banking & Treasury Operations - Bank & Cash Book Ledger',
+      subtitle: `Account: ${accountLabel} • Period: ${dateRange.label.toUpperCase()}`,
+      sheetName: 'Bank & Cash Book',
+      data: treasuryLedger,
+      columns: [
+        { header: 'DATE', key: 'date', width: 14 },
+        { header: 'DOC REF', key: 'documentRef', width: 16 },
+        { header: 'ACCOUNT', key: 'accountName', width: 22 },
+        { header: 'TYPE', key: 'type', width: 16 },
+        {
+          header: 'PARTY / DETAIL',
+          key: 'party',
+          width: 22,
+          format: (val: any, row: any) => row.party || row.partyName || '—',
+        },
+        { header: 'DESCRIPTION', key: 'description', width: 34 },
+        {
+          header: 'RECEIPT (DR)',
+          key: 'receipt',
+          width: 16,
+          align: 'right' as const,
+          format: (val: any) => (val && val > 0 ? formatOMR(val) : '—'),
+        },
+        {
+          header: 'PAYMENT (CR)',
+          key: 'payment',
+          width: 16,
+          align: 'right' as const,
+          format: (val: any) => (val && val > 0 ? formatOMR(val) : '—'),
+        },
+        {
+          header: 'RUNNING BALANCE',
+          key: 'runningBalance',
+          width: 18,
+          align: 'right' as const,
+          format: (val: any) => formatOMR(val ?? 0),
+        },
+      ],
+      summaryTotals: {
+        accountName: 'TOTALS',
+        receipt: formatOMR(ledgerTotals.totalReceipts),
+        payment: formatOMR(ledgerTotals.totalPayments),
+        runningBalance: formatOMR(ledgerTotals.closingBalance),
+      },
+    };
+
+    exportData(format, exportOpts);
   };
 
   return (
@@ -144,13 +315,61 @@ export const BankingView: React.FC<BankingViewProps> = ({
             <Plus className="w-3.5 h-3.5 text-slate-500" />
             Add Bank A/C
           </button>
-          <button
-            onClick={handleExportBankBook}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-            Export Bank Book
-          </button>
+          {/* Export Dropdown Menu with Screen Format Alignment */}
+          <div className="relative" ref={exportMenuRef}>
+            <button
+              onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer shadow-2xs transition-colors"
+              title="Export visible table data matching screen format"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Export {activeTab === 'treasury_ledger' ? 'Bank Book' : 'Transfers'}</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </button>
+            {isExportMenuOpen && (
+              <div className="absolute right-0 mt-1.5 w-52 bg-white rounded-xl shadow-lg border border-slate-200 py-1 z-30 text-xs">
+                <button
+                  onClick={() => {
+                    handleExportData('xlsx');
+                    setIsExportMenuOpen(false);
+                  }}
+                  className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-emerald-50 text-slate-700 transition-colors cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <div>
+                    <div className="font-semibold">Excel Workbook (.xlsx)</div>
+                    <div className="text-[10px] text-slate-400">Exact on-screen table format</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    handleExportData('csv');
+                    setIsExportMenuOpen(false);
+                  }}
+                  className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-blue-50 text-slate-700 transition-colors cursor-pointer"
+                >
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  <div>
+                    <div className="font-semibold">CSV (.csv)</div>
+                    <div className="text-[10px] text-slate-400">Plain comma-separated table</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    handleExportData('pdf');
+                    setIsExportMenuOpen(false);
+                  }}
+                  className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-rose-50 text-slate-700 transition-colors cursor-pointer"
+                >
+                  <Download className="w-4 h-4 text-rose-600" />
+                  <div>
+                    <div className="font-semibold">PDF Document</div>
+                    <div className="text-[10px] text-slate-400">Formatted landscape report</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -177,10 +396,10 @@ export const BankingView: React.FC<BankingViewProps> = ({
             {state.bankAccounts.map((b) => (
               <div
                 key={b.id}
-                onClick={() => setSelectedAccountId(b.id)}
+                onClick={() => handleSelectAccount(selectedAccountId === b.id ? 'all' : b.id)}
                 className={`p-2.5 rounded-lg border text-xs cursor-pointer transition-colors ${
                   selectedAccountId === b.id
-                    ? 'border-blue-500 bg-blue-50/50'
+                    ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500'
                     : 'border-slate-100 bg-slate-50/60 hover:bg-slate-50'
                 }`}
               >
@@ -218,10 +437,10 @@ export const BankingView: React.FC<BankingViewProps> = ({
             {state.cashAccounts.map((c) => (
               <div
                 key={c.id}
-                onClick={() => setSelectedAccountId(c.id)}
+                onClick={() => handleSelectAccount(selectedAccountId === c.id ? 'all' : c.id)}
                 className={`p-2.5 rounded-lg border text-xs cursor-pointer transition-colors ${
                   selectedAccountId === c.id
-                    ? 'border-emerald-500 bg-emerald-50/50'
+                    ? 'border-emerald-500 bg-emerald-50/60 ring-1 ring-emerald-500'
                     : 'border-slate-100 bg-slate-50/60 hover:bg-slate-50'
                 }`}
               >
@@ -258,10 +477,10 @@ export const BankingView: React.FC<BankingViewProps> = ({
             {state.pettyCashAccounts.map((p) => (
               <div
                 key={p.id}
-                onClick={() => setSelectedAccountId(p.id)}
+                onClick={() => handleSelectAccount(selectedAccountId === p.id ? 'all' : p.id)}
                 className={`p-2.5 rounded-lg border text-xs cursor-pointer transition-colors ${
                   selectedAccountId === p.id
-                    ? 'border-amber-500 bg-amber-50/50'
+                    ? 'border-amber-500 bg-amber-50/60 ring-1 ring-amber-500'
                     : 'border-slate-100 bg-slate-50/60 hover:bg-slate-50'
                 }`}
               >
@@ -308,10 +527,15 @@ export const BankingView: React.FC<BankingViewProps> = ({
             <span className="text-xs text-slate-500">Filter Account:</span>
             <select
               value={selectedAccountId}
-              onChange={(e) => setSelectedAccountId(e.target.value)}
+              onChange={(e) => handleSelectAccount(e.target.value)}
               className="text-xs px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none"
             >
               <option value="all">-- All Bank &amp; Cash Accounts --</option>
+              <optgroup label="Account Categories">
+                <option value="group:bank">All Bank Accounts</option>
+                <option value="group:cash">All Cash in Hand</option>
+                <option value="group:petty_cash">All Petty Cash Accounts</option>
+              </optgroup>
               <optgroup label="Bank Accounts">
                 {state.bankAccounts.map((b) => (
                   <option key={b.id} value={b.id}>
@@ -334,6 +558,16 @@ export const BankingView: React.FC<BankingViewProps> = ({
                 ))}
               </optgroup>
             </select>
+            {selectedAccountId !== 'all' && (
+              <button
+                onClick={() => handleSelectAccount('all')}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+                title="Clear account filter"
+              >
+                <span>Reset Account</span>
+                <X className="w-3 h-3 text-slate-400" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -418,7 +652,7 @@ export const BankingView: React.FC<BankingViewProps> = ({
                     setDatePreset('all');
                     setTypeFilter('all');
                     setSearchQuery('');
-                    setSelectedAccountId('all');
+                    handleSelectAccount('all');
                   }}
                   className="text-[11px] text-slate-500 hover:text-rose-600 flex items-center gap-0.5 cursor-pointer whitespace-nowrap"
                   title="Reset all filters"
@@ -460,14 +694,16 @@ export const BankingView: React.FC<BankingViewProps> = ({
                     <td className="py-3 px-4 whitespace-nowrap">
                       <span
                         className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${
-                          row.type === 'MONEY_IN'
-                            ? 'bg-emerald-50 text-emerald-700'
-                            : row.type === 'MONEY_OUT'
-                            ? 'bg-amber-50 text-amber-700'
-                            : 'bg-indigo-50 text-indigo-700'
+                          row.type === 'Money In' || row.type === 'Opening Balance'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                            : row.type === 'Money Out'
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200/60'
+                            : row.type === 'Direct Expense'
+                            ? 'bg-amber-50 text-amber-700 border border-amber-200/60'
+                            : 'bg-indigo-50 text-indigo-700 border border-indigo-200/60'
                         }`}
                       >
-                        {row.type.replace('_', ' ')}
+                        {row.type}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-slate-800 whitespace-nowrap">
@@ -495,6 +731,24 @@ export const BankingView: React.FC<BankingViewProps> = ({
                   </tr>
                 )}
               </tbody>
+              {treasuryLedger.length > 0 && (
+                <tfoot className="bg-slate-50 border-t-2 border-slate-200 font-semibold text-slate-800">
+                  <tr>
+                    <td colSpan={6} className="py-3 px-4 text-right uppercase tracking-wider text-[11px] text-slate-600">
+                      Summary Totals &bull; Active View
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700 whitespace-nowrap">
+                      {ledgerTotals.totalReceipts > 0 ? formatOMR(ledgerTotals.totalReceipts) : '—'}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono font-bold text-rose-700 whitespace-nowrap">
+                      {ledgerTotals.totalPayments > 0 ? formatOMR(ledgerTotals.totalPayments) : '—'}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                      {formatOMR(ledgerTotals.closingBalance)}
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         )}
@@ -554,6 +808,19 @@ export const BankingView: React.FC<BankingViewProps> = ({
                   </tr>
                 )}
               </tbody>
+              {state.transfers.length > 0 && (
+                <tfoot className="bg-slate-50 border-t-2 border-slate-200 font-semibold text-slate-800">
+                  <tr>
+                    <td colSpan={4} className="py-3 px-4 text-right uppercase tracking-wider text-[11px] text-slate-600">
+                      Total Internal Transfers
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
+                      {formatOMR(state.transfers.reduce((sum, tr) => sum + (tr.amount || 0), 0))}
+                    </td>
+                    <td colSpan={2}></td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         )}

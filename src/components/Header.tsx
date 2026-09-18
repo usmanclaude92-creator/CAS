@@ -146,6 +146,7 @@ export const Header: React.FC<HeaderProps> = ({
       projectId: selectedProjectId,
       customerId: selectedCustomerId,
       vendorId: selectedVendorId,
+      accountId: accountingService.getActiveTreasuryAccountId(),
     });
     return {
       title: exportOpts.title,
@@ -160,6 +161,7 @@ export const Header: React.FC<HeaderProps> = ({
         projectId: selectedProjectId,
         customerId: selectedCustomerId,
         vendorId: selectedVendorId,
+        accountId: accountingService.getActiveTreasuryAccountId(),
       });
       setLastExportStatus(`Downloaded ${result.recordCount} rows as ${format.toUpperCase()}`);
       setTimeout(() => {

@@ -2164,10 +2164,61 @@ class AccountingService {
     });
   }
 
+  private activeTreasuryAccountId: string = 'all';
+
+  public setActiveTreasuryAccountId(id: string): void {
+    this.activeTreasuryAccountId = id || 'all';
+  }
+
+  public getActiveTreasuryAccountId(): string {
+    return this.activeTreasuryAccountId;
+  }
+
   /**
    * Treasury Ledger for Bank, Cash or Petty Cash account
+   * Supports both (accountType, accountId) and single-argument polymorphic usage (accountTypeOrId)
    */
-  public getTreasuryLedger(accountType?: TreasuryAccountType, accountId?: string): TreasuryLedgerEntry[] {
+  public getTreasuryLedger(accountTypeOrId?: TreasuryAccountType | string, accountIdParam?: string): TreasuryLedgerEntry[] {
+    let effectiveType: TreasuryAccountType | undefined;
+    let effectiveAccountId: string | undefined;
+
+    if (accountIdParam) {
+      effectiveType = accountTypeOrId as TreasuryAccountType;
+      effectiveAccountId = accountIdParam;
+    } else if (accountTypeOrId && accountTypeOrId !== 'all') {
+      if (accountTypeOrId === 'bank' || accountTypeOrId === 'cash' || accountTypeOrId === 'petty_cash') {
+        effectiveType = accountTypeOrId as TreasuryAccountType;
+      } else if (accountTypeOrId.startsWith('group:')) {
+        effectiveType = accountTypeOrId.replace('group:', '') as TreasuryAccountType;
+      } else {
+        effectiveAccountId = accountTypeOrId;
+        // Auto-detect type if this is an account ID
+        if (this.state.bankAccounts.some((b) => b.id === effectiveAccountId)) {
+          effectiveType = 'bank';
+        } else if (this.state.cashAccounts.some((c) => c.id === effectiveAccountId)) {
+          effectiveType = 'cash';
+        } else if (this.state.pettyCashAccounts.some((p) => p.id === effectiveAccountId)) {
+          effectiveType = 'petty_cash';
+        }
+      }
+    }
+
+    const targetAccountObj = effectiveAccountId
+      ? this.state.bankAccounts.find((b) => b.id === effectiveAccountId) ||
+        this.state.cashAccounts.find((c) => c.id === effectiveAccountId) ||
+        this.state.pettyCashAccounts.find((p) => p.id === effectiveAccountId)
+      : undefined;
+
+    const matchesAccount = (txType: TreasuryAccountType, txAccountId?: string, txAccountName?: string): boolean => {
+      if (effectiveType && txType !== effectiveType) return false;
+      if (effectiveAccountId) {
+        if (txAccountId && txAccountId === effectiveAccountId) return true;
+        if (txAccountName && targetAccountObj && txAccountName === targetAccountObj.accountName) return true;
+        return false;
+      }
+      return true;
+    };
+
     const rawItems: {
       accountType: TreasuryAccountType;
       accountId: string;
@@ -2182,9 +2233,52 @@ class AccountingService {
       status: TransactionStatus;
     }[] = [];
 
+    // Opening Balances
+    if (targetAccountObj) {
+      if (targetAccountObj.openingBalance > 0) {
+        rawItems.push({
+          accountType: effectiveType || 'bank',
+          accountId: targetAccountObj.id,
+          accountName: targetAccountObj.accountName,
+          date: (targetAccountObj as any).openingDate || '2026-01-01',
+          type: 'Opening Balance',
+          documentRef: `OB-${targetAccountObj.id.toUpperCase()}`,
+          partyName: 'Opening Balance',
+          description: `Opening Balance for ${targetAccountObj.accountName}`,
+          inflow: targetAccountObj.openingBalance,
+          outflow: 0,
+          status: 'posted',
+        });
+      }
+    } else {
+      const allAccountsList = [
+        ...this.state.bankAccounts.map((b) => ({ ...b, type: 'bank' as TreasuryAccountType })),
+        ...this.state.cashAccounts.map((c) => ({ ...c, type: 'cash' as TreasuryAccountType })),
+        ...this.state.pettyCashAccounts.map((p) => ({ ...p, type: 'petty_cash' as TreasuryAccountType })),
+      ];
+
+      allAccountsList.forEach((acc) => {
+        if ((!effectiveType || acc.type === effectiveType) && acc.openingBalance > 0) {
+          rawItems.push({
+            accountType: acc.type,
+            accountId: acc.id,
+            accountName: acc.accountName,
+            date: (acc as any).openingDate || '2026-01-01',
+            type: 'Opening Balance',
+            documentRef: `OB-${acc.id.toUpperCase()}`,
+            partyName: 'Opening Balance',
+            description: `Opening Balance for ${acc.accountName}`,
+            inflow: acc.openingBalance,
+            outflow: 0,
+            status: 'posted',
+          });
+        }
+      });
+    }
+
     // Money In
     this.state.moneyInList
-      .filter((m) => (!accountType || m.receivedInto === accountType) && (!accountId || m.accountId === accountId))
+      .filter((m) => matchesAccount(m.receivedInto, m.accountId, m.accountName))
       .forEach((m) => {
         rawItems.push({
           accountType: m.receivedInto,
@@ -2203,7 +2297,7 @@ class AccountingService {
 
     // Money Out
     this.state.moneyOutList
-      .filter((m) => (!accountType || m.paidFrom === accountType) && (!accountId || m.accountId === accountId))
+      .filter((m) => matchesAccount(m.paidFrom, m.accountId, m.accountName))
       .forEach((m) => {
         rawItems.push({
           accountType: m.paidFrom,
@@ -2222,7 +2316,7 @@ class AccountingService {
 
     // Direct Expenses
     this.state.directExpenses
-      .filter((e) => (!accountType || e.paidFrom === accountType) && (!accountId || e.accountId === accountId))
+      .filter((e) => matchesAccount(e.paidFrom, e.accountId, e.accountName))
       .forEach((e) => {
         rawItems.push({
           accountType: e.paidFrom,
@@ -2242,7 +2336,7 @@ class AccountingService {
     // Transfers
     this.state.transfers.forEach((t) => {
       // Outflow side
-      if ((!accountType || t.transferFromType === accountType) && (!accountId || t.transferFromId === accountId)) {
+      if (matchesAccount(t.transferFromType, t.transferFromId, t.transferFromName)) {
         rawItems.push({
           accountType: t.transferFromType,
           accountId: t.transferFromId,
@@ -2258,7 +2352,7 @@ class AccountingService {
         });
       }
       // Inflow side
-      if ((!accountType || t.transferToType === accountType) && (!accountId || t.transferToId === accountId)) {
+      if (matchesAccount(t.transferToType, t.transferToId, t.transferToName)) {
         rawItems.push({
           accountType: t.transferToType,
           accountId: t.transferToId,

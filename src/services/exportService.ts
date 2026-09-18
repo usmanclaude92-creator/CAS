@@ -314,6 +314,8 @@ export function getActiveViewExportData(
     projectId?: string | null;
     customerId?: string | null;
     vendorId?: string | null;
+    accountId?: string | null;
+    activeTab?: string | null;
   }
 ): ExportOptions {
   const state = accountingService.getState();
@@ -440,60 +442,119 @@ export function getActiveViewExportData(
     }
 
     case 'banking': {
-      const allAccounts = [
-        ...state.bankAccounts.map((b) => ({
-          name: b.accountName,
-          institution: b.bankName,
-          accountNumber: b.accountNumber,
-          type: 'Bank Account',
-          currency: b.currency,
-          openingBalance: b.openingBalance,
-          currentBalance: b.currentBalance,
-          status: b.status,
-        })),
-        ...state.cashAccounts.map((c) => ({
-          name: c.accountName,
-          institution: 'Main Cash Vault',
-          accountNumber: 'CASH-VAULT',
-          type: 'Cash Account',
-          currency: 'OMR',
-          openingBalance: c.openingBalance,
-          currentBalance: c.currentBalance,
-          status: c.status,
-        })),
-        ...state.pettyCashAccounts.map((p) => ({
-          name: p.accountName,
-          institution: 'Site Petty Cash',
-          accountNumber: 'PETTY-CASH',
-          type: 'Petty Cash',
-          currency: 'OMR',
-          openingBalance: p.openingBalance,
-          currentBalance: p.currentBalance,
-          status: p.status,
-        })),
-      ];
+      const activeAccId = context?.accountId || accountingService.getActiveTreasuryAccountId();
+      const targetAccountId = activeAccId !== 'all' ? activeAccId : undefined;
 
-      const totalBalance = allAccounts.reduce((sum, a) => sum + (a.currentBalance || 0), 0);
+      if (context?.activeTab === 'transfers') {
+        const transfers = state.transfers || [];
+        const totalTransferAmount = transfers.reduce((sum, tr) => sum + (tr.amount || 0), 0);
+
+        return {
+          filename: `Artify_Internal_Transfers_${dateStamp}`,
+          title: 'Banking & Treasury Operations - Internal Transfers Register',
+          subtitle: `Internal transfers between corporate bank accounts, cash vaults, and site floats`,
+          sheetName: 'Internal Transfers',
+          data: transfers,
+          columns: [
+            { header: 'DATE', key: 'date', width: 14 },
+            { header: 'DOC REF', key: 'documentRef', width: 16 },
+            {
+              header: 'TRANSFER FROM',
+              key: 'transferFromName',
+              width: 24,
+              format: (val, row) => `${row.transferFromName} (${(row.transferFromType || '').replace('_', ' ')})`,
+            },
+            {
+              header: 'TRANSFER TO',
+              key: 'transferToName',
+              width: 24,
+              format: (val, row) => `${row.transferToName} (${(row.transferToType || '').replace('_', ' ')})`,
+            },
+            {
+              header: 'AMOUNT',
+              key: 'amount',
+              width: 18,
+              align: 'right',
+              format: (val) => formatOMR(val || 0),
+            },
+            { header: 'REMARKS', key: 'remarks', width: 28, format: (val) => val || '—' },
+            {
+              header: 'ATTACHMENT',
+              key: 'attachmentUrl',
+              width: 16,
+              align: 'center',
+              format: (val) => (val ? 'Attachment Available' : '—'),
+            },
+          ],
+          summaryTotals: {
+            transferFromName: 'TOTAL TRANSFERS',
+            amount: formatOMR(totalTransferAmount),
+          },
+        };
+      }
+
+      // Default: Bank & Cash Book Ledger matching the exact table format on screen
+      const ledger = accountingService.getTreasuryLedger(targetAccountId);
+
+      const totalReceipts = ledger.reduce((sum, r) => sum + (r.receipt || 0), 0);
+      const totalPayments = ledger.reduce((sum, r) => sum + (r.payment || 0), 0);
+      const finalBalance = ledger.length > 0 ? (ledger[ledger.length - 1].runningBalance ?? 0) : 0;
+
+      const accountObj = targetAccountId
+        ? state.bankAccounts.find((b) => b.id === targetAccountId) ||
+          state.cashAccounts.find((c) => c.id === targetAccountId) ||
+          state.pettyCashAccounts.find((p) => p.id === targetAccountId)
+        : null;
+
+      const accountSubtitle = accountObj
+        ? `Account: ${accountObj.accountName} (${(accountObj as any).bankName || (accountObj as any).accountType || 'Treasury'}) • Current Balance: ${formatOMR(accountObj.currentBalance)}`
+        : 'All Commercial Bank Accounts, Cash in Hand, and Site Petty Cash Accounts';
 
       return {
-        filename: `Artify_Banking_Treasury_${dateStamp}`,
-        title: 'Treasury, Bank Accounts & Liquid Balances Register',
-        subtitle: `Complete overview of corporate bank accounts, cash vaults, and site petty cash balances`,
-        sheetName: 'Treasury Accounts',
-        data: allAccounts,
+        filename: `Artify_Bank_Cash_Book_${dateStamp}`,
+        title: 'Banking & Treasury Operations - Bank & Cash Book Ledger',
+        subtitle: accountSubtitle,
+        sheetName: 'Bank & Cash Book',
+        data: ledger,
         columns: [
-          { header: 'Account Name', key: 'name', width: 24 },
-          { header: 'Bank / Institution', key: 'institution', width: 22 },
-          { header: 'Account Number', key: 'accountNumber', width: 20 },
-          { header: 'Account Type', key: 'type', width: 16 },
-          { header: 'Currency', key: 'currency', width: 12, align: 'center' },
-          { header: 'Opening Balance (OMR)', key: 'openingBalance', width: 18, align: 'right', format: (val) => formatOMR(val) },
-          { header: 'Current Balance (OMR)', key: 'currentBalance', width: 18, align: 'right', format: (val) => formatOMR(val) },
-          { header: 'Status', key: 'status', width: 12, align: 'center' },
+          { header: 'DATE', key: 'date', width: 14 },
+          { header: 'DOC REF', key: 'documentRef', width: 16 },
+          { header: 'ACCOUNT', key: 'accountName', width: 22 },
+          { header: 'TYPE', key: 'type', width: 16 },
+          {
+            header: 'PARTY / DETAIL',
+            key: 'party',
+            width: 22,
+            format: (val, row) => row.party || row.partyName || '—',
+          },
+          { header: 'DESCRIPTION', key: 'description', width: 34 },
+          {
+            header: 'RECEIPT (DR)',
+            key: 'receipt',
+            width: 16,
+            align: 'right',
+            format: (val) => (val && val > 0 ? formatOMR(val) : '—'),
+          },
+          {
+            header: 'PAYMENT (CR)',
+            key: 'payment',
+            width: 16,
+            align: 'right',
+            format: (val) => (val && val > 0 ? formatOMR(val) : '—'),
+          },
+          {
+            header: 'RUNNING BALANCE',
+            key: 'runningBalance',
+            width: 18,
+            align: 'right',
+            format: (val) => formatOMR(val ?? 0),
+          },
         ],
         summaryTotals: {
-          name: 'TOTAL LIQUID TREASURY',
-          currentBalance: formatOMR(totalBalance),
+          accountName: 'TOTALS',
+          receipt: formatOMR(totalReceipts),
+          payment: formatOMR(totalPayments),
+          runningBalance: formatOMR(finalBalance),
         },
       };
     }
@@ -761,6 +822,8 @@ export function exportActiveView(
     projectId?: string | null;
     customerId?: string | null;
     vendorId?: string | null;
+    accountId?: string | null;
+    activeTab?: string | null;
   }
 ): { filename: string; recordCount: number } {
   const options = getActiveViewExportData(activeView, context);
