@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Sidebar, NavView } from './components/Sidebar';
 import { Header } from './components/Header';
 import { LoginView } from './components/auth/LoginView';
@@ -573,8 +574,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AppContent />
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
