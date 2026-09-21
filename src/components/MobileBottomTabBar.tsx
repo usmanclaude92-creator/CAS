@@ -297,7 +297,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
             <button
               type="button"
               onClick={() => handleTabClick('dashboard')}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
+              className={`btn-press ripple-effect flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
                 isDashboardActive
                   ? 'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50/80 dark:bg-indigo-950/40'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 font-medium'
@@ -312,7 +312,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
               type="button"
               onClick={() => handleTabClick('approvals')}
               disabled={!hasApprovalsAccess}
-              className={`relative flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
+              className={`btn-press ripple-effect relative flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
                 !hasApprovalsAccess
                   ? 'opacity-40 cursor-not-allowed text-slate-400'
                   : isApprovalsActive
@@ -336,7 +336,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
               type="button"
               onClick={() => handleTabClick('projects')}
               disabled={!hasProjectsAccess}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
+              className={`btn-press ripple-effect flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
                 !hasProjectsAccess
                   ? 'opacity-40 cursor-not-allowed text-slate-400'
                   : isProjectsActive
@@ -353,7 +353,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
               type="button"
               onClick={() => handleTabClick('banking')}
               disabled={!hasBankingAccess}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
+              className={`btn-press ripple-effect flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
                 !hasBankingAccess
                   ? 'opacity-40 cursor-not-allowed text-slate-400'
                   : isBankingActive
@@ -369,7 +369,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
             <button
               type="button"
               onClick={() => setIsMoreSheetOpen(true)}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
+              className={`btn-press ripple-effect flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
                 isMoreActive || isMoreSheetOpen
                   ? 'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50/80 dark:bg-indigo-950/40'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 font-medium'

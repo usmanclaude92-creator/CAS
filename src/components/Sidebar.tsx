@@ -150,7 +150,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onSelectView(item.id);
                     onClose();
                   }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                  className={`btn-press ripple-effect w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                     isActive
                       ? 'bg-blue-600 text-white font-semibold shadow-xs'
                       : 'text-slate-300 hover:bg-slate-800 hover:text-white'

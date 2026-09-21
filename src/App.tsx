@@ -8,6 +8,8 @@ import { ThemeProvider } from './context/ThemeContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Sidebar, NavView } from './components/Sidebar';
 import { MobileBottomTabBar } from './components/MobileBottomTabBar';
+import { MobileFloatingActionButton } from './components/MobileFloatingActionButton';
+import { PullToRefresh } from './components/PullToRefresh';
 import { Header } from './components/Header';
 import { LoginView } from './components/auth/LoginView';
 
@@ -319,8 +321,16 @@ function AppContent() {
           onLogout={handleLogout}
         />
 
-        {/* Viewport Content - responsive width and bottom padding for collapsible navigation bar */}
-        <main className="flex-1 py-3 sm:py-6 lg:py-8 w-[96%] sm:w-[94%] max-w-[94%] mx-auto space-y-4 sm:space-y-6 pb-24 sm:pb-28 lg:pb-8">
+        {/* Viewport Content with Pull-To-Refresh */}
+        <PullToRefresh
+          onRefresh={async () => {
+            setTick((t) => t + 1);
+            if (supabaseService.isConfigured()) {
+              await supabaseService.pullRemoteChanges().catch(() => {});
+            }
+          }}
+        >
+          <main className="flex-1 py-3 sm:py-6 lg:py-8 w-[96%] sm:w-[94%] max-w-[94%] mx-auto space-y-4 sm:space-y-6 pb-28 sm:pb-32 lg:pb-8">
           {/* Access Denied View if user lacks view permission */}
           {!hasAccessToActiveView ? (
             <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-rose-200 dark:border-rose-900/60 shadow-xs space-y-4 max-w-lg mx-auto mt-12">
@@ -499,7 +509,30 @@ function AppContent() {
             </>
           )}
         </main>
+        </PullToRefresh>
       </div>
+
+      {/* Floating Action Button (FAB) for Quick Mobile Transaction Entry */}
+      <MobileFloatingActionButton
+        onOpenMoneyIn={() => {
+          setModalProjectId(undefined);
+          setIsMoneyInOpen(true);
+        }}
+        onOpenMoneyOut={() => setIsMoneyOutOpen(true)}
+        onOpenClientInvoice={() => {
+          setModalProjectId(undefined);
+          setIsClientInvoiceOpen(true);
+        }}
+        onOpenPurchase={() => {
+          setModalProjectId(undefined);
+          setIsPurchaseOpen(true);
+        }}
+        onOpenExpense={() => {
+          setModalProjectId(undefined);
+          setIsExpenseOpen(true);
+        }}
+        onOpenTransfer={() => setIsTransferOpen(true)}
+      />
 
       {/* Collapsible Mobile Bottom Tab Bar */}
       <MobileBottomTabBar

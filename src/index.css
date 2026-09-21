@@ -366,3 +366,90 @@
   padding-bottom: 0.3rem !important;
 }
 
+/* ==========================================================================
+   MOBILE NATIVE APP TOUCH & VIEWPORT OPTIMIZATIONS
+   ========================================================================== */
+html, body {
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+  touch-action: manipulation;
+}
+
+/* Ensure smooth native-like touch targets */
+button, a, input, select, textarea {
+  touch-action: manipulation;
+}
+
+/* Safe area insets for notches & home bars on mobile devices */
+.safe-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.safe-top {
+  padding-top: max(0.5rem, env(safe-area-inset-top));
+}
+
+/* ==========================================================================
+   NATIVE TOUCH PRESS-STATE ANIMATIONS & RIPPLE FEEDBACK
+   ========================================================================== */
+/* Active press-down tactile micro-interaction on interactive elements */
+button:not(:disabled):active,
+[role="button"]:not([aria-disabled="true"]):active,
+.btn-press:active {
+  transform: scale(0.97);
+  transition: transform 75ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Touch card & list item tactile feedback */
+.touch-card {
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.touch-card:active {
+  transform: scale(0.985);
+  filter: brightness(0.97);
+}
+
+/* Ripple highlight layer */
+.ripple-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple-effect::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.35);
+  opacity: 0;
+  border-radius: 100%;
+  transform: scale(1, 1) translate(-50%, -50%);
+  transform-origin: 50% 50%;
+}
+
+.ripple-effect:active::after {
+  animation: ripple 0.4s ease-out;
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0, 0) translate(-50%, -50%);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(40, 40) translate(-50%, -50%);
+    opacity: 0;
+  }
+}
+
+/* Smooth mobile momentum scrolling */
+.mobile-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
