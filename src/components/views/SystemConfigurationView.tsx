@@ -28,6 +28,7 @@ import {
   Ban,
   Activity,
   UserCheck,
+  ShieldCheck,
 } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { UserProfile, Role, UserStatus } from '../../types/auth';
@@ -57,11 +58,13 @@ export type SystemConfigTab =
 interface SystemConfigurationViewProps {
   initialTab?: SystemConfigTab;
   onOpenSupabaseSettings: () => void;
+  onOpenAdminApprovals?: () => void;
 }
 
 export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = ({
   initialTab = 'credentials',
   onOpenSupabaseSettings,
+  onOpenAdminApprovals,
 }) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<SystemConfigTab>(initialTab);
@@ -420,6 +423,18 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
               <span>DB Config</span>
             </button>
           )}
+
+          {isSuperAdmin && onOpenAdminApprovals && (
+            <button
+              type="button"
+              onClick={onOpenAdminApprovals}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl text-purple-800 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 dark:hover:bg-purple-900 border border-purple-300 dark:border-purple-700 transition-colors cursor-pointer shadow-2xs"
+              title="Manage Visitor Demo Approvals & Generate One-Time Access Links"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+              <span>Demo Approvals</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -494,14 +509,27 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
               </select>
             </div>
 
-            <button
-              type="button"
-              onClick={handleOpenCreateUser}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-sm transition-colors cursor-pointer shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add New User</span>
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {onOpenAdminApprovals && (
+                <button
+                  type="button"
+                  onClick={onOpenAdminApprovals}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 dark:hover:bg-purple-900 border border-purple-200 dark:border-purple-800 shadow-2xs transition-colors cursor-pointer"
+                  title="Review visitor demo access requests and dispatch one-time activation links"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                  <span>Demo Approvals Portal</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleOpenCreateUser}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-sm transition-colors cursor-pointer shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add New User</span>
+              </button>
+            </div>
           </div>
 
           {/* Session Security & Inactivity Timeout Configuration Card */}

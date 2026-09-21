@@ -23,12 +23,14 @@ interface LoginViewProps {
   onLoginSuccess: () => void;
   sessionExpiredNotice?: string | null;
   onClearExpiredNotice?: () => void;
+  onOpenAdminApprovals?: () => void;
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({
   onLoginSuccess,
   sessionExpiredNotice,
   onClearExpiredNotice,
+  onOpenAdminApprovals,
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -59,7 +61,16 @@ export const LoginView: React.FC<LoginViewProps> = ({
         setIsApprovalModalOpen(true);
       }
     }
-  }, []);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'a' || e.key === 'A')) {
+        e.preventDefault();
+        onOpenAdminApprovals?.();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onOpenAdminApprovals]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -305,8 +316,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               Artify Solutions
             </strong>.
           </p>
-          <p>
-            Visit{' '}
+          <div className="flex items-center justify-center gap-3">
             <a
               href="https://artifysols.com/"
               target="_blank"
@@ -315,7 +325,21 @@ export const LoginView: React.FC<LoginViewProps> = ({
             >
               www.artifysols.com
             </a>
-          </p>
+            {onOpenAdminApprovals && (
+              <>
+                <span className="text-slate-300 dark:text-slate-700">•</span>
+                <button
+                  type="button"
+                  onClick={onOpenAdminApprovals}
+                  className="text-[11px] text-slate-400 dark:text-slate-600 hover:text-purple-600 dark:hover:text-purple-400 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                  title="Restricted Administrative Demo Approvals Route (Ctrl+Alt+A)"
+                >
+                  <Lock className="w-3 h-3" />
+                  <span>Admin Portal</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
         </div>
       </main>

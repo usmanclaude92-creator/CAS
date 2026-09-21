@@ -502,6 +502,60 @@ class AuthService {
     return false;
   }
 
+  /**
+   * Automatically activates and logs in an authorized demo guest redeemed via a one-time secure link
+   */
+  public loginAsAuthorizedDemoGuest(profile: {
+    fullName: string;
+    email: string;
+    roleCode: string;
+    roleName: string;
+    companyName?: string;
+  }): { success: boolean; user: UserProfile } {
+    const role = this.roles.find((r) => r.code === profile.roleCode) || this.roles[0];
+    const guestId = `usr-demo-${profile.email.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+    
+    let user = this.users.find((u) => u.email.toLowerCase() === profile.email.toLowerCase());
+    if (user) {
+      user.roleCode = role.code;
+      user.roleId = role.id;
+      user.roleName = role.name;
+      user.status = 'active';
+      user.isDemo = true;
+      user.fullName = profile.fullName;
+      user.lastLogin = new Date().toISOString();
+    } else {
+      user = {
+        id: guestId,
+        email: profile.email.toLowerCase(),
+        username: profile.email.split('@')[0],
+        fullName: profile.fullName,
+        roleId: role.id,
+        roleCode: role.code,
+        roleName: role.name,
+        status: 'active',
+        department: profile.companyName ? `${profile.companyName} (Demo)` : 'Authorized Demo Evaluation',
+        employeeId: 'DEMO-GUEST',
+        assignedProjectIds: [],
+        isAllProjects: true,
+        remarks: `Authorized visitor demo session (${role.name}) for ${profile.companyName || 'Corporate Evaluation'}.`,
+        isDemo: true,
+        lastLogin: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      };
+      this.users.push(user);
+    }
+
+    this.currentUser = user;
+    try {
+      localStorage.setItem(AUTH_CURRENT_SESSION_KEY, user.id);
+    } catch {
+      // ignore
+    }
+    this.saveData();
+    return { success: true, user };
+  }
+
   // -------------------------------------------------------------
   // USER PROFILE & AUTHORIZATION GETTERS
   // -------------------------------------------------------------

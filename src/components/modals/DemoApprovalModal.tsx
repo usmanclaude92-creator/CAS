@@ -53,17 +53,18 @@ export const DemoApprovalModal: React.FC<DemoApprovalModalProps> = ({
   if (!isOpen) return null;
 
   const handleApprove = async () => {
-    if (!request || !token) return;
+    if (!request) return;
     setIsProcessing(true);
     setStatusMessage(null);
 
     try {
-      const res = await demoRequestService.approveRequest(request.id, token);
+      // Generate one-time secure link and dispatch notification to applicant's email
+      const res = await demoRequestService.generateAndSendOneTimeSecureLink(request.id, 48);
       if (res.success && res.request) {
         setRequest(res.request);
         setStatusMessage({
           type: 'success',
-          text: `Demo access granted successfully for ${res.request.fullName} (${res.request.roleName}).`,
+          text: `Demo access approved! A single-use secure activation link has been generated and dispatched to ${res.request.email}.`,
         });
       } else {
         setStatusMessage({
@@ -252,28 +253,69 @@ export const DemoApprovalModal: React.FC<DemoApprovalModalProps> = ({
                 )}
               </div>
 
-              {/* If already approved, show generated credentials */}
-              {request.status === 'approved' && request.assignedCredentials && (
-                <div className="p-3.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/60 space-y-2">
+              {/* If already approved, show generated one-time link or credentials */}
+              {request.status === 'approved' && (
+                <div className="p-4 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/60 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-blue-900 dark:text-blue-100 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                      Authorized Demo Account Active
+                    <span className="text-xs font-bold text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                      One-Time Secure Access Link Generated
                     </span>
                     <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded-md">
-                      Active
+                      Dispatched
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-                    The visitor can sign in with their authorized email (<strong>{request.assignedCredentials.email}</strong>).
-                  </p>
+
+                  {request.oneTimeSecureLink?.link ? (
+                    <div className="space-y-2">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          readOnly
+                          value={request.oneTimeSecureLink.link}
+                          className="w-full px-3 py-2 pr-20 bg-white dark:bg-slate-900 border border-purple-200 dark:border-purple-700 rounded-lg text-xs font-mono text-slate-800 dark:text-slate-200 select-all"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (navigator.clipboard) {
+                              navigator.clipboard.writeText(request.oneTimeSecureLink!.link);
+                              setCopied(true);
+                              setTimeout(() => setCopied(false), 2000);
+                            }
+                          }}
+                          className="absolute right-1 top-1 bottom-1 px-3 bg-purple-600 hover:bg-purple-500 text-white rounded-md text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          {copied ? (
+                            <>
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5" />
+                              <span>Copy Link</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-purple-700 dark:text-purple-300">
+                        Dispatched to <strong>{request.email}</strong>. When clicked, this link initializes an authorized demo session for <strong>{request.roleName}</strong> automatically.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                      The visitor can sign in with their authorized email (<strong>{request.email}</strong>).
+                    </p>
+                  )}
+
                   {onInstantLogin && (
                     <button
                       type="button"
                       onClick={() => onInstantLogin(request.email, request.roleCode)}
-                      className="mt-2 w-full py-2 px-3 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="mt-2 w-full py-2 px-3 text-xs font-bold text-white bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      <span>Sign In as {request.roleName} (Test Session)</span>
+                      <span>Simulate Login as {request.roleName}</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   )}

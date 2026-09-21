@@ -41,13 +41,15 @@ import { NewVendorModal } from './components/modals/NewVendorModal';
 import { NewBankAccountModal } from './components/modals/NewBankAccountModal';
 import { SupabaseSettingsModal } from './components/modals/SupabaseSettingsModal';
 import { SessionWarningModal } from './components/modals/SessionWarningModal';
-import { ToastProvider } from './context/ToastContext';
+import { ToastProvider, toast } from './context/ToastContext';
 import { notificationCenter } from './services/notificationCenter';
 
 import { accountingService } from './services/accountingService';
 import { authService } from './services/authService';
 import { supabaseService } from './services/supabaseClient';
 import { sessionSecurityService, SessionSecurityState } from './services/sessionSecurityService';
+import { demoRequestService } from './services/demoRequestService';
+import { AdminDemoApprovalsView } from './components/admin/AdminDemoApprovalsView';
 import { Transaction } from './types';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
 
@@ -106,6 +108,31 @@ function AppContent() {
   const [isNewCustomerOpen, setIsNewCustomerOpen] = useState(false);
   const [isNewVendorOpen, setIsNewVendorOpen] = useState(false);
   const [isNewBankAccountOpen, setIsNewBankAccountOpen] = useState(false);
+
+  // Hidden Administrative Approval Route & One-Time Token State
+  const [isAdminApprovalsRoute, setIsAdminApprovalsRoute] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const params = new URLSearchParams(window.location.search);
+    const route = params.get('route');
+    const action = params.get('action');
+    return (
+      route === 'admin_approvals' ||
+      params.get('admin_approvals') === 'true' ||
+      action === 'admin_approvals' ||
+      window.location.pathname.includes('/admin/demo-approvals') ||
+      window.location.hash.includes('admin/demo-approvals')
+    );
+  });
+  const [approvalRequestId, setApprovalRequestId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.search);
+    return params.get('requestId') || params.get('id');
+  });
+  const [approvalToken, setApprovalToken] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.search);
+    return params.get('token');
+  });
   const [isSupabaseSettingsOpen, setIsSupabaseSettingsOpen] = useState(false);
 
   // Session Security & Inactivity Timeout
@@ -140,6 +167,50 @@ function AppContent() {
       unsubAuth();
       unsubSupabase();
     };
+  }, []);
+
+  // Listen for one-time secure link token (?demo_access_token=...) and keyboard shortcut
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const demoAccessToken = params.get('demo_access_token');
+    const reqId = params.get('requestId');
+
+    if (demoAccessToken) {
+      demoRequestService.redeemOneTimeToken(demoAccessToken, reqId || undefined).then((res) => {
+        if (res.success && res.request) {
+          setIsAuthenticated(true);
+          setCurrentUser(authService.getCurrentUser());
+          toast.success(
+            'Authorized Demo Access Activated',
+            `Welcome ${res.request.fullName}! Your one-time secure session as ${res.request.roleName} is now active.`
+          );
+          if (window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        } else {
+          setSessionExpiredNotice(
+            res.error || 'This one-time demo access link is invalid or has already been redeemed.'
+          );
+          toast.error(
+            'Access Link Invalid',
+            res.error || 'This one-time demo access link could not be verified.'
+          );
+          if (window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }
+      });
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'a' || e.key === 'A')) {
+        e.preventDefault();
+        setIsAdminApprovalsRoute((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   // Track session security and auto-logout lifecycle
@@ -218,6 +289,22 @@ function AppContent() {
     setIsMoneyInOpen(true);
   };
 
+  // Hidden Administrative Approval Portal Route
+  if (isAdminApprovalsRoute) {
+    return (
+      <AdminDemoApprovalsView
+        onBackToApp={() => {
+          setIsAdminApprovalsRoute(false);
+          if (typeof window !== 'undefined' && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }}
+        initialRequestId={approvalRequestId}
+        initialToken={approvalToken}
+      />
+    );
+  }
+
   // If not authenticated, render Login Screen
   if (!isAuthenticated || !currentUser) {
     return (
@@ -229,6 +316,7 @@ function AppContent() {
           setIsAuthenticated(true);
           setCurrentUser(authService.getCurrentUser());
         }}
+        onOpenAdminApprovals={() => setIsAdminApprovalsRoute(true)}
       />
     );
   }
@@ -482,6 +570,7 @@ function AppContent() {
               {activeView === 'system_config' && (
                 <SystemConfigurationView
                   onOpenSupabaseSettings={() => setIsSupabaseSettingsOpen(true)}
+                  onOpenAdminApprovals={() => setIsAdminApprovalsRoute(true)}
                 />
               )}
 
@@ -489,6 +578,7 @@ function AppContent() {
                 <SystemConfigurationView
                   initialTab="credentials"
                   onOpenSupabaseSettings={() => setIsSupabaseSettingsOpen(true)}
+                  onOpenAdminApprovals={() => setIsAdminApprovalsRoute(true)}
                 />
               )}
 
@@ -496,6 +586,7 @@ function AppContent() {
                 <SystemConfigurationView
                   initialTab="roles"
                   onOpenSupabaseSettings={() => setIsSupabaseSettingsOpen(true)}
+                  onOpenAdminApprovals={() => setIsAdminApprovalsRoute(true)}
                 />
               )}
 
@@ -503,6 +594,7 @@ function AppContent() {
                 <SystemConfigurationView
                   initialTab="workflow"
                   onOpenSupabaseSettings={() => setIsSupabaseSettingsOpen(true)}
+                  onOpenAdminApprovals={() => setIsAdminApprovalsRoute(true)}
                 />
               )}
 

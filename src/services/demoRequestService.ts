@@ -3,6 +3,8 @@
  * Manages visitor demo access requests, role directories, and administrative approval workflows.
  */
 
+import { authService } from './authService';
+
 export interface SystemRoleInfo {
   code: string;
   name: string;
@@ -14,6 +16,17 @@ export interface SystemRoleInfo {
   responsibilities: string[];
   keyModules: string[];
   badgeColor: string;
+}
+
+export interface OneTimeSecureLink {
+  token: string;
+  link: string;
+  createdAt: string;
+  expiresAt: string;
+  used: boolean;
+  usedAt?: string;
+  dispatchedToEmail: string;
+  dispatchedAt: string;
 }
 
 export interface DemoRequest {
@@ -30,6 +43,7 @@ export interface DemoRequest {
   requestedAt: string;
   approvedAt?: string;
   approvalLink: string;
+  oneTimeSecureLink?: OneTimeSecureLink;
   assignedCredentials?: {
     email: string;
     temporaryPassword?: string;
@@ -376,6 +390,199 @@ class DemoRequestService {
     this.saveRequests(list);
 
     return { success: true };
+  }
+
+  /**
+   * Generates a one-time secure access link for an approved demo request,
+   * updates the request state, and dispatches the link to the requested user's email.
+   */
+  public async generateAndSendOneTimeSecureLink(
+    requestId: string,
+    customExpiryHours: number = 48,
+    roleCodeOverride?: string
+  ): Promise<{ success: boolean; request?: DemoRequest; link?: string; error?: string }> {
+    const list = this.getStoredRequests();
+    const index = list.findIndex((r) => r.id === requestId);
+
+    if (index === -1) {
+      return { success: false, error: 'Demo request record not found.' };
+    }
+
+    const target = list[index];
+
+    // If role was updated by admin
+    if (roleCodeOverride) {
+      const roleInfo = VISITOR_SYSTEM_ROLES.find((r) => r.code === roleCodeOverride);
+      if (roleInfo) {
+        target.roleCode = roleInfo.code;
+        target.roleName = roleInfo.name;
+      }
+    }
+
+    // Generate unique secure one-time token
+    const uniqueHash = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID().replace(/-/g, '')
+      : Math.random().toString(36).substring(2) + Date.now().toString(36);
+    const token = `dsec_${uniqueHash}`;
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const secureLink = `${origin}/?demo_access_token=${token}&requestId=${encodeURIComponent(target.id)}`;
+    const expiresAt = new Date(Date.now() + customExpiryHours * 60 * 60 * 1000).toISOString();
+
+    const oneTimeSecureLink: OneTimeSecureLink = {
+      token,
+      link: secureLink,
+      createdAt: new Date().toISOString(),
+      expiresAt,
+      used: false,
+      dispatchedToEmail: target.email,
+      dispatchedAt: new Date().toISOString(),
+    };
+
+    target.status = 'approved';
+    target.approvedAt = new Date().toISOString();
+    target.oneTimeSecureLink = oneTimeSecureLink;
+    target.assignedCredentials = {
+      email: target.email,
+      instructions: `Your one-time demo access link for '${target.roleName}' has been generated and sent to ${target.email}.`,
+    };
+
+    list[index] = target;
+    this.saveRequests(list);
+
+    // Dispatch email to the requested visitor's email address
+    await this.dispatchUserOneTimeLinkNotification(target, secureLink, expiresAt);
+
+    return {
+      success: true,
+      request: target,
+      link: secureLink,
+    };
+  }
+
+  /**
+   * Dispatches the single-use secure demo link directly to the requested user's email address
+   */
+  private async dispatchUserOneTimeLinkNotification(
+    request: DemoRequest,
+    secureLink: string,
+    expiresAt: string
+  ): Promise<void> {
+    const payload = {
+      _subject: `Your Artify ERP Demo Access is Approved: One-Time Secure Link (${request.roleName})`,
+      recipient_name: request.fullName,
+      recipient_email: request.email,
+      company_name: request.companyName || 'Corporate Evaluation',
+      assigned_role: request.roleName,
+      one_time_secure_link: secureLink,
+      link_valid_until: new Date(expiresAt).toLocaleString(),
+      message: `Dear ${request.fullName},\n\nYour request for demo access to Artify Construction Accounting System as "${request.roleName}" has been approved by the system administrator.\n\nUse your single-use secure activation link below to enter your authorized workspace:\n${secureLink}\n\nNotice: This is a one-time activation link valid until ${new Date(expiresAt).toLocaleString()}. Upon clicking, your temporary demo session will automatically initialize without requiring manual password entry.\n\nBest regards,\nArtify Solutions Security Team`,
+    };
+
+    try {
+      const response = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(request.email)}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        console.warn('One-time link email dispatch status:', response.status);
+      }
+    } catch (networkError) {
+      console.warn('One-time link email network dispatch note:', networkError);
+    }
+  }
+
+  /**
+   * Redeems a one-time secure link token, validates single-use & expiry,
+   * marks it as used, and logs the visitor in with their approved role.
+   */
+  public async redeemOneTimeToken(
+    token: string,
+    requestId?: string
+  ): Promise<{ success: boolean; request?: DemoRequest; error?: string }> {
+    const list = this.getStoredRequests();
+    
+    // Find matching request by token or requestId
+    let index = -1;
+    if (requestId) {
+      index = list.findIndex((r) => r.id === requestId && r.oneTimeSecureLink?.token === token);
+    }
+    if (index === -1) {
+      index = list.findIndex((r) => r.oneTimeSecureLink?.token === token);
+    }
+
+    if (index === -1) {
+      return {
+        success: false,
+        error: 'Invalid or unrecognized one-time demo access token. Please verify your activation link or request a new demo account.',
+      };
+    }
+
+    const req = list[index];
+    const linkInfo = req.oneTimeSecureLink;
+
+    if (!linkInfo) {
+      return {
+        success: false,
+        error: 'No active one-time access link found for this request.',
+      };
+    }
+
+    // Check if single-use token was already consumed
+    if (linkInfo.used) {
+      const usedTime = linkInfo.usedAt ? new Date(linkInfo.usedAt).toLocaleString() : 'previously';
+      return {
+        success: false,
+        error: `This one-time demo access link was already redeemed on ${usedTime}. Single-use links cannot be re-used. Please submit a new demo access request to continue exploring.`,
+      };
+    }
+
+    // Check if token has expired
+    if (new Date() > new Date(linkInfo.expiresAt)) {
+      return {
+        success: false,
+        error: `This one-time demo access link expired on ${new Date(linkInfo.expiresAt).toLocaleString()}. Please submit a new demo access request.`,
+      };
+    }
+
+    // Mark single-use token as consumed immediately
+    linkInfo.used = true;
+    linkInfo.usedAt = new Date().toISOString();
+    req.oneTimeSecureLink = linkInfo;
+    list[index] = req;
+    this.saveRequests(list);
+
+    // Auto-login the guest with approved role permissions
+    authService.loginAsAuthorizedDemoGuest({
+      fullName: req.fullName,
+      email: req.email,
+      roleCode: req.roleCode,
+      roleName: req.roleName,
+      companyName: req.companyName,
+    });
+
+    return {
+      success: true,
+      request: req,
+    };
+  }
+
+  /**
+   * Deletes a request from records
+   */
+  public deleteRequest(requestId: string): boolean {
+    const list = this.getStoredRequests();
+    const filtered = list.filter((r) => r.id !== requestId);
+    if (filtered.length !== list.length) {
+      this.saveRequests(filtered);
+      return true;
+    }
+    return false;
   }
 }
 
