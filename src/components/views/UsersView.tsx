@@ -314,7 +314,9 @@ export const UsersView: React.FC = () => {
                           </span>
                         )}
                         {isSuperAdminRole && (
-                          <ShieldCheck className="w-3.5 h-3.5 text-amber-500" title="Super Administrator" />
+                          <span title="Super Administrator">
+                            <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                          </span>
                         )}
                       </div>
                       <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">

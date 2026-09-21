@@ -56,6 +56,7 @@ export const BankingView: React.FC<BankingViewProps> = ({
   const summary = accountingService.getDashboardSummary();
 
   const rawTreasuryLedger = accountingService.getTreasuryLedger(
+    undefined,
     selectedAccountId === 'all' ? undefined : selectedAccountId
   );
 

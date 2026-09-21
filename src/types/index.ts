@@ -17,7 +17,7 @@ export interface User {
   role: UserRole | string;
 }
 
-export type ProjectStatus = 'active' | 'completed' | 'inactive';
+export type ProjectStatus = 'active' | 'completed' | 'inactive' | 'on_hold';
 
 export interface Project {
   id: string;

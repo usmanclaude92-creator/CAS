@@ -277,3 +277,92 @@
   }
 }
 
+/* ==========================================================================
+   MOBILE DATA TABLE SPACING & RESPONSIVENESS OPTIMIZATIONS
+   Optimizes cell padding, typography, and touch scrolling for smaller screens
+   ========================================================================== */
+
+/* Enhanced touch scrolling for horizontal data tables */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  overscroll-behavior-x: contain;
+}
+
+/* Custom sleek scrollbar for mobile table containers */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 4px;
+}
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+.dark .overflow-x-auto::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
+}
+
+/* Tablet & Mobile Table Spacing Optimizations (screens <= 768px) */
+@media (max-width: 768px) {
+  table th,
+  table td {
+    padding-top: 0.45rem !important;
+    padding-bottom: 0.45rem !important;
+    padding-left: 0.55rem !important;
+    padding-right: 0.55rem !important;
+    font-size: 0.75rem !important;
+    line-height: 1.15rem !important;
+  }
+
+  /* Compact header typography */
+  table thead th {
+    font-size: 0.6875rem !important;
+    letter-spacing: 0.02em !important;
+    white-space: nowrap !important;
+  }
+
+  /* Compact badges inside table cells */
+  table td span[class*="rounded"] {
+    font-size: 0.625rem !important;
+    padding-left: 0.35rem !important;
+    padding-right: 0.35rem !important;
+    padding-top: 0.1rem !important;
+    padding-bottom: 0.1rem !important;
+  }
+}
+
+/* Compact Smartphone Spacing (screens <= 480px) */
+@media (max-width: 480px) {
+  table th,
+  table td {
+    padding-top: 0.35rem !important;
+    padding-bottom: 0.35rem !important;
+    padding-left: 0.45rem !important;
+    padding-right: 0.45rem !important;
+    font-size: 0.6875rem !important;
+  }
+
+  table thead th {
+    font-size: 0.625rem !important;
+  }
+}
+
+/* Toggleable Ultra-Compact Table Mode for high data-density workflows */
+.compact-tables table th,
+.compact-tables table td {
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+  padding-left: 0.4rem !important;
+  padding-right: 0.4rem !important;
+  font-size: 0.6875rem !important;
+  line-height: 1.1rem !important;
+}
+
+.compact-tables table thead th {
+  font-size: 0.625rem !important;
+  padding-top: 0.3rem !important;
+  padding-bottom: 0.3rem !important;
+}
+

@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Sidebar, NavView } from './components/Sidebar';
+import { MobileBottomTabBar } from './components/MobileBottomTabBar';
 import { Header } from './components/Header';
 import { LoginView } from './components/auth/LoginView';
 
@@ -46,6 +47,7 @@ import { accountingService } from './services/accountingService';
 import { authService } from './services/authService';
 import { supabaseService } from './services/supabaseClient';
 import { sessionSecurityService, SessionSecurityState } from './services/sessionSecurityService';
+import { workflowService } from './services/workflowService';
 import { Transaction } from './types';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
 
@@ -55,6 +57,28 @@ function AppContent() {
   const [activeView, setActiveView] = useState<NavView>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(supabaseService.isConfigured());
+
+  // Table spacing optimization state (Compact vs Normal)
+  const [isTableCompact, setIsTableCompact] = useState(() => {
+    try {
+      const saved = localStorage.getItem('table_density_compact');
+      return saved === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleToggleTableCompact = () => {
+    setIsTableCompact((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('table_density_compact', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
 
   // Deep linking selections
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -234,7 +258,7 @@ function AppContent() {
   const hasAccessToActiveView = verifyViewPermission(activeView);
 
   return (
-    <div className="min-h-screen bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
+    <div className={`min-h-screen bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex transition-colors duration-200 ${isTableCompact ? 'compact-tables' : ''}`}>
       {/* Sidebar Navigation with dynamic RBAC filtering */}
       <Sidebar
         activeView={activeView}
@@ -295,8 +319,8 @@ function AppContent() {
           onLogout={handleLogout}
         />
 
-        {/* Viewport Content - 94% width with 3% margin on left and right */}
-        <main className="flex-1 py-4 sm:py-6 lg:py-8 w-[94%] max-w-[94%] mx-auto space-y-6">
+        {/* Viewport Content - responsive width and bottom padding for collapsible navigation bar */}
+        <main className="flex-1 py-3 sm:py-6 lg:py-8 w-[96%] sm:w-[94%] max-w-[94%] mx-auto space-y-4 sm:space-y-6 pb-24 sm:pb-28 lg:pb-8">
           {/* Access Denied View if user lacks view permission */}
           {!hasAccessToActiveView ? (
             <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-rose-200 dark:border-rose-900/60 shadow-xs space-y-4 max-w-lg mx-auto mt-12">
@@ -353,7 +377,7 @@ function AppContent() {
               )}
 
               {activeView === 'approvals' && (
-                <ApprovalsView onReverseTransaction={handleOpenReverse} />
+                <ApprovalsView />
               )}
 
               {activeView === 'projects' && (
@@ -476,6 +500,39 @@ function AppContent() {
           )}
         </main>
       </div>
+
+      {/* Collapsible Mobile Bottom Tab Bar */}
+      <MobileBottomTabBar
+        activeView={activeView}
+        onSelectView={(v) => {
+          setActiveView(v);
+          if (v !== 'projects') setSelectedProjectId(null);
+          if (v !== 'customers') setSelectedCustomerId(null);
+          if (v !== 'purchases') setSelectedVendorId(null);
+        }}
+        onOpenSidebar={() => setIsSidebarOpen(true)}
+        pendingApprovalsCount={workflowService.getPendingApprovals().length}
+        isTableCompact={isTableCompact}
+        onToggleTableCompact={handleToggleTableCompact}
+        onOpenMoneyIn={() => {
+          setModalProjectId(undefined);
+          setIsMoneyInOpen(true);
+        }}
+        onOpenMoneyOut={() => setIsMoneyOutOpen(true)}
+        onOpenClientInvoice={() => {
+          setModalProjectId(undefined);
+          setIsClientInvoiceOpen(true);
+        }}
+        onOpenPurchase={() => {
+          setModalProjectId(undefined);
+          setIsPurchaseOpen(true);
+        }}
+        onOpenExpense={() => {
+          setModalProjectId(undefined);
+          setIsExpenseOpen(true);
+        }}
+        onOpenTransfer={() => setIsTransferOpen(true)}
+      />
 
       {/* Transaction Modals */}
       <MoneyInModal

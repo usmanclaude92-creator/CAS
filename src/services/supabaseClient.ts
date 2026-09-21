@@ -4,9 +4,9 @@ const STORAGE_URL_KEY = 'cas_supabase_url';
 const STORAGE_KEY_KEY = 'cas_supabase_anon_key';
 
 // Default Supabase project credentials
-export const DEFAULT_SUPABASE_URL = 'https://psimeuwxwwozfyjklzvg.supabase.co';
+export const DEFAULT_SUPABASE_URL = 'https://cfkymotcnccgvkpmcevp.supabase.co';
 export const DEFAULT_SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzaW1ldXd4d3dvemZ5amtsenZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NzY3MTEsImV4cCI6MjEwNTI1MjcxMX0.LVC9rCB7-d6cETh37FudqxACikSQQiF6DX05EXeVx9s';
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNma3ltb3RjbmNjZ3ZrcG1jZXZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4NDIyMjAsImV4cCI6MjEwNTQxODIyMH0.UydSETlKBKs3DbPuueKG1Oh8mQdWv-iRqPOSYybgF70';
 
 function cleanString(val?: unknown): string {
   if (!val || typeof val !== 'string') return '';
@@ -165,7 +165,9 @@ export async function testSupabaseConnection(): Promise<{ success: boolean; mess
 
     if (
       projectsError.code === '42P01' ||
+      projectsError.code === 'PGRST205' ||
       projectsError.message?.toLowerCase().includes('relation') ||
+      projectsError.message?.toLowerCase().includes('schema cache') ||
       projectsError.message?.toLowerCase().includes('does not exist')
     ) {
       return {
