@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   HardHat,
   Lock,
@@ -17,7 +17,7 @@ import {
 import { authService } from '../../services/authService';
 import { ThemeToggle } from '../ThemeToggle';
 import { DemoUsersModal } from '../modals/DemoUsersModal';
-import { UserProfile } from '../../types/auth';
+import { DemoApprovalModal } from '../modals/DemoApprovalModal';
 
 interface LoginViewProps {
   onLoginSuccess: () => void;
@@ -41,45 +41,25 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [forgotStatus, setForgotStatus] = useState<{ success: boolean; message: string } | null>(null);
   const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
 
-  const demoUsers = authService.getDemoUsers();
-  const currentSelectedDemoUser = demoUsers.find(
-    (u) => u.email.toLowerCase() === email.toLowerCase()
-  );
+  // Admin approval URL parameter detection (?action=approve_demo&requestId=...&token=...)
+  const [approvalRequestId, setApprovalRequestId] = useState<string | null>(null);
+  const [approvalToken, setApprovalToken] = useState<string | null>(null);
+  const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
 
-  const handleSelectRealAdmin = () => {
-    setEmail('admin@artifysols.com');
-    setPassword('Artify@2026');
-    setErrorMessage('');
-    setIsDemoModalOpen(false);
-  };
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const action = params.get('action');
+      const reqId = params.get('requestId');
+      const tok = params.get('token');
 
-  const handleSelectDemoUser = (user: UserProfile) => {
-    setEmail(user.email);
-    setPassword('Construction@2026');
-    setErrorMessage('');
-    setIsDemoModalOpen(false);
-  };
-
-  const handleInstantSignInDemoUser = async (user: UserProfile) => {
-    setEmail(user.email);
-    setPassword('Construction@2026');
-    setErrorMessage('');
-    setIsDemoModalOpen(false);
-    setIsLoading(true);
-
-    try {
-      const result = await authService.login(user.email, 'Construction@2026', rememberMe);
-      if (result.success) {
-        onLoginSuccess();
-      } else {
-        setErrorMessage(result.error || 'Authentication failed. Please check credentials.');
+      if (action === 'approve_demo' && reqId) {
+        setApprovalRequestId(reqId);
+        setApprovalToken(tok);
+        setIsApprovalModalOpen(true);
       }
-    } catch (err: any) {
-      setErrorMessage(err?.message || 'Network error during login.');
-    } finally {
-      setIsLoading(false);
     }
-  };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,12 +83,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleSelectQuickAccount = (quickEmail: string) => {
-    setEmail(quickEmail);
-    setPassword('Construction@2026');
-    setErrorMessage('');
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -281,7 +255,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
             </button>
           </form>
 
-          {/* Demo Users Quick Access - Grouped Under One Button */}
+          {/* Demo Access & Role Directory */}
           <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
             <div className="flex items-center justify-center mb-3">
               <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -290,7 +264,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </span>
             </div>
 
-            {/* The single button grouping all demo users */}
+            {/* Explore roles & request demo button */}
             <button
               type="button"
               onClick={() => setIsDemoModalOpen(true)}
@@ -304,20 +278,14 @@ export const LoginView: React.FC<LoginViewProps> = ({
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                        Access Demo User by Role
+                        Explore Roles &amp; Request Demo
                       </span>
                       <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded-md bg-blue-100 dark:bg-blue-900/80 text-blue-700 dark:text-blue-300">
-                        {demoUsers.length} Profiles
+                        8 Enterprise Roles
                       </span>
                     </div>
                     <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                      {currentSelectedDemoUser ? (
-                        <span>
-                          Active: <strong className="text-slate-800 dark:text-slate-200">{currentSelectedDemoUser.fullName}</strong> ({currentSelectedDemoUser.roleName})
-                        </span>
-                      ) : (
-                        <span>Super Admin, Managers, Accountants, Treasury, Audit</span>
-                      )}
+                      Review governance permissions &amp; request authorized demo access
                     </div>
                   </div>
                 </div>
@@ -352,15 +320,27 @@ export const LoginView: React.FC<LoginViewProps> = ({
         </div>
       </main>
 
-      {/* Demo Users Role & Type Selection Modal */}
+      {/* Role Directory & Demo Request Modal */}
       <DemoUsersModal
         isOpen={isDemoModalOpen}
         onClose={() => setIsDemoModalOpen(false)}
-        demoUsers={demoUsers}
-        currentEmail={email}
-        onSelectUser={handleSelectDemoUser}
-        onInstantSignIn={handleInstantSignInDemoUser}
-        onSelectRealAdmin={handleSelectRealAdmin}
+      />
+
+      {/* Admin Demo Approval Authorization Modal (triggered via link) */}
+      <DemoApprovalModal
+        isOpen={isApprovalModalOpen}
+        onClose={() => {
+          setIsApprovalModalOpen(false);
+          if (typeof window !== 'undefined' && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }}
+        requestId={approvalRequestId}
+        token={approvalToken}
+        onInstantLogin={(approvedEmail) => {
+          setEmail(approvedEmail);
+          setIsApprovalModalOpen(false);
+        }}
       />
 
       {/* Forgot Password Modal */}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   X,
   Search,
@@ -11,144 +11,163 @@ import {
   HardHat,
   Wallet,
   Eye,
-  UserX,
   Building2,
   Lock,
   Sparkles,
-  AlertTriangle,
+  User,
+  Mail,
+  Phone,
+  Send,
+  FileText,
+  BadgeCheck,
+  Check,
+  Layers,
 } from 'lucide-react';
-import { UserProfile } from '../../types/auth';
+import {
+  demoRequestService,
+  VISITOR_SYSTEM_ROLES,
+  SystemRoleInfo,
+  DemoRequest,
+} from '../../services/demoRequestService';
 
-export type DemoUserTypeCategory = 'all' | 'executive' | 'management' | 'accounting' | 'treasury' | 'audit' | 'security';
+export type RoleCategoryFilter = 'all' | 'Executive' | 'Management' | 'Accounting' | 'Treasury' | 'Audit';
 
 interface DemoUsersModalProps {
   isOpen: boolean;
   onClose: () => void;
-  demoUsers: UserProfile[];
-  currentEmail: string;
-  onSelectUser: (user: UserProfile) => void;
-  onInstantSignIn: (user: UserProfile) => void;
-  onSelectRealAdmin?: () => void;
+  initialRoleCode?: string;
 }
 
-interface DemoCategoryMeta {
-  id: DemoUserTypeCategory;
-  label: string;
-  description: string;
-}
-
-const CATEGORIES: DemoCategoryMeta[] = [
-  { id: 'all', label: 'All Types', description: 'All sandbox test accounts' },
-  { id: 'executive', label: 'Executive', description: 'Super Administrator & Governance' },
-  { id: 'management', label: 'Management', description: 'Accounts & Finance Managers' },
-  { id: 'accounting', label: 'Accounting & Ops', description: 'Senior & Project Site Accountants' },
-  { id: 'treasury', label: 'Treasury', description: 'Cashier & Banking Disbursements' },
-  { id: 'audit', label: 'Audit', description: 'Compliance & Read-Only Auditor' },
-  { id: 'security', label: 'Security Test', description: 'Inactive Account Block' },
+const CATEGORY_TABS: { id: RoleCategoryFilter; label: string }[] = [
+  { id: 'all', label: 'All Roles' },
+  { id: 'Executive', label: 'Executive' },
+  { id: 'Management', label: 'Management' },
+  { id: 'Accounting', label: 'Accounting & Ops' },
+  { id: 'Treasury', label: 'Treasury' },
+  { id: 'Audit', label: 'Audit' },
 ];
 
 export const DemoUsersModal: React.FC<DemoUsersModalProps> = ({
   isOpen,
   onClose,
-  demoUsers,
-  currentEmail,
-  onSelectUser,
-  onInstantSignIn,
-  onSelectRealAdmin,
+  initialRoleCode,
 }) => {
-  const [selectedCategory, setSelectedCategory] = useState<DemoUserTypeCategory>('all');
+  const [activeTab, setActiveTab] = useState<'directory' | 'request'>('directory');
+  const [selectedCategory, setSelectedCategory] = useState<RoleCategoryFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Form states
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [selectedRoleCode, setSelectedRoleCode] = useState(initialRoleCode || 'super_admin');
+  const [purpose, setPurpose] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittedRequest, setSubmittedRequest] = useState<DemoRequest | null>(null);
+  const [formError, setFormError] = useState('');
 
   if (!isOpen) return null;
 
-  const getUserCategory = (user: UserProfile): DemoUserTypeCategory => {
-    if (user.status === 'inactive') return 'security';
-    if (user.roleCode === 'super_admin') return 'executive';
-    if (user.roleCode === 'accounts_manager' || user.roleCode === 'finance_manager') return 'management';
-    if (user.roleCode === 'accountant' || user.roleCode === 'project_accountant') return 'accounting';
-    if (user.roleCode === 'treasury_user') return 'treasury';
-    if (user.roleCode === 'viewer') return 'audit';
-    return 'management';
+  const handleStartRequestForRole = (roleCode: string) => {
+    setSelectedRoleCode(roleCode);
+    setActiveTab('request');
+    setFormError('');
   };
 
-  const getUserTypeBadge = (user: UserProfile) => {
-    if (user.status === 'inactive') {
-      return {
-        label: 'Security Sandbox',
-        color: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-200 dark:border-rose-900',
-        icon: UserX,
-      };
+  const handleSubmitRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError('');
+
+    if (!fullName.trim() || !email.trim() || !companyName.trim()) {
+      setFormError('Please complete all required fields (Name, Corporate Email, and Company).');
+      return;
     }
-    switch (user.roleCode) {
-      case 'super_admin':
-        return {
-          label: 'Executive & Governance',
-          color: 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border-purple-200 dark:border-purple-900',
-          icon: Crown,
-        };
-      case 'accounts_manager':
-        return {
-          label: 'Management & Approvals (≤25k)',
-          color: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-200 dark:border-blue-900',
-          icon: Briefcase,
-        };
-      case 'finance_manager':
-        return {
-          label: 'Financial Control (≤10k)',
-          color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-200 dark:border-indigo-900',
-          icon: Briefcase,
-        };
-      case 'accountant':
-        return {
-          label: 'Operational Accounting',
-          color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900',
-          icon: Calculator,
-        };
-      case 'project_accountant':
-        return {
-          label: 'Project Site Ops (Restricted)',
-          color: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-200 dark:border-amber-900',
-          icon: HardHat,
-        };
-      case 'treasury_user':
-        return {
-          label: 'Treasury & Cashier',
-          color: 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border-teal-200 dark:border-teal-900',
-          icon: Wallet,
-        };
-      case 'viewer':
-        return {
-          label: 'External Audit (Read-Only)',
-          color: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700',
-          icon: Eye,
-        };
-      default:
-        return {
-          label: user.roleName,
-          color: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-200 dark:border-blue-900',
-          icon: ShieldCheck,
-        };
+
+    setIsSubmitting(true);
+    try {
+      const res = await demoRequestService.submitRequest({
+        fullName,
+        email,
+        companyName,
+        phone,
+        roleCode: selectedRoleCode,
+        purpose,
+      });
+
+      if (res.success && res.request) {
+        setSubmittedRequest(res.request);
+      } else {
+        setFormError(res.error || 'Failed to submit demo request. Please try again.');
+      }
+    } catch {
+      setFormError('A network error occurred while submitting your request. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const filteredUsers = demoUsers.filter((user) => {
-    const category = getUserCategory(user);
-    if (selectedCategory !== 'all' && category !== selectedCategory) {
+  const handleResetForm = () => {
+    setSubmittedRequest(null);
+    setFullName('');
+    setEmail('');
+    setCompanyName('');
+    setPhone('');
+    setPurpose('');
+    setActiveTab('directory');
+    setFormError('');
+  };
+
+  const filteredRoles = VISITOR_SYSTEM_ROLES.filter((role) => {
+    if (selectedCategory !== 'all' && role.category !== selectedCategory) {
       return false;
     }
-
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const matchName = user.fullName.toLowerCase().includes(q);
-      const matchRole = user.roleName.toLowerCase().includes(q);
-      const matchEmail = user.email.toLowerCase().includes(q);
-      const matchDept = user.department?.toLowerCase().includes(q) || false;
-      const matchRemarks = user.remarks?.toLowerCase().includes(q) || false;
-      return matchName || matchRole || matchEmail || matchDept || matchRemarks;
+      const matchName = role.name.toLowerCase().includes(q);
+      const matchDesc = role.description.toLowerCase().includes(q);
+      const matchModules = role.keyModules.some((m) => m.toLowerCase().includes(q));
+      return matchName || matchDesc || matchModules;
     }
-
     return true;
   });
+
+  const getRoleIcon = (code: string) => {
+    switch (code) {
+      case 'super_admin':
+        return Crown;
+      case 'accounts_manager':
+      case 'finance_manager':
+        return Briefcase;
+      case 'accountant':
+        return Calculator;
+      case 'project_accountant':
+        return HardHat;
+      case 'treasury_user':
+        return Wallet;
+      case 'viewer':
+        return Eye;
+      default:
+        return ShieldCheck;
+    }
+  };
+
+  const getBadgeStyle = (category: string) => {
+    switch (category) {
+      case 'Executive':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border-purple-200 dark:border-purple-800';
+      case 'Management':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-200 dark:border-blue-800';
+      case 'Accounting':
+        return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
+      case 'Treasury':
+        return 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border-sky-200 dark:border-sky-800';
+      case 'Audit':
+        return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+      default:
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-200 dark:border-blue-800';
+    }
+  };
 
   return (
     <div
@@ -157,24 +176,19 @@ export const DemoUsersModal: React.FC<DemoUsersModalProps> = ({
       aria-labelledby="demo-users-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200"
     >
-      <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="w-full max-w-3xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-start justify-between gap-3 shrink-0">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-900/60 mt-0.5">
-              <Sparkles className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+              <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 id="demo-users-modal-title" className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                  Demo User Profiles &amp; Roles
-                </h3>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
-                  Isolated Sandbox
-                </span>
-              </div>
+              <h3 id="demo-users-modal-title" className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                Enterprise Roles &amp; Demo Access
+              </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Select any predefined demo account to test role permissions, approval thresholds, and project restrictions.
+                Explore predefined roles, approval authorities, and submit a request for an authorized demo account.
               </p>
             </div>
           </div>
@@ -189,229 +203,436 @@ export const DemoUsersModal: React.FC<DemoUsersModalProps> = ({
           </button>
         </div>
 
-        {/* Real Production Superadmin Quick Switch Banner */}
-        {onSelectRealAdmin && (
-          <div className="mx-4 sm:mx-5 mt-3 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-between gap-3 shrink-0">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <ShieldCheck className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-xs font-bold text-emerald-950 dark:text-emerald-100 flex items-center gap-1.5 flex-wrap">
-                  <span>Real Superadmin: <strong>admin@artifysols.com</strong></span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-200/70 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-semibold">
-                    Blank Production DB
-                  </span>
-                </div>
-                <p className="text-[11px] text-emerald-700 dark:text-emerald-300 truncate">
-                  Enterprise governance with clean production ledger (zero demo artifacts)
-                </p>
-              </div>
-            </div>
+        {/* View Switcher Tabs */}
+        {!submittedRequest && (
+          <div className="px-4 sm:px-5 pt-3 pb-0 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2 shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
             <button
               type="button"
-              onClick={onSelectRealAdmin}
-              className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg shadow-xs cursor-pointer shrink-0 transition-colors"
+              onClick={() => setActiveTab('directory')}
+              className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'directory'
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
             >
-              Select Real Admin
+              <Layers className="w-3.5 h-3.5" />
+              <span>Role Directory ({VISITOR_SYSTEM_ROLES.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('request')}
+              className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'request'
+                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>Request Demo Access</span>
             </button>
           </div>
         )}
 
-        {/* Filter Bar & Search */}
-        <div className="p-3 sm:px-5 sm:py-3 bg-slate-50/70 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 space-y-2.5 shrink-0">
-          {/* Search Input */}
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-              <Search className="w-4 h-4" />
-            </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name, role, department, or keyword..."
-              className="w-full text-xs pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                ✕
-              </button>
-            )}
-          </div>
+        {/* Modal Body */}
+        <div className="flex-1 overflow-y-auto">
+          {/* SUCCESS SCREEN */}
+          {submittedRequest ? (
+            <div className="p-6 sm:p-8 flex flex-col items-center text-center space-y-4 max-w-lg mx-auto animate-in zoom-in-95">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-xs">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
 
-          {/* Category Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
-            {CATEGORIES.map((cat) => {
-              const count = demoUsers.filter(
-                (u) => cat.id === 'all' || getUserCategory(u) === cat.id
-              ).length;
-              const isActive = selectedCategory === cat.id;
+              <div className="space-y-1">
+                <h4 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Demo Request Submitted
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Thank you, <strong className="text-slate-800 dark:text-slate-200">{submittedRequest.fullName}</strong>. Your request for demo access as{' '}
+                  <strong className="text-blue-600 dark:text-blue-400">{submittedRequest.roleName}</strong> has been received.
+                </p>
+              </div>
 
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer text-xs ${
-                    isActive
-                      ? 'bg-blue-600 text-white shadow-xs font-semibold'
-                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700/80'
-                  }`}
-                >
-                  <span>{cat.label}</span>
-                  <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                      isActive
-                        ? 'bg-white/20 text-white'
-                        : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
-                    }`}
-                  >
-                    {count}
+              <div className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 text-left space-y-2 text-xs">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700">
+                  <span className="text-slate-500 dark:text-slate-400">Request Reference:</span>
+                  <span className="font-mono font-bold text-slate-900 dark:text-white">
+                    {submittedRequest.id}
                   </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">Target Role:</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {submittedRequest.roleName}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">Organization:</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {submittedRequest.companyName}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400">Notification Dispatched:</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                    <BadgeCheck className="w-3.5 h-3.5" />
+                    Sent to System Administrator
+                  </span>
+                </div>
+              </div>
 
-        {/* User Cards List */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
-          {filteredUsers.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs">
-              No demo users found matching &quot;{searchQuery}&quot;.
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                An authorization link has been forwarded for administrative review. Once approved, login instructions and temporary access details will be delivered to your registered corporate address.
+              </p>
+
+              <div className="pt-2 flex items-center gap-3 w-full">
+                <button
+                  type="button"
+                  onClick={handleResetForm}
+                  className="flex-1 py-2 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  Explore Other Roles
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 py-2 px-4 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-xs cursor-pointer"
+                >
+                  Return to Sign In
+                </button>
+              </div>
+            </div>
+          ) : activeTab === 'directory' ? (
+            /* ROLE DIRECTORY VIEW */
+            <div className="flex flex-col">
+              {/* Filter and Search Bar */}
+              <div className="p-3 sm:px-5 sm:py-3 bg-slate-50/70 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 space-y-2.5 shrink-0">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <Search className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search roles by name, module, or responsibility..."
+                    className="w-full text-xs pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Category Tabs */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+                  {CATEGORY_TABS.map((cat) => {
+                    const count = VISITOR_SYSTEM_ROLES.filter(
+                      (r) => cat.id === 'all' || r.category === cat.id
+                    ).length;
+                    const isActive = selectedCategory === cat.id;
+
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setSelectedCategory(cat.id)}
+                        className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer text-xs ${
+                          isActive
+                            ? 'bg-blue-600 text-white shadow-xs font-semibold'
+                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/80 border border-slate-200/80 dark:border-slate-700/80'
+                        }`}
+                      >
+                        <span>{cat.label}</span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                            isActive
+                              ? 'bg-white/20 text-white'
+                              : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Roles List */}
+              <div className="p-4 sm:p-5 space-y-3.5">
+                {filteredRoles.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs">
+                    No system roles found matching &quot;{searchQuery}&quot;.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3.5">
+                    {filteredRoles.map((role) => {
+                      const Icon = getRoleIcon(role.code);
+                      const badgeStyle = getBadgeStyle(role.category);
+
+                      return (
+                        <div
+                          key={role.code}
+                          className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 hover:border-blue-300 dark:hover:border-blue-700 transition-all shadow-xs flex flex-col justify-between gap-3 text-left"
+                        >
+                          {/* Top Row: Title, Category, Approval Authority */}
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-900/60">
+                                  <Icon className="w-4 h-4" />
+                                </div>
+                                <div>
+                                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                                    {role.name}
+                                  </h4>
+                                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                                    {role.projectScope}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${badgeStyle}`}>
+                                  {role.category}
+                                </span>
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                  {role.approvalLimitLabel}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Description */}
+                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                              {role.description}
+                            </p>
+
+                            {/* Key Responsibilities */}
+                            <div className="space-y-1 pt-1">
+                              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                                Key Responsibilities:
+                              </span>
+                              <ul className="text-[11px] text-slate-600 dark:text-slate-400 space-y-0.5 pl-3 list-disc">
+                                {role.responsibilities.slice(0, 3).map((resp, i) => (
+                                  <li key={i}>{resp}</li>
+                                ))}
+                              </ul>
+                            </div>
+
+                            {/* Accessible Modules Pills */}
+                            <div className="flex items-center gap-1 flex-wrap pt-1">
+                              <span className="text-[10px] text-slate-400 mr-1 font-medium">Modules:</span>
+                              {role.keyModules.map((mod) => (
+                                <span
+                                  key={mod}
+                                  className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border border-slate-200/60 dark:border-slate-700/60"
+                                >
+                                  {mod}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Action Button: Request This Role */}
+                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end">
+                            <button
+                              type="button"
+                              onClick={() => handleStartRequestForRole(role.code)}
+                              className="px-3.5 py-1.5 text-xs font-semibold rounded-xl text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-xs flex items-center gap-1.5 cursor-pointer hover:gap-2"
+                            >
+                              <span>Request Demo for This Role</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {filteredUsers.map((user) => {
-                const badge = getUserTypeBadge(user);
-                const BadgeIcon = badge.icon;
-                const isCurrent = currentEmail.toLowerCase() === user.email.toLowerCase();
-                const isInactive = user.status === 'inactive';
+            /* REQUEST DEMO ACCESS FORM */
+            <div className="p-5 sm:p-6 max-w-xl mx-auto space-y-5">
+              <div className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Send className="w-4 h-4 text-blue-600" />
+                  <span>Request Authorized Demo Account</span>
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Provide your corporate details to request access. To preserve internal control and strict separation of duties, demo access requires administrative review.
+                </p>
+              </div>
 
-                return (
-                  <div
-                    key={user.id}
-                    className={`p-3.5 rounded-2xl border transition-all flex flex-col justify-between gap-3 text-left relative ${
-                      isCurrent
-                        ? 'border-blue-500 dark:border-blue-400 bg-blue-50/40 dark:bg-blue-950/20 ring-1 ring-blue-500/30'
-                        : isInactive
-                        ? 'border-rose-200 dark:border-rose-900/60 bg-rose-50/30 dark:bg-rose-950/10 hover:border-rose-300'
-                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs'
-                    }`}
-                  >
-                    {/* Active Selection Pin */}
-                    {isCurrent && (
-                      <div className="absolute top-2.5 right-2.5 flex items-center gap-1 text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100/80 dark:bg-blue-900/70 px-2 py-0.5 rounded-full">
-                        <CheckCircle2 className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                        <span>Current</span>
-                      </div>
-                    )}
+              {formError && (
+                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-xs border border-rose-200 dark:border-rose-900">
+                  {formError}
+                </div>
+              )}
 
-                    <div className="space-y-2">
-                      {/* Top Role Badge */}
-                      <div className="flex items-center gap-1.5 flex-wrap pr-16">
-                        <span
-                          className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border ${badge.color}`}
-                        >
-                          <BadgeIcon className="w-3 h-3 shrink-0" />
-                          <span>{badge.label}</span>
-                        </span>
-
-                        {/* Project Scope pill */}
-                        {!user.isAllProjects ? (
-                          <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                            <AlertTriangle className="w-2.5 h-2.5 text-amber-600 shrink-0" />
-                            PRJ-AKV-001 Only
-                          </span>
-                        ) : (
-                          <span className="text-[9px] font-medium text-slate-400 dark:text-slate-500">
-                            All Projects
-                          </span>
-                        )}
-                      </div>
-
-                      {/* User Info */}
-                      <div>
-                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                          <span>{user.fullName}</span>
-                          {isInactive && (
-                            <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
-                              Inactive
-                            </span>
-                          )}
-                        </h4>
-                        <div className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
-                          {user.roleName}
-                        </div>
-                        <div className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-2 mt-0.5">
-                          <span>{user.department}</span>
-                          <span>&bull;</span>
-                          <span className="font-mono">{user.employeeId}</span>
-                        </div>
-                      </div>
-
-                      {/* Remarks / Governance Description */}
-                      {user.remarks && (
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl border border-slate-100 dark:border-slate-800/80">
-                          {user.remarks}
-                        </p>
-                      )}
+              <form onSubmit={handleSubmitRequest} className="space-y-4">
+                {/* Full Name */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Full Name <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <User className="w-4 h-4" />
                     </div>
-
-                    {/* Action Buttons */}
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
-                      <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono truncate max-w-[140px]">
-                        {user.email}
-                      </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Select Credentials button */}
-                        <button
-                          type="button"
-                          onClick={() => onSelectUser(user)}
-                          className="px-2.5 py-1.5 text-xs font-semibold rounded-xl text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-                          title="Fills credentials in login form and closes dialog"
-                        >
-                          Select
-                        </button>
-
-                        {/* Instant Sign In button */}
-                        <button
-                          type="button"
-                          onClick={() => onInstantSignIn(user)}
-                          className={`px-3 py-1.5 text-xs font-semibold rounded-xl text-white transition-all shadow-xs flex items-center gap-1 cursor-pointer ${
-                            isInactive
-                              ? 'bg-rose-600 hover:bg-rose-700'
-                              : 'bg-blue-600 hover:bg-blue-700'
-                          }`}
-                          title={isInactive ? 'Test inactive block rejection' : 'Log in immediately as this user'}
-                        >
-                          <span>{isInactive ? 'Test Block' : 'Sign In'}</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
+                    <input
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="e.g. Salim Al Harthy"
+                      required
+                      className="w-full text-xs pl-9 pr-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
-                );
-              })}
+                </div>
+
+                {/* Work Email */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Corporate Email Address <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <Mail className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@company.com"
+                      required
+                      className="w-full text-xs pl-9 pr-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Your authorized demo credentials will be issued to this email.
+                  </span>
+                </div>
+
+                {/* Company Name */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Company / Organization <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <Building2 className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="text"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      placeholder="e.g. Al Madina Construction LLC"
+                      required
+                      className="w-full text-xs pl-9 pr-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Phone (Optional) */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Contact Phone (Optional)
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <Phone className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+968 9123 4567"
+                      className="w-full text-xs pl-9 pr-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Selected Role */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Desired Test Role <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={selectedRoleCode}
+                    onChange={(e) => setSelectedRoleCode(e.target.value)}
+                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {VISITOR_SYSTEM_ROLES.map((role) => (
+                      <option key={role.code} value={role.code}>
+                        {role.name} ({role.category} — {role.approvalLimitLabel})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Purpose / Message */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Primary Area of Interest / Remarks (Optional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={purpose}
+                    onChange={(e) => setPurpose(e.target.value)}
+                    placeholder="e.g. Evaluating IPC billing, project profitability tracking, and multi-bank reconciliation."
+                    className="w-full text-xs p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* Form Buttons */}
+                <div className="pt-3 flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('directory')}
+                    className="px-3.5 py-2 text-xs font-semibold rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  >
+                    ← Back to Role Directory
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-5 py-2 text-xs font-bold rounded-xl text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Submitting Request...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Submit Demo Request</span>
+                        <Send className="w-3.5 h-3.5" />
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-3 sm:px-5 sm:py-3 bg-slate-50/80 dark:bg-slate-900/80 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400 shrink-0">
-          <div className="flex items-center gap-1.5 text-[11px]">
-            <Lock className="w-3.5 h-3.5 text-slate-400" />
-            <span>Sandbox password: <strong className="font-mono text-slate-700 dark:text-slate-300">Construction@2026</strong></span>
-          </div>
+        {/* Modal Footer */}
+        <div className="p-3 sm:px-5 sm:py-3 bg-slate-50/80 dark:bg-slate-900/80 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 shrink-0">
+          <span className="text-[11px]">
+            Compliant with Omani Corporate Governance &amp; Segregation of Duties
+          </span>
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
+            className="px-3 py-1 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer font-medium"
           >
             Close
           </button>
