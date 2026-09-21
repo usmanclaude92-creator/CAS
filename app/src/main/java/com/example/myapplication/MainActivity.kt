@@ -23,8 +23,11 @@ class MainActivity : ComponentActivity() {
                 databaseEnabled = true
                 allowFileAccess = true
                 allowContentAccess = true
+                allowFileAccessFromFileURLs = true
+                allowUniversalAccessFromFileURLs = true
                 loadWithOverviewMode = true
                 useWideViewPort = true
+                WebView.setWebContentsDebuggingEnabled(true)
                 mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
             }
             webViewClient = WebViewClient()
