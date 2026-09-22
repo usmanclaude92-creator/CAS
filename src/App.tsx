@@ -324,9 +324,10 @@ function AppContent() {
         {/* Viewport Content with Pull-To-Refresh */}
         <PullToRefresh
           onRefresh={async () => {
+            accountingService.refreshFromStorage();
             setTick((t) => t + 1);
             if (supabaseService.isConfigured()) {
-              await supabaseService.pullRemoteChanges().catch(() => {});
+              await supabaseService.testConnection().catch(() => {});
             }
           }}
         >
