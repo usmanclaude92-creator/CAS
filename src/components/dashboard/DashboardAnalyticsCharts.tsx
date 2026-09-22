@@ -7,7 +7,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   PieChart,
   Pie,
   Cell,
@@ -19,13 +18,8 @@ import {
   BarChart3,
   Scale,
   DollarSign,
-  AlertTriangle,
-  CheckCircle2,
-  Layers,
-  ArrowUpRight,
-  ShieldCheck,
 } from 'lucide-react';
-import { formatOMR, formatPercent } from '../../utils/formatters';
+import { formatOMR } from '../../utils/formatters';
 
 export interface MonthlyTrendPoint {
   month: string;

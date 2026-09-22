@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   Plus,
-  X,
   ArrowDownLeft,
   ArrowUpRight,
   FileText,
   Truck,
   Coins,
   ArrowRightLeft,
-  DollarSign,
-  Receipt,
 } from 'lucide-react';
 
 interface MobileFloatingActionButtonProps {

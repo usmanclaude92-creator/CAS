@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   Sliders,
-  ShieldCheck,
   Save,
   CheckCircle2,
   AlertCircle,
   DollarSign,
   Scale,
-  Users,
 } from 'lucide-react';
 import { WorkflowSettings } from '../../types/auth';
 import { authService } from '../../services/authService';

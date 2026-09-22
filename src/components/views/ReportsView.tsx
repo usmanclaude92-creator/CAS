@@ -15,9 +15,6 @@ import {
   X,
   ArrowUpDown,
   Building2,
-  AlertCircle,
-  AlertTriangle,
-  Percent,
   Users,
   Truck,
   Printer,
@@ -35,7 +32,6 @@ import {
   getDateRangeFromPreset,
   isDateInRange,
   calculateAgingDays,
-  getAgingBracket,
   getAgingBadge,
   AgingBracketType,
 } from '../../utils/reportFilters';
@@ -78,7 +74,6 @@ export const ReportsView: React.FC = () => {
   const [showIncomePercent, setShowIncomePercent] = useState<boolean>(true);
 
   // 3. Balance Sheet
-  const [balanceSheetAsOf, setBalanceSheetAsOf] = useState<'current' | 'month_end' | 'last_month_end' | 'last_quarter_end'>('current');
   const [hideZeroBalanceAccounts, setHideZeroBalanceAccounts] = useState<boolean>(false);
 
   // 4. Trial Balance
@@ -114,7 +109,6 @@ export const ReportsView: React.FC = () => {
     setProfitMarginFilter('all');
     setProfitSearch('');
     setProfitSort('profit_desc');
-    setBalanceSheetAsOf('current');
     setHideZeroBalanceAccounts(false);
     setTrialAccountClass('all');
     setTrialSearch('');

@@ -2,22 +2,17 @@ import React, { useState, useEffect } from 'react';
 import {
   Users,
   UserPlus,
-  Shield,
   CheckCircle2,
   XCircle,
-  AlertCircle,
   Edit2,
-  Building,
   Mail,
   Phone,
   Search,
-  Filter,
   ShieldAlert,
   ShieldCheck,
-  Briefcase,
   X,
 } from 'lucide-react';
-import { UserProfile, Role, UserStatus } from '../../types/auth';
+import { UserProfile, Role } from '../../types/auth';
 import { authService } from '../../services/authService';
 import { accountingService } from '../../services/accountingService';
 

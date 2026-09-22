@@ -1,20 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   Layers,
-  Building2,
-  Users,
-  Truck,
-  Landmark,
-  Coins,
-  ShieldCheck,
   Plus,
-  RefreshCw,
   UploadCloud,
   FileSpreadsheet,
   Edit2,
   Trash2,
-  CheckCircle2,
-  XCircle,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { authService } from '../../services/authService';
@@ -53,7 +44,6 @@ export const MastersView: React.FC<MastersViewProps> = ({
   const [, setRerender] = useState(0);
 
   const state = accountingService.getState();
-  const currentUser = authService.getCurrentUser();
 
   // STRICT UI SECURITY REQUIREMENT:
   // Import buttons must NOT be shown to any user except Super Administrator!

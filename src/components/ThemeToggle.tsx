@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Sun, Moon, Laptop, ChevronDown } from 'lucide-react';
-import { useTheme, ThemeMode } from '../context/ThemeContext';
+import { useTheme } from '../context/ThemeContext';
 
 interface ThemeToggleProps {
   variant?: 'simple' | 'dropdown' | 'buttons';

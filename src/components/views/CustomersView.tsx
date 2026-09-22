@@ -1,16 +1,10 @@
-import React, { useState } from 'react';
+import React, {} from 'react';
 import {
-  Users,
   Plus,
   FileSpreadsheet,
   ArrowLeft,
-  DollarSign,
-  TrendingUp,
-  Receipt,
-  FileText,
   Mail,
   Phone,
-  MapPin,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { formatOMR } from '../../utils/formatters';
@@ -41,10 +35,6 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
 
   const customerLedger = selectedCustomer
     ? accountingService.getCustomerLedger(selectedCustomer.id)
-    : [];
-
-  const customerInvoices = selectedCustomer
-    ? state.clientInvoices.filter((inv) => inv.customerId === selectedCustomer.id)
     : [];
 
   const currentBalance = customerLedger.length > 0

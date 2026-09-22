@@ -15,7 +15,6 @@ import {
   Layers,
   Sliders,
   ShieldAlert,
-  Plus,
   Minimize2,
   Maximize2,
   Menu as MenuIcon,
@@ -67,7 +66,6 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
   });
 
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
-  const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
 
   // Auto-collapse on scroll down, expand on scroll up
   useEffect(() => {

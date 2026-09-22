@@ -14,20 +14,12 @@ import {
   Lock,
   CheckCircle2,
   XCircle,
-  AlertTriangle,
   Download,
-  Upload,
   Settings,
   Edit2,
-  Trash2,
-  RotateCcw,
-  Sparkles,
-  ExternalLink,
   Search,
-  Check,
   Ban,
   Activity,
-  UserCheck,
 } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { UserProfile, Role, UserStatus } from '../../types/auth';
@@ -115,7 +107,6 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
   const [isTestingDb, setIsTestingDb] = useState(false);
 
   const currentUser = authService.getCurrentUser();
-  const isSuperAdmin = authService.isSuperAdmin();
   const allProjects = accountingService.getState().projects;
 
   const reloadData = () => {

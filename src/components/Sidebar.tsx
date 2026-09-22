@@ -9,16 +9,10 @@ import {
   FileBarChart,
   Layers,
   ShieldAlert,
-  Database,
   ChevronRight,
-  HardHat,
   Clock,
-  UserCheck,
-  Shield,
   Sliders,
-  FileSpreadsheet,
   LogOut,
-  BarChart3,
 } from 'lucide-react';
 import { authService } from '../services/authService';
 
@@ -55,11 +49,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectView,
   isOpen,
   onClose,
-  isSupabaseConnected,
-  onOpenSupabaseSettings,
+  isSupabaseConnected: _isSupabaseConnected,
+  onOpenSupabaseSettings: _onOpenSupabaseSettings,
   onLogout,
 }) => {
-  const currentUser = authService.getCurrentUser();
   const isSuperAdmin = authService.isSuperAdmin();
 
   // All possible navigation items with permission checks

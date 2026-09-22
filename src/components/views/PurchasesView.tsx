@@ -4,10 +4,7 @@ import {
   Plus,
   FileSpreadsheet,
   ArrowLeft,
-  DollarSign,
-  TrendingDown,
   Receipt,
-  FileText,
   Mail,
   Phone,
   Search,
@@ -15,12 +12,8 @@ import {
   Calendar,
   Filter,
   RotateCcw,
-  Building2,
-  SlidersHorizontal,
   CheckCircle2,
   Clock,
-  AlertCircle,
-  ExternalLink,
   ChevronRight,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
@@ -46,7 +39,7 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({
   onOpenMoneyOut,
   onSelectProject,
 }) => {
-  const [version, setVersion] = useState(0);
+  const [, setVersion] = useState(0);
   const [activeTab, setActiveTab] = useState<'bills' | 'vendors'>('bills');
 
   // Filter states for Purchase Bills

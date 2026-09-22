@@ -1,39 +1,21 @@
 import React, { useState, useMemo } from 'react';
 import {
   TrendingUp,
-  TrendingDown,
   Building2,
   DollarSign,
-  ArrowUpRight,
-  ArrowDownRight,
-  Wallet,
   Landmark,
-  Receipt,
   FileSpreadsheet,
-  AlertCircle,
   FileText,
   RotateCcw,
   ExternalLink,
-  Plus,
-  HardHat,
-  Clock,
-  ShieldCheck,
   AlertTriangle,
-  Users,
   Truck,
-  Coins,
-  ChevronRight,
-  Sparkles,
-  CheckCircle2,
   BarChart3,
-  Layers,
   Activity,
-  Calendar,
   Palette,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
-  BarChart,
   Bar,
   LineChart,
   Line,
@@ -50,7 +32,7 @@ import {
 import { accountingService } from '../../services/accountingService';
 import { formatOMR, formatPercent, addMoney, subtractMoney } from '../../utils/formatters';
 import { exportToExcel } from '../../utils/exportToExcel';
-import { Transaction, Project, ClientInvoice, Purchase, DirectExpense } from '../../types';
+import { Transaction } from '../../types';
 import { CashFlowProjectionCard } from '../dashboard/CashFlowProjectionCard';
 import { DashboardFilterBar } from '../dashboard/DashboardFilterBar';
 import {
@@ -362,10 +344,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenExpense,
   onOpenTransfer,
   onSelectProject,
-  onSelectCustomer,
-  onSelectVendor,
+  onSelectCustomer: _onSelectCustomer,
+  onSelectVendor: _onSelectVendor,
   onReverseTransaction,
-  onNavigateToProjectsList,
+  onNavigateToProjectsList: _onNavigateToProjectsList,
 }) => {
   const state = accountingService.getState();
   const projects = state.projects || [];
@@ -552,6 +534,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       periodReceived,
       periodPurchases: periodPurchasesTotal,
       periodDirectExpenses: periodDirectExpensesTotal,
+      periodVendorPaid,
       periodTotalCost,
       periodGrossProfit,
       periodMargin,

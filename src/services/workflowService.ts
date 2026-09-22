@@ -12,7 +12,7 @@ export interface WorkflowActionResult {
 
 type RpcModule = 'invoices' | 'purchases' | 'money_in' | 'money_out' | 'expenses';
 
-function moduleForTransactionType(type: TransactionType): RpcModule | null {
+export function moduleForTransactionType(type: TransactionType): RpcModule | null {
   switch (type) {
     case 'CLIENT_INVOICE':
       return 'invoices';
@@ -222,12 +222,21 @@ class WorkflowService {
   }
 
   /**
-   * Fetch all pending approvals matching user permissions and project scope
+   * Fetch all pending approvals (status 'submitted') matching user permissions and project scope
    */
   public getPendingApprovals(): Transaction[] {
     const all = accountingService.getAllTransactions();
     const pending = all.filter((t) => t.status === 'submitted');
     return authService.filterAccessibleTransactions(pending);
+  }
+
+  /**
+   * Fetch transactions approved and awaiting posting to the General Ledger (status 'approved')
+   */
+  public getPendingPosting(): Transaction[] {
+    const all = accountingService.getAllTransactions();
+    const approved = all.filter((t) => t.status === 'approved');
+    return authService.filterAccessibleTransactions(approved);
   }
 }
 

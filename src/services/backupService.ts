@@ -302,12 +302,45 @@ class BackupService {
     }
   }
 
+  private async getOrCreateGoogleDriveFolderId(folderName: string, token: string): Promise<string> {
+    const escapedName = folderName.replace(/'/g, "\\'");
+    const query = encodeURIComponent(
+      `name='${escapedName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+    );
+    const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
+      headers: { Authorization: `Bearer ${token.trim()}` },
+    });
+    if (searchRes.ok) {
+      const data = await searchRes.json();
+      if (data.files && data.files.length > 0) {
+        return data.files[0].id;
+      }
+    }
+
+    const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token.trim()}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name: folderName, mimeType: 'application/vnd.google-apps.folder' }),
+    });
+    if (!createRes.ok) {
+      const errText = await createRes.text();
+      throw new Error(`Google Drive folder creation error: ${errText}`);
+    }
+    const created = await createRes.json();
+    return created.id;
+  }
+
   private async uploadToGoogleDrive(filename: string, content: string, token: string, folderName: string) {
     // In production web client, uses Google Drive REST v3 multipart upload
+    const folderId = await this.getOrCreateGoogleDriveFolderId(folderName, token);
     const metadata = {
       name: filename,
       mimeType: 'application/json',
       description: `Construction Accounting System automated backup (${new Date().toISOString()})`,
+      parents: [folderId],
     };
 
     const form = new FormData();

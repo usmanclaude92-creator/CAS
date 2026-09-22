@@ -4,19 +4,13 @@ import {
   XCircle,
   Clock,
   Filter,
-  AlertCircle,
   ShieldAlert,
-  Send,
-  Building2,
-  Calendar,
-  DollarSign,
   User,
-  ArrowRight,
-  BookOpen,
+  Send,
 } from 'lucide-react';
-import { Transaction, TransactionType } from '../../types';
+import { Transaction } from '../../types';
 import { authService } from '../../services/authService';
-import { workflowService } from '../../services/workflowService';
+import { workflowService, moduleForTransactionType } from '../../services/workflowService';
 import { accountingService } from '../../services/accountingService';
 import { RejectReasonModal } from '../modals/RejectReasonModal';
 
@@ -34,7 +28,7 @@ export const ApprovalsView: React.FC = () => {
   const accessibleProjects = authService.filterAccessibleProjects(projects);
 
   const refreshList = () => {
-    const list = workflowService.getPendingApprovals();
+    const list = [...workflowService.getPendingApprovals(), ...workflowService.getPendingPosting()];
     setPendingList(list);
   };
 
@@ -185,7 +179,7 @@ export const ApprovalsView: React.FC = () => {
         </select>
 
         <div className="ml-auto text-slate-500 dark:text-slate-400">
-          Showing <strong>{filtered.length}</strong> submitted item(s) awaiting approval
+          Showing <strong>{filtered.length}</strong> item(s) awaiting approval or posting
         </div>
       </div>
 
@@ -213,6 +207,7 @@ export const ApprovalsView: React.FC = () => {
                   <th className="px-4 py-3">Description</th>
                   <th className="px-4 py-3 text-right">Amount (OMR)</th>
                   <th className="px-4 py-3">Created By</th>
+                  <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-center">Actions</th>
                 </tr>
               </thead>
@@ -220,6 +215,8 @@ export const ApprovalsView: React.FC = () => {
                 {filtered.map((txn, idx) => {
                   const isCreator = (txn.createdBy || txn.submittedBy) === currentUser?.id;
                   const sodConflict = authService.getWorkflowSettings().separationOfDutiesEnabled && isCreator;
+                  const module = moduleForTransactionType(txn.type);
+                  const canPost = Boolean(module) && authService.hasPermission(`${module}.post`);
 
                   return (
                     <tr key={`${txn.type}-${txn.id}-${idx}`} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors">
@@ -258,37 +255,67 @@ export const ApprovalsView: React.FC = () => {
                           </span>
                         )}
                       </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide ${
+                            txn.status === 'approved'
+                              ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                          }`}
+                        >
+                          {txn.status === 'approved' ? 'Approved · Ready to Post' : 'Awaiting Approval'}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-center whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5">
-                          {/* Approve Button */}
-                          <button
-                            type="button"
-                            onClick={() => handleApprove(txn)}
-                            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors shadow-xs ${
-                              sodConflict
-                                ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-                                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                            }`}
-                            title={
-                              sodConflict
-                                ? 'Separation of Duties (SOD): Creator cannot approve own transaction.'
-                                : 'Approve Transaction'
-                            }
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Approve</span>
-                          </button>
+                          {txn.status === 'submitted' ? (
+                            <>
+                              {/* Approve Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleApprove(txn)}
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors shadow-xs ${
+                                  sodConflict
+                                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                }`}
+                                title={
+                                  sodConflict
+                                    ? 'Separation of Duties (SOD): Creator cannot approve own transaction.'
+                                    : 'Approve Transaction'
+                                }
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Approve</span>
+                              </button>
 
-                          {/* Reject Button */}
-                          <button
-                            type="button"
-                            onClick={() => setRejectTxn(txn)}
-                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900 flex items-center gap-1 cursor-pointer transition-colors"
-                            title="Reject Transaction with mandatory reason"
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                            <span>Reject</span>
-                          </button>
+                              {/* Reject Button */}
+                              <button
+                                type="button"
+                                onClick={() => setRejectTxn(txn)}
+                                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900 flex items-center gap-1 cursor-pointer transition-colors"
+                                title="Reject Transaction with mandatory reason"
+                              >
+                                <XCircle className="w-3.5 h-3.5" />
+                                <span>Reject</span>
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handlePost(txn)}
+                              disabled={!canPost}
+                              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shadow-xs ${
+                                canPost
+                                  ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                              }`}
+                              title={canPost ? 'Post to General Ledger' : 'Missing required privilege to post this transaction type'}
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                              <span>Post to GL</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

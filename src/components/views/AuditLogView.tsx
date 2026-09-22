@@ -1,12 +1,6 @@
 import React, { useState } from 'react';
 import {
-  ShieldAlert,
   FileSpreadsheet,
-  Clock,
-  User,
-  RotateCcw,
-  PlusCircle,
-  FileText,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { exportToExcel } from '../../utils/exportToExcel';
