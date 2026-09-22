@@ -19,6 +19,7 @@ import {
   Building2,
   Users,
   ArrowRight,
+  ArrowLeft,
   CornerDownLeft,
   Download,
   FileSpreadsheet,
@@ -63,6 +64,34 @@ type SearchResultItem = {
   subtitle: string;
   badge: string;
   detail?: string;
+};
+
+const getTypeIcon = (type: 'project' | 'vendor' | 'customer') => {
+  if (type === 'project') return <Building2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />;
+  if (type === 'customer') return <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />;
+  return <Truck className="w-4 h-4 text-amber-600 dark:text-amber-400" />;
+};
+
+const getTypeBadge = (type: 'project' | 'vendor' | 'customer') => {
+  if (type === 'project') {
+    return (
+      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize bg-indigo-100/70 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300">
+        Project
+      </span>
+    );
+  }
+  if (type === 'customer') {
+    return (
+      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize bg-emerald-100/70 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">
+        Customer
+      </span>
+    );
+  }
+  return (
+    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize bg-amber-100/70 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300">
+      Vendor
+    </span>
+  );
 };
 
 export const Header: React.FC<HeaderProps> = ({
