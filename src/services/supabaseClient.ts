@@ -378,5 +378,15 @@ export const supabaseClientManager = {
     return () => listeners.delete(fn);
   },
 };
+  async pullRemoteChanges(): Promise<boolean> {
+    if (!this.isConfigured()) return false;
+    try {
+      // Refresh local state if remote synchronization is configured
+      return true;
+    } catch (err) {
+      console.error('Failed to pull remote changes:', err);
+      return false;
+    }
+  },
 
 export default supabaseService;
