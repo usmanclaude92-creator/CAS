@@ -28,7 +28,6 @@ const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
 
 function log(level: 'info' | 'warn' | 'error', message: string, meta?: Record<string, unknown>) {
   const entry = { level, message, time: new Date().toISOString(), ...meta };
-  // eslint-disable-next-line no-console
   console[level === 'info' ? 'log' : level](JSON.stringify(entry));
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, AlertCircle, ArrowRight } from 'lucide-react';
+import { X, Upload, AlertCircle } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { uploadAttachmentFile } from '../../services/supabaseClient';
 import { TreasuryAccountType } from '../../types';

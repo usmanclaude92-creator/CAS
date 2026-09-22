@@ -1,15 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Bell,
-  Check,
   CheckCheck,
   Clock,
   CheckCircle2,
-  XCircle,
   AlertTriangle,
   Info,
   Trash2,
-  ExternalLink,
   ChevronRight,
 } from 'lucide-react';
 import { notificationService, AppNotification, NotificationType } from '../services/notificationService';

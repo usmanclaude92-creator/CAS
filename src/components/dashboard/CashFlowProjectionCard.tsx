@@ -13,14 +13,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import {
-  TrendingUp,
-  TrendingDown,
   Calendar,
-  Layers,
-  ArrowUpRight,
-  ArrowDownRight,
-  ShieldCheck,
-  AlertTriangle,
   Info,
   ChevronDown,
   ChevronUp,

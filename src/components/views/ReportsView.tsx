@@ -15,9 +15,6 @@ import {
   X,
   ArrowUpDown,
   Building2,
-  AlertCircle,
-  AlertTriangle,
-  Percent,
   Users,
   Truck,
   Printer,
@@ -32,14 +29,12 @@ import { toast } from '../../context/ToastContext';
 import { ArtifyLogo } from '../ArtifyLogo';
 import { TableExportButtons } from './TableExportButtons';
 import { TableDensityToggle } from '../TableDensityToggle';
-import { useTableDensity } from '../../context/TableDensityContext';
 import { PrintPreviewModal, PrintPreviewColumn } from '../modals/PrintPreviewModal';
 import {
   DatePreset,
   getDateRangeFromPreset,
   isDateInRange,
   calculateAgingDays,
-  getAgingBracket,
   getAgingBadge,
   AgingBracketType,
 } from '../../utils/reportFilters';
@@ -56,8 +51,6 @@ type ReportType =
 
 export const ReportsView: React.FC = () => {
   const [selectedReport, setSelectedReport] = useState<ReportType>('profitability');
-  const { isCompact, cellPadding, headerPadding, fontSize } = useTableDensity();
-
   // -------------------------------------------------------------
   // GLOBAL QUICK FILTERS (Applicable across reports)
   // -------------------------------------------------------------
@@ -83,7 +76,6 @@ export const ReportsView: React.FC = () => {
   const [showIncomePercent, setShowIncomePercent] = useState<boolean>(true);
 
   // 3. Balance Sheet
-  const [balanceSheetAsOf, setBalanceSheetAsOf] = useState<'current' | 'month_end' | 'last_month_end' | 'last_quarter_end'>('current');
   const [hideZeroBalanceAccounts, setHideZeroBalanceAccounts] = useState<boolean>(false);
 
   // 4. Trial Balance
@@ -160,7 +152,6 @@ export const ReportsView: React.FC = () => {
     setProfitMarginFilter('all');
     setProfitSearch('');
     setProfitSort('profit_desc');
-    setBalanceSheetAsOf('current');
     setHideZeroBalanceAccounts(false);
     setTrialAccountClass('all');
     setTrialSearch('');

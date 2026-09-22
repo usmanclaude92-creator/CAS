@@ -3,22 +3,17 @@ import {
   demoRequestService,
   DemoRequest,
   VISITOR_SYSTEM_ROLES,
-  SystemRoleInfo,
 } from '../../services/demoRequestService';
 import { authService } from '../../services/authService';
 import { ThemeToggle } from '../ThemeToggle';
 import {
-  ShieldCheck,
-  ShieldAlert,
   Clock,
   CheckCircle2,
   XCircle,
   Copy,
   Check,
-  ExternalLink,
   Send,
   Search,
-  Filter,
   RefreshCw,
   ArrowLeft,
   KeyRound,
@@ -29,8 +24,6 @@ import {
   AlertTriangle,
   Lock,
   Sparkles,
-  ChevronRight,
-  Eye,
   Trash2,
 } from 'lucide-react';
 
@@ -43,7 +36,7 @@ interface AdminDemoApprovalsViewProps {
 export const AdminDemoApprovalsView: React.FC<AdminDemoApprovalsViewProps> = ({
   onBackToApp,
   initialRequestId,
-  initialToken,
+  initialToken: _initialToken,
 }) => {
   const [requests, setRequests] = useState<DemoRequest[]>([]);
   const [searchQuery, setSearchQuery] = useState('');

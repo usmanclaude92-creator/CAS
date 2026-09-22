@@ -8,7 +8,6 @@ import {
   Mail,
   Building2,
   Phone,
-  Briefcase,
   ArrowRight,
   X,
   Sparkles,
@@ -30,7 +29,7 @@ export const DemoApprovalModal: React.FC<DemoApprovalModalProps> = ({
   isOpen,
   onClose,
   requestId,
-  token,
+  token: _token,
   onInstantLogin,
 }) => {
   const [request, setRequest] = useState<DemoRequest | null>(null);

@@ -21,9 +21,9 @@ import { ExpensesView } from './components/views/ExpensesView';
 import { ReportsView } from './components/views/ReportsView';
 import { MastersView } from './components/views/MastersView';
 import { SystemConfigurationView } from './components/views/SystemConfigurationView';
-import { UsersView } from './components/views/UsersView';
-import { RolesView } from './components/views/RolesView';
-import { WorkflowSettingsView } from './components/views/WorkflowSettingsView';
+import {} from './components/views/UsersView';
+import {} from './components/views/RolesView';
+import {} from './components/views/WorkflowSettingsView';
 import { MasterImportAuditView } from './components/views/MasterImportAuditView';
 import { AuditLogView } from './components/views/AuditLogView';
 
@@ -41,7 +41,7 @@ import { NewVendorModal } from './components/modals/NewVendorModal';
 import { NewBankAccountModal } from './components/modals/NewBankAccountModal';
 import { SupabaseSettingsModal } from './components/modals/SupabaseSettingsModal';
 import { SessionWarningModal } from './components/modals/SessionWarningModal';
-import { ToastProvider, toast } from './context/ToastContext';
+import { ToastProvider } from './context/ToastContext';
 import { notificationCenter } from './services/notificationCenter';
 
 import { accountingService } from './services/accountingService';
@@ -122,12 +122,12 @@ function AppContent() {
       window.location.hash.includes('admin/demo-approvals')
     );
   });
-  const [approvalRequestId, setApprovalRequestId] = useState<string | null>(() => {
+  const [approvalRequestId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
     const params = new URLSearchParams(window.location.search);
     return params.get('requestId') || params.get('id');
   });
-  const [approvalToken, setApprovalToken] = useState<string | null>(() => {
+  const [approvalToken] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
     const params = new URLSearchParams(window.location.search);
     return params.get('token');

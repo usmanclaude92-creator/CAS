@@ -2,19 +2,17 @@ import React, { useState, useRef } from 'react';
 import {
   X,
   UploadCloud,
-  FileSpreadsheet,
   CheckCircle2,
   AlertTriangle,
   XCircle,
   Download,
   Users,
   Truck,
-  ArrowRight,
   Database,
   RefreshCw,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
-import { authService } from '../../services/authService';
+import {} from '../../services/authService';
 import { useToast } from '../../context/ToastContext';
 
 export type BatchEntityType = 'customers' | 'vendors';
@@ -52,7 +50,7 @@ export const BatchEntityImportModal: React.FC<BatchEntityImportModalProps> = ({
   const { toast } = useToast();
   const [entityType, setEntityType] = useState<BatchEntityType>(defaultType);
   const [step, setStep] = useState<'upload' | 'validate' | 'success'>('upload');
-  const [file, setFile] = useState<File | null>(null);
+  const [, setFile] = useState<File | null>(null);
   const [rows, setRows] = useState<ValidatedRow[]>([]);
   const [isCommitting, setIsCommitting] = useState(false);
   const [commitResult, setCommitResult] = useState<{ imported: number; failed: number } | null>(null);
@@ -268,7 +266,7 @@ export const BatchEntityImportModal: React.FC<BatchEntityImportModalProps> = ({
             });
           }
           imported++;
-        } catch (e) {
+        } catch {
           failed++;
         }
       }

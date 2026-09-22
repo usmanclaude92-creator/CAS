@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Layers, AlertCircle, CheckCircle2, Sparkles, Tag } from 'lucide-react';
+import { X, Layers, AlertCircle, CheckCircle2, Sparkles } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { ExpenseHead } from '../../types';
 

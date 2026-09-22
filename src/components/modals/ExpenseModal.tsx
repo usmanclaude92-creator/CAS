@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Upload, AlertCircle, Plus } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { uploadAttachmentFile } from '../../services/supabaseClient';
-import { TreasuryAccountType, ExpenseHead } from '../../types';
+import { TreasuryAccountType } from '../../types';
 import { formatOMR } from '../../utils/formatters';
 import { AddExpenseCategoryModal } from './AddExpenseCategoryModal';
 import { notificationCenter } from '../../services/notificationCenter';

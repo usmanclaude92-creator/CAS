@@ -5,17 +5,14 @@ import {
   Edit2,
   Trash2,
   CheckCircle2,
-  AlertCircle,
-  Lock,
-  ChevronRight,
   ShieldCheck,
   ShieldAlert,
   Info,
   X,
 } from 'lucide-react';
-import { Role, Permission } from '../../types/auth';
+import { Role } from '../../types/auth';
 import { authService } from '../../services/authService';
-import { PERMISSION_MODULES, ALL_PERMISSIONS } from '../../services/permissionsData';
+import { PERMISSION_MODULES } from '../../services/permissionsData';
 
 export const RolesView: React.FC = () => {
   const [roles, setRoles] = useState<Role[]>([]);
@@ -32,7 +29,6 @@ export const RolesView: React.FC = () => {
   const [newRoleDesc, setNewRoleDesc] = useState('');
   const [newRolePermissions, setNewRolePermissions] = useState<string[]>([]);
 
-  const currentUser = authService.getCurrentUser();
   const isSuperAdmin = authService.isSuperAdmin();
 
   const loadRoles = () => {
@@ -338,8 +334,13 @@ export const RolesView: React.FC = () => {
                       className="border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 space-y-2.5 bg-slate-50/50 dark:bg-slate-800/30"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-wider">
+                        <span className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                           {group.module}
+                          {hasSome && !hasAll && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold uppercase bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                              Partial
+                            </span>
+                          )}
                         </span>
                         {isEditing && (
                           <button

@@ -1,14 +1,10 @@
 import React, { useState } from 'react';
 import {
   Printer,
-  X,
   ZoomIn,
   ZoomOut,
-  RotateCcw,
   FileText,
   CheckCircle2,
-  Maximize2,
-  FileSpreadsheet,
 } from 'lucide-react';
 import { ArtifyLogo } from '../ArtifyLogo';
 

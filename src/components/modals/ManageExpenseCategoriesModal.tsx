@@ -10,9 +10,7 @@ import {
   AlertCircle,
   Plus,
   Trash2,
-  Filter,
   CheckCircle2,
-  Cloud,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { ExpenseHead } from '../../types';

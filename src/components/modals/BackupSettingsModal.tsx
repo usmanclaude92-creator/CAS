@@ -3,15 +3,11 @@ import {
   X,
   Cloud,
   HardDrive,
-  CheckCircle2,
-  Shield,
   Key,
   Folder,
   Clock,
   Save,
-  RotateCcw,
   Sparkles,
-  ExternalLink,
 } from 'lucide-react';
 import {
   backupService,

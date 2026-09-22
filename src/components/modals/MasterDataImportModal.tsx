@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import {
   UploadCloud,
-  FileSpreadsheet,
   CheckCircle2,
   AlertTriangle,
   XCircle,
