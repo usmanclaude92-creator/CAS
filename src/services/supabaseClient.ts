@@ -1,179 +1,228 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const STORAGE_KEY_URL = 'cas_supabase_url';
+const STORAGE_KEY_KEY = 'cas_supabase_anon_key';
 
-export const isSupabaseConfigured = (): boolean => {
-  return Boolean(
-    supabaseUrl &&
-    supabaseAnonKey &&
-    supabaseUrl.startsWith('https://') &&
-    supabaseUrl !== 'https://your-project-id.supabase.co'
-  );
+let listeners: Array<() => void> = [];
+
+const notifyListeners = () => {
+  listeners.forEach((fn) => {
+    try {
+      fn();
+    } catch (e) {
+      console.error('Error invoking Supabase listener:', e);
+    }
+  });
 };
 
-export const supabase: SupabaseClient | null = isSupabaseConfigured()
-  ? createClient(supabaseUrl, supabaseAnonKey, {
+const getStoredOrEnvUrl = (): string => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_URL);
+    if (stored) return stored.trim();
+  } catch {
+    // ignore local storage errors
+  }
+  return (import.meta.env.VITE_SUPABASE_URL || '').trim();
+};
+
+const getStoredOrEnvKey = (): string => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_KEY);
+    if (stored) return stored.trim();
+  } catch {
+    // ignore local storage errors
+  }
+  return (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+};
+
+export const isSupabaseConfigured = (): boolean => {
+  const url = getStoredOrEnvUrl();
+  const key = getStoredOrEnvKey();
+  return Boolean(url && key && !url.includes('placeholder.supabase.co'));
+};
+
+const createClientInstance = (url?: string, key?: string): SupabaseClient => {
+  const finalUrl = (url || getStoredOrEnvUrl()) || 'https://placeholder.supabase.co';
+  const finalKey = (key || getStoredOrEnvKey()) || 'placeholder-key';
+
+  try {
+    return createClient(finalUrl, finalKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
       },
-    })
-  : null;
+    });
+  } catch (error) {
+    console.warn('Fallback to dummy Supabase client:', error);
+    return createClient('https://placeholder.supabase.co', 'placeholder-key');
+  }
+};
 
-export interface SupabaseServiceType {
-  isConfigured: () => boolean;
-  getClient: () => SupabaseClient | any;
-  testConnection: () => Promise<boolean>;
-  uploadAttachment: (file: File, transactionType: string, referenceId: string) => Promise<string | null>;
-  downloadAttachment: (path: string) => Promise<Blob | null>;
-  deleteAttachment: (path: string) => Promise<boolean>;
-  getAttachmentUrl: (path: string) => string;
-  pullRemoteChanges: () => Promise<boolean>;
-  pushLocalChanges: (data?: any) => Promise<boolean>;
-  syncData: () => Promise<boolean>;
-  subscribe: (fn: () => void) => () => boolean;
-  [key: string]: any;
-}
+let currentClient: SupabaseClient = createClientInstance();
 
-export const supabaseService: SupabaseServiceType = {
-  isConfigured(): boolean {
-    return isSupabaseConfigured();
-  },
+export const supabase = currentClient;
 
-  getClient(): SupabaseClient | null {
-    return supabase;
-  },
+export const getSupabaseClient = (): SupabaseClient => {
+  return currentClient;
+};
 
-  async testConnection(): Promise<boolean> {
-    if (!this.isConfigured() || !supabase) return false;
+// Upload attachment utility used across transaction modals
+export const uploadAttachmentFile = async (
+  file: File,
+  transactionTypeOrFolder: string = 'attachments',
+  referenceId?: string
+): Promise<string | null> => {
+  try {
+    if (!isSupabaseConfigured()) {
+      console.warn('Supabase not configured. Using local object URL.');
+      return URL.createObjectURL(file);
+    }
+
+    const client = getSupabaseClient();
+    const cleanFileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    const folder = transactionTypeOrFolder || 'attachments';
+    const filePath = referenceId
+      ? `${folder}/${referenceId}/${cleanFileName}`
+      : `${folder}/${cleanFileName}`;
+
+    const { data, error } = await client.storage
+      .from('attachments')
+      .upload(filePath, file, { upsert: true });
+
+    if (error) {
+      console.warn('Storage upload error, fallback to local URL:', error);
+      return URL.createObjectURL(file);
+    }
+
+    const { data: publicUrlData } = client.storage
+      .from('attachments')
+      .getPublicUrl(data.path);
+
+    return publicUrlData.publicUrl || data.path;
+  } catch (err) {
+    console.error('Attachment upload failed:', err);
+    return URL.createObjectURL(file);
+  }
+};
+
+// Expense Category API operations
+export const saveExpenseCategoryToSupabase = async (category: any): Promise<any> => {
+  try {
+    if (!isSupabaseConfigured()) return category;
+    const client = getSupabaseClient();
+    const { data, error } = await client
+      .from('expense_categories')
+      .insert(category)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data || category;
+  } catch (err) {
+    console.error('Failed to save expense category to Supabase:', err);
+    return category;
+  }
+};
+
+export const updateExpenseCategoryInSupabase = async (category: any): Promise<any> => {
+  try {
+    if (!isSupabaseConfigured()) return category;
+    const client = getSupabaseClient();
+    const id = typeof category === 'object' ? category.id : category;
+    const payload = typeof category === 'object' ? category : {};
+
+    const { data, error } = await client
+      .from('expense_categories')
+      .update(payload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data || category;
+  } catch (err) {
+    console.error('Failed to update expense category in Supabase:', err);
+    return category;
+  }
+};
+
+export const deleteExpenseCategoryFromSupabase = async (id: string): Promise<boolean> => {
+  try {
+    if (!isSupabaseConfigured()) return true;
+    const client = getSupabaseClient();
+    const { error } = await client
+      .from('expense_categories')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error('Failed to delete expense category from Supabase:', err);
+    return false;
+  }
+};
+
+// Client Manager singleton used by App.tsx and SupabaseSettingsModal
+export const supabaseClientManager = {
+  isConfigured: (): boolean => isSupabaseConfigured(),
+
+  getClient: (): SupabaseClient => getSupabaseClient(),
+
+  getConfig: () => ({
+    url: getStoredOrEnvUrl(),
+    key: getStoredOrEnvKey(),
+  }),
+
+  saveConfig: (url: string, key: string): void => {
     try {
-      const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
-      return !error;
-    } catch (err) {
-      console.warn('Supabase test connection failed:', err);
-      return false;
+      localStorage.setItem(STORAGE_KEY_URL, url.trim());
+      localStorage.setItem(STORAGE_KEY_KEY, key.trim());
+      currentClient = createClientInstance(url.trim(), key.trim());
+      notifyListeners();
+    } catch (e) {
+      console.error('Failed to save Supabase settings:', e);
     }
   },
 
-  async uploadAttachment(file: File, transactionType: string, referenceId: string): Promise<string | null> {
-    if (!this.isConfigured() || !supabase) {
-      console.warn('Supabase is not configured. Attachment saved locally only.');
+  resetConfig: (): void => {
+    try {
+      localStorage.removeItem(STORAGE_KEY_URL);
+      localStorage.removeItem(STORAGE_KEY_KEY);
+      currentClient = createClientInstance();
+      notifyListeners();
+    } catch (e) {
+      console.error('Failed to reset Supabase settings:', e);
+    }
+  },
+
+  uploadAttachment: async (
+    file: File,
+    transactionType: string,
+    referenceId: string
+  ): Promise<string | null> => {
+    return uploadAttachmentFile(file, transactionType, referenceId);
+  },
+
+  pullRemoteChanges: async (): Promise<any> => {
+    try {
+      if (!isSupabaseConfigured()) return null;
+      console.log('Pulling remote changes from Supabase...');
+      return null;
+    } catch (err) {
+      console.warn('Error pulling remote changes:', err);
       return null;
     }
-
-    try {
-      const ext = file.name.split('.').pop();
-      const fileName = `${transactionType}/${referenceId}_${Date.now()}.${ext}`;
-
-      const { data, error } = await supabase.storage
-        .from('attachments')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: true,
-        });
-
-      if (error) {
-        console.error('Error uploading file to Supabase:', error.message);
-        return null;
-      }
-
-      return data?.path || fileName;
-    } catch (err) {
-      console.error('Failed to upload attachment:', err);
-      return null;
-    }
   },
 
-  async downloadAttachment(path: string): Promise<Blob | null> {
-    if (!this.isConfigured() || !supabase) return null;
-    try {
-      const { data, error } = await supabase.storage.from('attachments').download(path);
-      if (error) {
-        console.error('Error downloading attachment:', error.message);
-        return null;
-      }
-      return data;
-    } catch (err) {
-      console.error('Failed to download attachment:', err);
-      return null;
-    }
-  },
-
-  async deleteAttachment(path: string): Promise<boolean> {
-    if (!this.isConfigured() || !supabase) return false;
-    try {
-      const { error } = await supabase.storage.from('attachments').remove([path]);
-      if (error) {
-        console.error('Error deleting attachment:', error.message);
-        return false;
-      }
+  subscribe: (fn: () => void): (() => boolean) => {
+    listeners.push(fn);
+    return () => {
+      listeners = listeners.filter((l) => l !== fn);
       return true;
-    } catch (err) {
-      console.error('Failed to delete attachment:', err);
-      return false;
-    }
-  },
-
-  getAttachmentUrl(path: string): string {
-    if (!this.isConfigured() || !supabase) return '';
-    const { data } = supabase.storage.from('attachments').getPublicUrl(path);
-    return data?.publicUrl || '';
-  },
-
-  async pullRemoteChanges(): Promise<boolean> {
-    if (!this.isConfigured() || !supabase) return false;
-    try {
-      // Synchronize remote data if remote tables exist
-      return true;
-    } catch (err) {
-      console.error('Failed to pull remote changes:', err);
-      return false;
-    }
-  },
-
-  async pushLocalChanges(_data?: any): Promise<boolean> {
-    if (!this.isConfigured() || !supabase) return false;
-    try {
-      return true;
-    } catch (err) {
-      console.error('Failed to push local changes:', err);
-      return false;
-    }
-  },
-
-  async syncData(): Promise<boolean> {
-    const pulled = await this.pullRemoteChanges();
-    const pushed = await this.pushLocalChanges();
-    return pulled && pushed;
-  },
-
-  subscribe(fn: () => void): () => boolean {
-    if (!this.isConfigured() || !supabase) {
-      return () => true;
-    }
-
-    try {
-      const channel = supabase
-        .channel('schema-db-changes')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public' },
-          () => {
-            fn();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase?.removeChannel(channel);
-        return true;
-      };
-    } catch (err) {
-      console.warn('Supabase subscribe error:', err);
-      return () => true;
-    }
+    };
   },
 };
 
-export default supabaseService;
+export const supabaseService = supabaseClientManager;
+export default supabaseClientManager;
