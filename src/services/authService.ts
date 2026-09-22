@@ -180,7 +180,12 @@ class AuthService {
     const { data } = client ? await client.auth.getSession() : { data: { session: null } };
     const token = data.session?.access_token;
     if (!token) throw new Error('No active session.');
-    return fetch(path, {
+    // Admin endpoints (user creation, password reset for others, demo-request
+    // approval) run on the CAS web app's Express server, which holds the
+    // service_role key. A client with no server of its own (e.g. the Android
+    // build) points this at that deployment via VITE_ADMIN_API_URL.
+    const base = ((import.meta as any).env?.VITE_ADMIN_API_URL || '').replace(/\/+$/, '');
+    return fetch(`${base}${path}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',

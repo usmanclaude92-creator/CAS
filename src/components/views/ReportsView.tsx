@@ -156,7 +156,7 @@ export const ReportsView: React.FC = () => {
     setDatePreset('all');
     setCustomStartDate('');
     setCustomEndDate('');
-    filterProjectId !== 'all' && setFilterProjectId('all');
+    if (filterProjectId !== 'all') setFilterProjectId('all');
     setProfitMarginFilter('all');
     setProfitSearch('');
     setProfitSort('profit_desc');
