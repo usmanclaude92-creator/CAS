@@ -391,6 +391,94 @@ button, a, input, select, textarea {
 .overflow-x-auto {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
+  max-width: 100%;
+}
+
+/* ==========================================================================
+   RESPONSIVE CSS GRID & VIEWPORT-BASED CONSTRAINT SYSTEM
+   ========================================================================== */
+
+/* Main responsive container constraint that scales fluidly without horizontal overflow */
+.container-responsive {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* Auto-fit responsive card grid with fluid minmax columns preventing small-screen overflow */
+.grid-responsive-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 1rem;
+  width: 100%;
+}
+
+/* Fluid KPI statistics grid that stacks on mobile viewports and flows into columns on tablets/desktops */
+.grid-responsive-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  gap: 0.75rem;
+  width: 100%;
+}
+
+/* Standardized responsive table card wrapper with contained horizontal scrolling */
+.table-responsive-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 0.75rem;
+  position: relative;
+}
+
+.table-responsive-container table {
+  min-width: 100%;
+  width: max-content;
+}
+
+@media (min-width: 768px) {
+  .table-responsive-container table {
+    width: 100%;
+  }
+}
+
+/* ==========================================================================
+   TOUCH ACCESSIBILITY STANDARDS (MIN 48DP / 48PX TARGETS)
+   ========================================================================== */
+
+/* Touch target helper enforcing minimum 48px interactive target */
+.touch-target-min {
+  min-height: 48px;
+  min-width: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Mobile input ergonomics: comfortable touch padding, 16px font size to prevent iOS zoom, smooth focus */
+@media (max-width: 640px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="date"],
+  input[type="password"],
+  input[type="email"],
+  select,
+  textarea {
+    font-size: 16px !important; /* Prevents auto-zoom in mobile Safari / Chrome */
+    padding-top: 0.625rem !important;
+    padding-bottom: 0.625rem !important;
+    min-height: 44px;
+    border-radius: 0.625rem !important;
+  }
+
+  /* Form modal buttons touch comfort */
+  form button[type="submit"],
+  form button[type="button"] {
+    min-height: 44px;
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
 }
 
 /* Safe area insets for notches & home bars on mobile devices */

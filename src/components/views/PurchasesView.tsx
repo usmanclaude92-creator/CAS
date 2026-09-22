@@ -345,12 +345,12 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({
   // =========================================================================
   if (selectedVendor) {
     return (
-      <div className="space-y-6">
+      <div className="container-responsive space-y-6">
         {/* Navigation & Action Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <button
             onClick={onClearSelectedVendor}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer touch-target-min"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to All Purchases &amp; Vendors
@@ -359,21 +359,21 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={onOpenPurchase}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-amber-700 hover:bg-amber-600 cursor-pointer shadow-xs transition-colors"
+              className="inline-flex items-center gap-1 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-amber-700 hover:bg-amber-600 cursor-pointer shadow-xs transition-colors touch-target-min"
             >
               <Plus className="w-3.5 h-3.5" />
               + Record Purchase Bill
             </button>
             <button
               onClick={onOpenMoneyOut}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-slate-900 hover:bg-slate-800 cursor-pointer shadow-xs transition-colors"
+              className="inline-flex items-center gap-1 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-slate-900 hover:bg-slate-800 cursor-pointer shadow-xs transition-colors touch-target-min"
             >
               <Plus className="w-3.5 h-3.5" />
               + Settle Payment
             </button>
             <button
               onClick={handleExportVendorStatement}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer shadow-xs transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer shadow-xs transition-colors touch-target-min"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
               Export Statement (Excel)
@@ -548,7 +548,7 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({
           </div>
 
           {/* Ledger Table */}
-          <div className="overflow-x-auto">
+          <div className="table-responsive-container">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
@@ -629,7 +629,7 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({
   // VIEW: MAIN PURCHASES DASHBOARD (TABS: PURCHASE BILLS & VENDOR DIRECTORY)
   // =========================================================================
   return (
-    <div className="space-y-6">
+    <div className="container-responsive space-y-6">
       {/* Top Header & Actions Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -642,28 +642,28 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={activeTab === 'bills' ? handleExportBills : handleExportAllVendors}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer shadow-xs transition-colors touch-target-min"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
             {activeTab === 'bills' ? 'Export Bills (Excel)' : 'Export Payables Summary'}
           </button>
           <button
             onClick={onOpenMoneyOut}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-slate-900 hover:bg-slate-800 cursor-pointer shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-slate-900 hover:bg-slate-800 cursor-pointer shadow-xs transition-colors touch-target-min"
           >
             <Plus className="w-3.5 h-3.5" />
             Settle Payment
           </button>
           <button
             onClick={onOpenPurchase}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-amber-700 hover:bg-amber-600 cursor-pointer shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-amber-700 hover:bg-amber-600 cursor-pointer shadow-xs transition-colors touch-target-min"
           >
             <Plus className="w-3.5 h-3.5" />
             Record Purchase Bill
           </button>
           <button
             onClick={onOpenNewVendor}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 cursor-pointer shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 cursor-pointer shadow-xs transition-colors touch-target-min"
           >
             <Plus className="w-3.5 h-3.5" />
             New Vendor
@@ -907,7 +907,7 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({
             </div>
 
             {/* Table of Purchase Transactions */}
-            <div className="overflow-x-auto">
+            <div className="table-responsive-container">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
@@ -1093,7 +1093,7 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({
             </div>
 
             {/* Vendors Table */}
-            <div className="overflow-x-auto">
+            <div className="table-responsive-container">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">

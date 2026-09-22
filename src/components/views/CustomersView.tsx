@@ -107,11 +107,11 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   // If a single customer is selected
   if (selectedCustomer) {
     return (
-      <div className="space-y-6">
+      <div className="container-responsive space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <button
             onClick={onClearSelectedCustomer}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer touch-target-min"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to All Customers
@@ -120,21 +120,21 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={onOpenClientInvoice}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-blue-700 hover:bg-blue-600 cursor-pointer"
+              className="inline-flex items-center gap-1 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-blue-700 hover:bg-blue-600 cursor-pointer touch-target-min"
             >
               <Plus className="w-3.5 h-3.5" />
               + Invoice / IPC
             </button>
             <button
               onClick={onOpenMoneyIn}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-emerald-700 hover:bg-emerald-600 cursor-pointer"
+              className="inline-flex items-center gap-1 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-emerald-700 hover:bg-emerald-600 cursor-pointer touch-target-min"
             >
               <Plus className="w-3.5 h-3.5" />
               + Record Money In
             </button>
             <button
               onClick={handleExportCustomerStatement}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer touch-target-min"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
               Export Statement (Excel)
@@ -195,7 +195,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
             </p>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="table-responsive-container">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
@@ -263,7 +263,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
 
   // Master Customer Directory
   return (
-    <div className="space-y-6">
+    <div className="container-responsive space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-bold text-slate-900">Customers &amp; Accounts Receivable</h2>
@@ -274,14 +274,14 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
         <div className="flex items-center gap-2.5">
           <button
             onClick={handleExportAllCustomers}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer touch-target-min"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
             Export Receivables Summary
           </button>
           <button
             onClick={onOpenNewCustomer}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-blue-800 hover:bg-blue-700 cursor-pointer shadow"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-blue-800 hover:bg-blue-700 cursor-pointer shadow touch-target-min"
           >
             <Plus className="w-3.5 h-3.5" />
             New Customer
@@ -291,7 +291,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
 
       {/* Customers Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="table-responsive-container">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">

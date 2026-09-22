@@ -185,7 +185,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
       : null;
 
   return (
-    <div className="space-y-6">
+    <div className="container-responsive space-y-6">
       {/* Top Header & Action Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -200,7 +200,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
           <button
             id="btn-edit-categories"
             onClick={() => setIsManageCategoriesModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 cursor-pointer shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-semibold rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 cursor-pointer shadow-xs transition-colors touch-target-min"
           >
             <SlidersHorizontal className="w-3.5 h-3.5 text-slate-600" />
             Edit Categories
@@ -208,28 +208,28 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
           <button
             id="btn-add-expense-category"
             onClick={() => setIsAddCategoryModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 cursor-pointer shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-semibold rounded-lg text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 cursor-pointer shadow-xs transition-colors touch-target-min"
           >
             <Layers className="w-3.5 h-3.5 text-rose-600" />
             + Add Expense Category
           </button>
           <button
             onClick={onOpenTransfer}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-indigo-700 hover:bg-indigo-600 cursor-pointer shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-indigo-700 hover:bg-indigo-600 cursor-pointer shadow-xs transition-colors touch-target-min"
           >
             <ArrowRightLeft className="w-3.5 h-3.5" />
             Replenish Petty Cash
           </button>
           <button
             onClick={onOpenExpense}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-rose-700 hover:bg-rose-600 cursor-pointer shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-rose-700 hover:bg-rose-600 cursor-pointer shadow-xs transition-colors touch-target-min"
           >
             <Plus className="w-3.5 h-3.5" />
             + Record Direct Expense
           </button>
           <button
             onClick={handleExportExpenses}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer shadow-xs transition-colors touch-target-min"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
             Export Expense Sheet
@@ -513,7 +513,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
         </div>
 
         {/* Expenses Data Table */}
-        <div className="overflow-x-auto">
+        <div className="table-responsive-container">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">

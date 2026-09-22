@@ -209,7 +209,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
         <button
           type="button"
           onClick={() => handleToggleCollapse(false)}
-          className="flex items-center gap-2.5 px-3.5 py-2 bg-slate-900/95 dark:bg-slate-800/95 text-white rounded-full shadow-lg backdrop-blur-md border border-slate-700/80 hover:bg-slate-800 active:scale-95 transition-all text-xs font-semibold cursor-pointer group"
+          className="flex items-center gap-2.5 px-4 py-2.5 min-h-[48px] bg-slate-900/95 dark:bg-slate-800/95 text-white rounded-full shadow-lg backdrop-blur-md border border-slate-700/80 hover:bg-slate-800 active:scale-95 transition-all text-xs font-semibold cursor-pointer group touch-target-min"
           aria-label="Expand navigation bar"
           title="Expand navigation bar"
         >
@@ -243,12 +243,12 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
       >
         <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] pb-[max(0.375rem,env(safe-area-inset-bottom))]">
           {/* Top Control Handle & Table Density Toolbar */}
-          <div className="flex items-center justify-between px-3 pt-1.5 pb-1 border-b border-slate-100 dark:border-slate-800/60 text-[11px] text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-between px-3 py-1 border-b border-slate-100 dark:border-slate-800/60 text-[11px] text-slate-500 dark:text-slate-400">
             {/* Table Spacing / Compact Mode Toggle */}
             <button
               type="button"
               onClick={onToggleTableCompact}
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-medium transition-colors cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[36px] rounded-lg font-medium transition-colors cursor-pointer ${
                 isTableCompact
                   ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
                   : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'
@@ -257,12 +257,12 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
             >
               {isTableCompact ? (
                 <>
-                  <Minimize2 className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                  <Minimize2 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                   <span>Compact Tables: <strong>On</strong></span>
                 </>
               ) : (
                 <>
-                  <Maximize2 className="w-3 h-3 text-slate-400" />
+                  <Maximize2 className="w-3.5 h-3.5 text-slate-400" />
                   <span>Table Spacing: Normal</span>
                 </>
               )}
@@ -272,22 +272,22 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
             <button
               type="button"
               onClick={() => handleToggleCollapse(true)}
-              className="px-4 py-1 -my-1 group flex flex-col items-center justify-center cursor-pointer"
+              className="px-6 py-2 min-h-[36px] group flex flex-col items-center justify-center cursor-pointer"
               aria-label="Collapse navigation bar"
               title="Click or drag to collapse"
             >
-              <div className="w-10 h-1 bg-slate-300 dark:bg-slate-700 rounded-full group-hover:bg-indigo-500 transition-colors" />
+              <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full group-hover:bg-indigo-500 transition-colors" />
             </button>
 
             {/* Collapse / Hide Button */}
             <button
               type="button"
               onClick={() => handleToggleCollapse(true)}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 min-h-[36px] rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-colors cursor-pointer"
               title="Collapse bottom bar to give full screen height to data tables"
             >
               <span>Hide</span>
-              <ChevronDown className="w-3.5 h-3.5" />
+              <ChevronDown className="w-4 h-4" />
             </button>
           </div>
 
@@ -297,7 +297,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
             <button
               type="button"
               onClick={() => handleTabClick('dashboard')}
-              className={`btn-press ripple-effect flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
+              className={`flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
                 isDashboardActive
                   ? 'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50/80 dark:bg-indigo-950/40'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 font-medium'
@@ -312,7 +312,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
               type="button"
               onClick={() => handleTabClick('approvals')}
               disabled={!hasApprovalsAccess}
-              className={`btn-press ripple-effect relative flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
+              className={`relative flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
                 !hasApprovalsAccess
                   ? 'opacity-40 cursor-not-allowed text-slate-400'
                   : isApprovalsActive
@@ -336,7 +336,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
               type="button"
               onClick={() => handleTabClick('projects')}
               disabled={!hasProjectsAccess}
-              className={`btn-press ripple-effect flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
+              className={`flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
                 !hasProjectsAccess
                   ? 'opacity-40 cursor-not-allowed text-slate-400'
                   : isProjectsActive
@@ -353,7 +353,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
               type="button"
               onClick={() => handleTabClick('banking')}
               disabled={!hasBankingAccess}
-              className={`btn-press ripple-effect flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
+              className={`flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
                 !hasBankingAccess
                   ? 'opacity-40 cursor-not-allowed text-slate-400'
                   : isBankingActive
@@ -369,7 +369,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
             <button
               type="button"
               onClick={() => setIsMoreSheetOpen(true)}
-              className={`btn-press ripple-effect flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
+              className={`flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
                 isMoreActive || isMoreSheetOpen
                   ? 'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50/80 dark:bg-indigo-950/40'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 font-medium'
@@ -439,7 +439,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
                       setIsMoreSheetOpen(false);
                       onOpenMoneyIn();
                     }}
-                    className="flex flex-col items-center justify-center p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 transition-colors cursor-pointer text-center"
+                    className="flex flex-col items-center justify-center p-3 min-h-[52px] rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 transition-colors cursor-pointer text-center touch-target-min"
                   >
                     <ArrowDownLeft className="w-4 h-4 mb-1 text-emerald-600" />
                     <span className="text-[11px] font-semibold">Money In</span>
@@ -453,7 +453,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
                       setIsMoreSheetOpen(false);
                       onOpenPurchase();
                     }}
-                    className="flex flex-col items-center justify-center p-2.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30 text-blue-800 dark:text-blue-300 hover:bg-blue-100 transition-colors cursor-pointer text-center"
+                    className="flex flex-col items-center justify-center p-3 min-h-[52px] rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30 text-blue-800 dark:text-blue-300 hover:bg-blue-100 transition-colors cursor-pointer text-center touch-target-min"
                   >
                     <Truck className="w-4 h-4 mb-1 text-blue-600" />
                     <span className="text-[11px] font-semibold">Purchase Bill</span>
@@ -467,7 +467,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
                       setIsMoreSheetOpen(false);
                       onOpenExpense();
                     }}
-                    className="flex flex-col items-center justify-center p-2.5 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/60 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 hover:bg-amber-100 transition-colors cursor-pointer text-center"
+                    className="flex flex-col items-center justify-center p-3 min-h-[52px] rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/60 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 hover:bg-amber-100 transition-colors cursor-pointer text-center touch-target-min"
                   >
                     <Coins className="w-4 h-4 mb-1 text-amber-600" />
                     <span className="text-[11px] font-semibold">Site Expense</span>
@@ -481,7 +481,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
                       setIsMoreSheetOpen(false);
                       onOpenClientInvoice();
                     }}
-                    className="flex flex-col items-center justify-center p-2.5 rounded-xl border border-purple-200 dark:border-purple-900/60 bg-purple-50/60 dark:bg-purple-950/30 text-purple-800 dark:text-purple-300 hover:bg-purple-100 transition-colors cursor-pointer text-center"
+                    className="flex flex-col items-center justify-center p-3 min-h-[52px] rounded-xl border border-purple-200 dark:border-purple-900/60 bg-purple-50/60 dark:bg-purple-950/30 text-purple-800 dark:text-purple-300 hover:bg-purple-100 transition-colors cursor-pointer text-center touch-target-min"
                   >
                     <FileText className="w-4 h-4 mb-1 text-purple-600" />
                     <span className="text-[11px] font-semibold">Client Invoice</span>
@@ -495,7 +495,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
                       setIsMoreSheetOpen(false);
                       onOpenMoneyOut();
                     }}
-                    className="flex flex-col items-center justify-center p-2.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/60 dark:bg-rose-950/30 text-rose-800 dark:text-rose-300 hover:bg-rose-100 transition-colors cursor-pointer text-center"
+                    className="flex flex-col items-center justify-center p-3 min-h-[52px] rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/60 dark:bg-rose-950/30 text-rose-800 dark:text-rose-300 hover:bg-rose-100 transition-colors cursor-pointer text-center touch-target-min"
                   >
                     <ArrowUpRight className="w-4 h-4 mb-1 text-rose-600" />
                     <span className="text-[11px] font-semibold">Money Out</span>
@@ -509,7 +509,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
                       setIsMoreSheetOpen(false);
                       onOpenTransfer();
                     }}
-                    className="flex flex-col items-center justify-center p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-300 hover:bg-slate-100 transition-colors cursor-pointer text-center"
+                    className="flex flex-col items-center justify-center p-3 min-h-[52px] rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-300 hover:bg-slate-100 transition-colors cursor-pointer text-center touch-target-min"
                   >
                     <ArrowRightLeft className="w-4 h-4 mb-1 text-slate-600" />
                     <span className="text-[11px] font-semibold">Transfer</span>
@@ -528,7 +528,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
                   <button
                     type="button"
                     onClick={() => handleTabClick('customers')}
-                    className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-colors cursor-pointer ${
+                    className={`flex items-center gap-2.5 p-3 min-h-[48px] rounded-xl border text-left transition-colors cursor-pointer ${
                       activeView === 'customers'
                         ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-bold'
                         : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300 font-medium'
@@ -546,7 +546,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
                   <button
                     type="button"
                     onClick={() => handleTabClick('purchases')}
-                    className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-colors cursor-pointer ${
+                    className={`flex items-center gap-2.5 p-3 min-h-[48px] rounded-xl border text-left transition-colors cursor-pointer ${
                       activeView === 'purchases'
                         ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-bold'
                         : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300 font-medium'
@@ -564,7 +564,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
                   <button
                     type="button"
                     onClick={() => handleTabClick('expenses')}
-                    className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-colors cursor-pointer ${
+                    className={`flex items-center gap-2.5 p-3 min-h-[48px] rounded-xl border text-left transition-colors cursor-pointer ${
                       activeView === 'expenses'
                         ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-bold'
                         : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300 font-medium'
@@ -582,7 +582,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
                   <button
                     type="button"
                     onClick={() => handleTabClick('reports')}
-                    className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-colors cursor-pointer ${
+                    className={`flex items-center gap-2.5 p-3 min-h-[48px] rounded-xl border text-left transition-colors cursor-pointer ${
                       activeView === 'reports'
                         ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-bold'
                         : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300 font-medium'
@@ -600,7 +600,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
                   <button
                     type="button"
                     onClick={() => handleTabClick('masters')}
-                    className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-colors cursor-pointer ${
+                    className={`flex items-center gap-2.5 p-3 min-h-[48px] rounded-xl border text-left transition-colors cursor-pointer ${
                       activeView === 'masters'
                         ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-bold'
                         : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300 font-medium'
@@ -617,7 +617,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
                 <button
                   type="button"
                   onClick={() => handleTabClick('system_config')}
-                  className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-colors cursor-pointer ${
+                  className={`flex items-center gap-2.5 p-3 min-h-[48px] rounded-xl border text-left transition-colors cursor-pointer ${
                     activeView === 'system_config'
                       ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-bold'
                       : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300 font-medium'
@@ -634,7 +634,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
                   <button
                     type="button"
                     onClick={() => handleTabClick('audit')}
-                    className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-colors cursor-pointer col-span-2 ${
+                    className={`flex items-center gap-2.5 p-3 min-h-[48px] rounded-xl border text-left transition-colors cursor-pointer col-span-2 ${
                       activeView === 'audit'
                         ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 font-bold'
                         : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300 font-medium'
@@ -658,9 +658,9 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
                   setIsMoreSheetOpen(false);
                   onOpenSidebar();
                 }}
-                className="flex-1 py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center gap-1.5 cursor-pointer"
+                className="flex-1 py-3 px-3 min-h-[48px] rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center gap-1.5 cursor-pointer touch-target-min"
               >
-                <MenuIcon className="w-3.5 h-3.5" />
+                <MenuIcon className="w-4 h-4" />
                 <span>Open Full Sidebar</span>
               </button>
 
@@ -669,7 +669,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
                 onClick={() => {
                   onToggleTableCompact();
                 }}
-                className={`py-2 px-3 rounded-xl border text-xs font-semibold flex items-center gap-1.5 cursor-pointer ${
+                className={`py-3 px-3 min-h-[48px] rounded-xl border text-xs font-semibold flex items-center gap-1.5 cursor-pointer touch-target-min ${
                   isTableCompact
                     ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300'
                     : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'

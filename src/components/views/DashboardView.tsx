@@ -951,7 +951,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="container-responsive space-y-6">
       {/* 1. Global Dashboard Filter Bar (Scope Switcher, Period Selector & Actions) */}
       <DashboardFilterBar
         scope={scope}
@@ -977,10 +977,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         onOpenTransfer={onOpenTransfer}
       />
 
-      {/* 2. Primary Executive KPI Cards Grid (Responsive Adaptive Layout) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* 2. Primary Executive KPI Cards Grid (Scope & Period Dynamic) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI Card 1: Treasury Liquid Funds / Contract Target */}
-        <div className="touch-card bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               {scope === 'overall' ? 'Liquid Funds (Treasury)' : 'Contract Value'}
@@ -989,7 +989,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {scope === 'overall' ? <Landmark className="w-4 h-4" /> : <Building2 className="w-4 h-4" />}
             </div>
           </div>
-          <div className="mt-2 text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight font-mono">
+          <div className="mt-2 text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight font-mono">
             {formatOMR(scope === 'overall' ? analyticsData.totalLiquidFunds : analyticsData.targetContractValue)}
           </div>
           <div className="mt-2.5 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-2.5 border-t border-slate-100 dark:border-slate-800">
@@ -1012,7 +1012,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* KPI Card 2: Client Receivables & Billing */}
-        <div className="touch-card bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               {datePreset === 'all' ? 'Client Receivables' : 'Period Invoiced'}
@@ -1021,7 +1021,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-2 text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400 tracking-tight font-mono">
+          <div className="mt-2 text-2xl font-bold text-blue-600 dark:text-blue-400 tracking-tight font-mono">
             {formatOMR(datePreset === 'all' ? analyticsData.cumReceivable : analyticsData.periodRevenue)}
           </div>
           <div className="mt-2.5 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-2.5 border-t border-slate-100 dark:border-slate-800">
@@ -1033,7 +1033,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* KPI Card 3: Vendor Payables / Budget Tracking */}
-        <div className="touch-card bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               {scope === 'overall' ? 'Vendor Payables' : 'Budget vs Actual'}
@@ -1042,7 +1042,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <Truck className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-2 text-xl sm:text-2xl font-bold text-amber-600 dark:text-amber-400 tracking-tight font-mono">
+          <div className="mt-2 text-2xl font-bold text-amber-600 dark:text-amber-400 tracking-tight font-mono">
             {formatOMR(scope === 'overall' ? analyticsData.cumPayable : analyticsData.cumTotalCost)}
           </div>
           <div className="mt-2.5 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-2.5 border-t border-slate-100 dark:border-slate-800">
@@ -1071,7 +1071,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* KPI Card 4: Net Project Profit & Profit Margin */}
-        <div className="touch-card bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               {datePreset === 'all' ? 'Net Project Profit' : 'Period Gross Profit'}
@@ -1081,7 +1081,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
           <div
-            className={`mt-2 text-xl sm:text-2xl font-bold tracking-tight font-mono ${
+            className={`mt-2 text-2xl font-bold tracking-tight font-mono ${
               (datePreset === 'all' ? analyticsData.cumGrossProfit : analyticsData.periodGrossProfit) >= 0
                 ? 'text-emerald-600 dark:text-emerald-400'
                 : 'text-rose-600 dark:text-rose-400'
@@ -1106,55 +1106,55 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* 3. Operational Financial Health Strip (Responsive Mobile Containers) */}
-      <div className="bg-slate-50/90 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3 sm:p-4 shadow-2xs">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3 text-xs">
+      {/* 3. Operational Financial Health Strip (Working Capital, Efficiency, Risk) */}
+      <div className="bg-slate-50/90 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-2xs">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
           {/* Working Capital */}
-          <div className="touch-card p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700">
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block truncate">Working Capital</span>
-            <span className="text-xs sm:text-sm font-bold font-mono text-slate-900 dark:text-slate-100 mt-1 block truncate">
+          <div className="p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Working Capital</span>
+            <span className="text-sm font-bold font-mono text-slate-900 dark:text-slate-100 mt-1 block">
               {formatOMR(analyticsData.workingCapital)}
             </span>
-            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium block truncate">
+            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
               {analyticsData.workingCapital >= 0 ? 'Healthy Liquidity' : 'Liquidity Pressure'}
             </span>
           </div>
 
           {/* Collection Efficiency */}
-          <div className="touch-card p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700">
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block truncate">Collection Rate</span>
-            <span className="text-xs sm:text-sm font-bold font-mono text-blue-600 dark:text-blue-400 mt-1 block truncate">
+          <div className="p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Collection Rate</span>
+            <span className="text-sm font-bold font-mono text-blue-600 dark:text-blue-400 mt-1 block">
               {formatPercent(analyticsData.collectionEfficiency)}
             </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 block truncate">Cash / Billed Ratio</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">Cash / Billed Ratio</span>
           </div>
 
           {/* Budget Utilization */}
-          <div className="touch-card p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700">
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block truncate">Budget Incurred</span>
-            <span className="text-xs sm:text-sm font-bold font-mono text-amber-600 dark:text-amber-400 mt-1 block truncate">
+          <div className="p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Budget Incurred</span>
+            <span className="text-sm font-bold font-mono text-amber-600 dark:text-amber-400 mt-1 block">
               {formatPercent(analyticsData.budgetUtilization)}
             </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 block truncate">Of Baseline Target</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">Of Baseline Target</span>
           </div>
 
           {/* Net Cash Flow */}
-          <div className="touch-card p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700">
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block truncate">Net Cash Realized</span>
+          <div className="p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Net Cash Realized</span>
             <span
-              className={`text-xs sm:text-sm font-bold font-mono mt-1 block truncate ${
+              className={`text-sm font-bold font-mono mt-1 block ${
                 analyticsData.netCashFlow >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
               }`}
             >
               {formatOMR(analyticsData.netCashFlow)}
             </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 block truncate">Recvd - Disbursed</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">Recvd - Disbursed</span>
           </div>
 
           {/* Projects at Risk Indicator */}
-          <div className="touch-card p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700">
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block truncate">Watchlist Projects</span>
-            <span className="text-xs sm:text-sm font-bold font-mono text-slate-900 dark:text-slate-100 mt-1 block flex items-center gap-1.5 truncate">
+          <div className="p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Watchlist Projects</span>
+            <span className="text-sm font-bold font-mono text-slate-900 dark:text-slate-100 mt-1 block flex items-center gap-1.5">
               <span>{projectsAtRisk.length}</span>
               {projectsAtRisk.length > 0 && (
                 <span className="px-1.5 py-0.2 rounded text-[10px] bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-400 font-semibold">
@@ -1162,16 +1162,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </span>
               )}
             </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 block truncate">Margin &lt; 10%</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">Margin &lt; 10%</span>
           </div>
 
           {/* Pending Approvals Queue */}
-          <div className="touch-card p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700">
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block truncate">Pending Approvals</span>
-            <span className="text-xs sm:text-sm font-bold font-mono text-blue-600 dark:text-blue-400 mt-1 block truncate">
+          <div className="p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Pending Approvals</span>
+            <span className="text-sm font-bold font-mono text-blue-600 dark:text-blue-400 mt-1 block">
               {pendingApprovalsCount} Items
             </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 block truncate">IPCs, Bills &amp; Exp</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">IPCs, Bills &amp; Expenses</span>
           </div>
         </div>
       </div>
@@ -1700,7 +1700,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="table-responsive-container">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
@@ -1900,8 +1900,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* Desktop / Tablet Scrollable Table */}
-        <div className="hidden md:block overflow-x-auto">
+        <div className="table-responsive-container">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
@@ -2030,115 +2029,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* Mobile Touch-Optimized Responsive Card-Based Container */}
-        <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800 p-3 space-y-2.5">
-          {filteredTransactions.map((txn, idx) => {
-            const isReversed = txn.status === 'reversed';
-            return (
-              <div
-                key={`mob-${txn.type}-${txn.id}-${idx}`}
-                className={`touch-card bg-white dark:bg-slate-850 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-2.5 shadow-2xs ${
-                  isReversed ? 'opacity-60 bg-slate-50/50' : ''
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${
-                        txn.type === 'MONEY_IN'
-                          ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                          : txn.type === 'MONEY_OUT'
-                          ? 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                          : txn.type === 'CLIENT_INVOICE'
-                          ? 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
-                          : txn.type === 'PURCHASE'
-                          ? 'bg-orange-50 dark:bg-orange-950 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800'
-                          : txn.type === 'EXPENSE'
-                          ? 'bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
-                          : 'bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
-                      }`}
-                    >
-                      {txn.type.replace('_', ' ')}
-                    </span>
-                    <span className="font-mono text-xs font-semibold text-slate-800 dark:text-slate-200">
-                      {txn.documentRef}
-                    </span>
-                  </div>
-                  <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
-                    {txn.date}
-                  </span>
-                </div>
-
-                <div className="flex items-baseline justify-between gap-2">
-                  <div className="text-xs">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100">
-                      {txn.customerName || txn.vendorName || txn.accountName || txn.projectName || '—'}
-                    </div>
-                    {txn.projectName && (
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                        Project: {txn.projectName}
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <div className="font-mono text-sm font-bold text-slate-900 dark:text-slate-100">
-                      {formatOMR(txn.amount)}
-                    </div>
-                  </div>
-                </div>
-
-                {txn.description && (
-                  <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">
-                    {txn.description}
-                  </p>
-                )}
-
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
-                  <span
-                    className={`inline-block px-1.5 py-0.2 rounded text-[10px] ${
-                      isReversed
-                        ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 font-semibold'
-                        : 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
-                    }`}
-                  >
-                    {isReversed ? 'Reversed' : 'Posted'}
-                  </span>
-
-                  <div className="flex items-center gap-2">
-                    {txn.attachmentUrl && (
-                      <a
-                        href={txn.attachmentUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded text-xs inline-flex items-center gap-1"
-                      >
-                        <FileText className="w-3 h-3" />
-                        <span>File</span>
-                      </a>
-                    )}
-                    {!isReversed && onReverseTransaction && (
-                      <button
-                        type="button"
-                        onClick={() => onReverseTransaction(txn)}
-                        className="px-2 py-1 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded text-xs inline-flex items-center gap-1"
-                      >
-                        <RotateCcw className="w-3 h-3" />
-                        <span>Reverse</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {filteredTransactions.length === 0 && (
-            <div className="text-center py-6 text-slate-400 text-xs">
-              No transactions match your search criteria.
-            </div>
-          )}
         </div>
       </div>
     </div>

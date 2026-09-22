@@ -106,7 +106,7 @@ export const BankingView: React.FC<BankingViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="container-responsive space-y-6">
       {/* Top Header & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -119,35 +119,35 @@ export const BankingView: React.FC<BankingViewProps> = ({
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={onOpenTransfer}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-indigo-700 hover:bg-indigo-600 cursor-pointer shadow"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-indigo-700 hover:bg-indigo-600 cursor-pointer shadow touch-target-min"
           >
             <ArrowRightLeft className="w-3.5 h-3.5" />
             + Internal Transfer
           </button>
           <button
             onClick={onOpenMoneyIn}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-emerald-700 hover:bg-emerald-600 cursor-pointer shadow"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-emerald-700 hover:bg-emerald-600 cursor-pointer shadow touch-target-min"
           >
             <Plus className="w-3.5 h-3.5" />
             + Money In
           </button>
           <button
             onClick={onOpenMoneyOut}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-slate-900 hover:bg-slate-800 cursor-pointer shadow"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-slate-900 hover:bg-slate-800 cursor-pointer shadow touch-target-min"
           >
             <Plus className="w-3.5 h-3.5" />
             + Money Out
           </button>
           <button
             onClick={onOpenNewBankAccount}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer touch-target-min"
           >
             <Plus className="w-3.5 h-3.5 text-slate-500" />
             Add Bank A/C
           </button>
           <button
             onClick={handleExportBankBook}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer touch-target-min"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
             Export Bank Book
@@ -155,8 +155,8 @@ export const BankingView: React.FC<BankingViewProps> = ({
         </div>
       </div>
 
-      {/* Treasury Cards Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Treasury Cards Section - responsive fluid grid */}
+      <div className="grid-responsive-cards">
         {/* Bank Accounts Overview */}
         <div className="bg-white rounded-xl border border-slate-200 p-4.5 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
@@ -393,22 +393,22 @@ export const BankingView: React.FC<BankingViewProps> = ({
             </div>
 
             {/* Search & Reset */}
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-56">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Search party, doc ref, desc..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-7 pr-2 py-1 text-xs border border-slate-200 rounded-lg bg-white text-slate-800 focus:outline-none w-52"
+                  className="w-full pl-8 pr-7 py-1.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
@@ -421,7 +421,7 @@ export const BankingView: React.FC<BankingViewProps> = ({
                     setSearchQuery('');
                     setSelectedAccountId('all');
                   }}
-                  className="text-[11px] text-slate-500 hover:text-rose-600 flex items-center gap-0.5 cursor-pointer whitespace-nowrap"
+                  className="text-[11px] text-slate-500 hover:text-rose-600 flex items-center gap-0.5 cursor-pointer whitespace-nowrap px-2 py-1 rounded border border-slate-200 hover:bg-slate-100"
                   title="Reset all filters"
                 >
                   <RotateCcw className="w-3 h-3" />
@@ -433,7 +433,7 @@ export const BankingView: React.FC<BankingViewProps> = ({
         )}
 
         {activeTab === 'treasury_ledger' && (
-          <div className="overflow-x-auto">
+          <div className="table-responsive-container">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
@@ -501,7 +501,7 @@ export const BankingView: React.FC<BankingViewProps> = ({
         )}
 
         {activeTab === 'transfers' && (
-          <div className="overflow-x-auto">
+          <div className="table-responsive-container">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">

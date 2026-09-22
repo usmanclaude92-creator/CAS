@@ -135,9 +135,9 @@ export const MobileFloatingActionButton: React.FC<MobileFloatingActionButtonProp
                     key={item.id}
                     type="button"
                     onClick={() => handleAction(item.action)}
-                    className={`flex items-center gap-3 p-2.5 rounded-xl border text-left transition-all active:scale-98 cursor-pointer ${item.bg}`}
+                    className={`flex items-center gap-3 p-3 min-h-[50px] rounded-xl border text-left transition-all active:scale-98 cursor-pointer touch-target-min ${item.bg}`}
                   >
-                    <div className="w-9 h-9 rounded-lg bg-white dark:bg-slate-800 shadow-xs flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-slate-700/60">
+                    <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-800 shadow-xs flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-slate-700/60">
                       {item.icon}
                     </div>
                     <div className="flex-1 min-w-0">

@@ -247,12 +247,12 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   // If a project is selected, show Deep Project Detail View
   if (selectedProject && profitability) {
     return (
-      <div className="space-y-6">
+      <div className="container-responsive space-y-6">
         {/* Back and Action Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <button
             onClick={onClearSelectedProject}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer touch-target-min"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to All Construction Projects
@@ -261,35 +261,35 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => onOpenClientInvoice(selectedProject.id)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-blue-700 hover:bg-blue-600 cursor-pointer"
+              className="inline-flex items-center gap-1 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-blue-700 hover:bg-blue-600 cursor-pointer touch-target-min"
             >
               <Plus className="w-3.5 h-3.5" />
               + Client Invoice / IPC
             </button>
             <button
               onClick={() => onOpenPurchase(selectedProject.id)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-amber-700 hover:bg-amber-600 cursor-pointer"
+              className="inline-flex items-center gap-1 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-amber-700 hover:bg-amber-600 cursor-pointer touch-target-min"
             >
               <Plus className="w-3.5 h-3.5" />
               + Purchase
             </button>
             <button
               onClick={() => onOpenExpense(selectedProject.id)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-rose-700 hover:bg-rose-600 cursor-pointer"
+              className="inline-flex items-center gap-1 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-rose-700 hover:bg-rose-600 cursor-pointer touch-target-min"
             >
               <Plus className="w-3.5 h-3.5" />
               + Direct Expense
             </button>
             <button
               onClick={() => onOpenMoneyIn(selectedProject.id)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-emerald-700 hover:bg-emerald-600 cursor-pointer"
+              className="inline-flex items-center gap-1 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-emerald-700 hover:bg-emerald-600 cursor-pointer touch-target-min"
             >
               <Plus className="w-3.5 h-3.5" />
               + Record Receipt
             </button>
             <button
               onClick={handleExportProjectLedger}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer touch-target-min"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
               Export Project Statement
@@ -491,7 +491,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
           <div className="p-0">
             {activeTab === 'ledger' && (
-              <div className="overflow-x-auto">
+              <div className="table-responsive-container">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
@@ -557,7 +557,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             )}
 
             {activeTab === 'invoices' && (
-              <div className="overflow-x-auto">
+              <div className="table-responsive-container">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
@@ -615,7 +615,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             )}
 
             {activeTab === 'purchases' && (
-              <div className="overflow-x-auto">
+              <div className="table-responsive-container">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
@@ -675,7 +675,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             )}
 
             {activeTab === 'expenses' && (
-              <div className="overflow-x-auto">
+              <div className="table-responsive-container">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
@@ -719,7 +719,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
   // Master Projects List View
   return (
-    <div className="space-y-5">
+    <div className="container-responsive space-y-5">
       {/* Top Header & Action */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -728,17 +728,17 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             Real-time project-wise accounting, cost centers, profitability tracking, and margin analysis
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={handleExportAllProjects}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer touch-target-min"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
             Export Master Summary
           </button>
           <button
             onClick={onOpenNewProject}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-slate-900 hover:bg-slate-800 cursor-pointer shadow"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-slate-900 hover:bg-slate-800 cursor-pointer shadow touch-target-min"
           >
             <Plus className="w-3.5 h-3.5" />
             New Construction Project
@@ -763,7 +763,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             <button
               key={item.id}
               onClick={() => setMasterMarginFilter(item.id as any)}
-              className={`px-2.5 py-1 text-xs rounded-lg font-medium cursor-pointer transition-colors ${
+              className={`px-3 py-1.5 min-h-[36px] text-xs rounded-lg font-medium cursor-pointer transition-colors ${
                 masterMarginFilter === item.id
                   ? 'bg-slate-900 text-white shadow-xs font-semibold'
                   : 'bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100'
@@ -776,19 +776,19 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
         {/* Search & Sort */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
+          <div className="relative flex-1 sm:w-56">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search code, name, client..."
               value={masterSearch}
               onChange={(e) => setMasterSearch(e.target.value)}
-              className="pl-8 pr-2.5 py-1 text-xs border border-slate-200 rounded-lg bg-white text-slate-800 focus:outline-none w-52"
+              className="w-full pl-8 pr-7 py-1.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             {masterSearch && (
               <button
                 onClick={() => setMasterSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -800,7 +800,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             <select
               value={masterSort}
               onChange={(e) => setMasterSort(e.target.value as any)}
-              className="px-2 py-1 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none"
+              className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none min-h-[36px]"
             >
               <option value="margin_desc">Sort: Margin %</option>
               <option value="profit_desc">Sort: Gross Profit</option>
@@ -816,17 +816,18 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 setMasterMarginFilter('all');
                 setMasterSearch('');
               }}
-              className="p-1.5 text-slate-400 hover:text-rose-600 cursor-pointer"
+              className="px-2.5 py-1.5 min-h-[36px] text-xs text-slate-500 hover:text-rose-600 cursor-pointer rounded border border-slate-200 hover:bg-slate-100 flex items-center gap-1"
               title="Reset filters"
             >
               <RotateCcw className="w-3.5 h-3.5" />
+              Reset
             </button>
           )}
         </div>
       </div>
 
       {/* Projects Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid-responsive-cards">
         {filteredProfitabilities.length === 0 ? (
           <div className="col-span-full py-12 text-center bg-white rounded-xl border border-slate-200 text-slate-400 text-xs">
             No construction projects match the active quick filters.

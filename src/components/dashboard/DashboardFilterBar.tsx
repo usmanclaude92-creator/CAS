@@ -140,7 +140,7 @@ export const DashboardFilterBar: React.FC<DashboardFilterBarProps> = ({
             <button
               type="button"
               onClick={onResetFilters}
-              className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 rounded-lg border border-rose-200 dark:border-rose-900 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 px-3 py-2 min-h-[40px] text-xs font-medium text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 rounded-lg border border-rose-200 dark:border-rose-900 transition-colors cursor-pointer touch-target-min"
               title="Reset all filters to defaults"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -151,7 +151,7 @@ export const DashboardFilterBar: React.FC<DashboardFilterBarProps> = ({
           <button
             type="button"
             onClick={onExportExcel}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer shadow-2xs"
+            className="inline-flex items-center gap-1.5 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer shadow-2xs touch-target-min"
             title="Export current dashboard analytics to Excel"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -163,7 +163,7 @@ export const DashboardFilterBar: React.FC<DashboardFilterBarProps> = ({
             <button
               type="button"
               onClick={() => onOpenClientInvoice(selectedProjectId || undefined)}
-              className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium rounded-lg text-white bg-blue-700 hover:bg-blue-600 transition-colors cursor-pointer shadow-2xs"
+              className="inline-flex items-center gap-1 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-blue-700 hover:bg-blue-600 transition-colors cursor-pointer shadow-2xs touch-target-min"
               title="Raise Client Invoice / IPC"
             >
               <Receipt className="w-3.5 h-3.5" />
@@ -173,7 +173,7 @@ export const DashboardFilterBar: React.FC<DashboardFilterBarProps> = ({
             <button
               type="button"
               onClick={() => onOpenPurchase(selectedProjectId || undefined)}
-              className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium rounded-lg text-white bg-amber-700 hover:bg-amber-600 transition-colors cursor-pointer shadow-2xs"
+              className="inline-flex items-center gap-1 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-amber-700 hover:bg-amber-600 transition-colors cursor-pointer shadow-2xs touch-target-min"
               title="Record Vendor Purchase Bill"
             >
               <Truck className="w-3.5 h-3.5" />
@@ -183,7 +183,7 @@ export const DashboardFilterBar: React.FC<DashboardFilterBarProps> = ({
             <button
               type="button"
               onClick={() => onOpenExpense(selectedProjectId || undefined)}
-              className="inline-flex items-center gap-1 px-3 py-2 text-xs font-medium rounded-lg text-white bg-rose-700 hover:bg-rose-600 transition-colors cursor-pointer shadow-2xs"
+              className="inline-flex items-center gap-1 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-rose-700 hover:bg-rose-600 transition-colors cursor-pointer shadow-2xs touch-target-min"
               title="Record Direct Site Expense"
             >
               <Coins className="w-3.5 h-3.5" />
