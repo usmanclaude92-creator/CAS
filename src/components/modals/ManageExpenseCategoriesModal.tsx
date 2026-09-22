@@ -15,7 +15,6 @@ import {
   Cloud,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
-import { updateExpenseCategoryInSupabase, supabaseService } from '../../services/supabaseClient';
 import { ExpenseHead } from '../../types';
 
 export interface ManageExpenseCategoriesModalProps {
@@ -42,7 +41,6 @@ export const ManageExpenseCategoriesModal: React.FC<ManageExpenseCategoriesModal
   const [, setRerender] = useState(0);
 
   const state = accountingService.getState();
-  const isSupabaseLive = supabaseService.isConfigured();
 
   useEffect(() => {
     if (isOpen) {
@@ -117,25 +115,12 @@ export const ManageExpenseCategoriesModal: React.FC<ManageExpenseCategoriesModal
     setSuccessMessage('');
 
     try {
-      const oldName = cat.name;
-
-      // 1. Update in local accounting engine
-      const updated = accountingService.updateExpenseHead(cat.id, {
+      const updated = await accountingService.updateExpenseHead(cat.id, {
         name: cleanName,
         category: editGroup.trim() || 'Direct Project Cost',
         description: editDescription.trim() || undefined,
         remarks: editDescription.trim() || undefined,
       });
-
-      // 2. Sync rename/description to Supabase master list
-      if (isSupabaseLive) {
-        await updateExpenseCategoryInSupabase(oldName, {
-          name: updated.name,
-          category: updated.category,
-          description: updated.description,
-          status: updated.status,
-        });
-      }
 
       setSuccessMessage(`Successfully updated "${updated.name}"`);
       setEditingId(null);
@@ -160,15 +145,9 @@ export const ManageExpenseCategoriesModal: React.FC<ManageExpenseCategoriesModal
 
     try {
       const newStatus = willArchive ? 'inactive' : 'active';
-      const updated = accountingService.updateExpenseHead(cat.id, {
+      await accountingService.updateExpenseHead(cat.id, {
         status: newStatus,
       });
-
-      if (isSupabaseLive) {
-        await updateExpenseCategoryInSupabase(cat.name, {
-          status: newStatus,
-        });
-      }
 
       setSuccessMessage(
         willArchive ? `Archived "${cat.name}"` : `Unarchived "${cat.name}" (now active)`
@@ -179,7 +158,7 @@ export const ManageExpenseCategoriesModal: React.FC<ManageExpenseCategoriesModal
     }
   };
 
-  const handleDelete = (cat: ExpenseHead) => {
+  const handleDelete = async (cat: ExpenseHead) => {
     const linkedCount = state.directExpenses.filter((e) => e.expenseHeadId === cat.id).length;
     if (linkedCount > 0) {
       setError(`Cannot delete "${cat.name}" because it has ${linkedCount} linked vouchers. Please archive it instead.`);
@@ -189,7 +168,7 @@ export const ManageExpenseCategoriesModal: React.FC<ManageExpenseCategoriesModal
     if (!window.confirm(`Permanently delete category "${cat.name}"?`)) return;
 
     try {
-      accountingService.deleteExpenseHead(cat.id);
+      await accountingService.deleteExpenseHead(cat.id);
       setSuccessMessage(`Deleted category "${cat.name}"`);
       setRerender((v) => v + 1);
     } catch (err: any) {

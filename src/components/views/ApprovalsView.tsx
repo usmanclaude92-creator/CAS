@@ -44,9 +44,9 @@ export const ApprovalsView: React.FC = () => {
     return () => unsub();
   }, []);
 
-  const handleApprove = (txn: Transaction) => {
+  const handleApprove = async (txn: Transaction) => {
     setActionAlert(null);
-    const result = workflowService.approveTransaction(txn.id, txn.type);
+    const result = await workflowService.approveTransaction(txn.id, txn.type);
     if (result.success) {
       setActionAlert({
         type: 'success',
@@ -61,9 +61,9 @@ export const ApprovalsView: React.FC = () => {
     }
   };
 
-  const handleConfirmReject = (reason: string) => {
+  const handleConfirmReject = async (reason: string) => {
     if (!rejectTxn) return;
-    const result = workflowService.rejectTransaction(rejectTxn.id, rejectTxn.type, reason);
+    const result = await workflowService.rejectTransaction(rejectTxn.id, rejectTxn.type, reason);
     setRejectTxn(null);
     if (result.success) {
       setActionAlert({
@@ -79,9 +79,9 @@ export const ApprovalsView: React.FC = () => {
     }
   };
 
-  const handlePost = (txn: Transaction) => {
+  const handlePost = async (txn: Transaction) => {
     setActionAlert(null);
-    const result = workflowService.postTransaction(txn.id, txn.type);
+    const result = await workflowService.postTransaction(txn.id, txn.type);
     if (result.success) {
       setActionAlert({
         type: 'success',

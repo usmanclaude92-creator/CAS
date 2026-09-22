@@ -76,13 +76,6 @@ export const MastersView: React.FC<MastersViewProps> = ({
     };
   }, []);
 
-  const handleResetToSeed = () => {
-    if (!isSuperAdmin) return;
-    if (window.confirm('Reset all demo data and reload standard initial seed data?')) {
-      accountingService.resetToSeedData();
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -107,13 +100,6 @@ export const MastersView: React.FC<MastersViewProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-200 dark:border-emerald-800 cursor-pointer"
             >
               Supabase DB Config
-            </button>
-            <button
-              onClick={handleResetToSeed}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 cursor-pointer"
-            >
-              <RefreshCw className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-              Reload Standard Seed
             </button>
           </div>
         )}
@@ -814,9 +800,9 @@ export const MastersView: React.FC<MastersViewProps> = ({
                           <button
                             type="button"
                             title="Click to toggle active/inactive status"
-                            onClick={() => {
+                            onClick={async () => {
                               try {
-                                accountingService.updateExpenseHead(h.id, {
+                                await accountingService.updateExpenseHead(h.id, {
                                   status: h.status === 'active' ? 'inactive' : 'active',
                                 });
                                 setRerender((v) => v + 1);
@@ -854,10 +840,10 @@ export const MastersView: React.FC<MastersViewProps> = ({
                                   : 'Delete Expense Category'
                               }
                               disabled={linkedCount > 0}
-                              onClick={() => {
+                              onClick={async () => {
                                 if (window.confirm(`Are you sure you want to delete expense category "${h.name}"?`)) {
                                   try {
-                                    accountingService.deleteExpenseHead(h.id);
+                                    await accountingService.deleteExpenseHead(h.id);
                                     setRerender((v) => v + 1);
                                   } catch (err: any) {
                                     alert(err?.message || 'Failed to delete category.');

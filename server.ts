@@ -1,586 +1,321 @@
 import express from 'express';
 import path from 'path';
-import fs from 'fs';
+import helmet from 'helmet';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
+import { createClient } from '@supabase/supabase-js';
 import { createServer as createViteServer } from 'vite';
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// ==========================================
+// SUPABASE ADMIN CLIENT (service_role — server-only, never sent to the browser)
+// ==========================================
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-// Server-side persistent storage paths
-const DATA_DIR = path.join(process.cwd(), 'data');
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
-const DEMO_REQUESTS_FILE = path.join(DATA_DIR, 'demo_requests.json');
-
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error(
+    '[Server] SUPABASE_URL/VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set for admin user-management endpoints to function. ' +
+      'These are server-only secrets — never prefix SUPABASE_SERVICE_ROLE_KEY with VITE_.'
+  );
 }
 
-// Initial pre-seeded users
-const SEED_USERS = [
-  {
-    id: 'usr-real-superadmin-artify',
-    email: 'admin@artifysols.com',
-    username: 'artify.admin',
-    fullName: 'Super Administrator',
-    mobile: '+968 9000 0001',
-    roleId: 'role-super-admin',
-    roleCode: 'super_admin',
-    roleName: 'Super Administrator',
-    status: 'active',
-    department: 'Executive Board',
-    employeeId: 'ARTIFY-001',
-    assignedProjectIds: [],
-    isAllProjects: true,
-    remarks: 'Primary Real Production Super Administrator for Artify Solutions. Full enterprise governance and isolated blank production database.',
-    isDemo: false,
-    lastLogin: '2026-09-17T11:00:00Z',
-    createdAt: '2026-01-01T00:00:00Z',
-  },
-  {
-    id: 'usr-super-admin',
-    email: 'superadmin@construction.om',
-    username: 'superadmin',
-    fullName: 'Eng. Tariq Al Busaidi',
-    mobile: '+968 9911 2233',
-    roleId: 'role-super-admin',
-    roleCode: 'super_admin',
-    roleName: 'Super Administrator',
-    status: 'active',
-    department: 'Executive Board',
-    employeeId: 'EMP-001',
-    assignedProjectIds: [],
-    isAllProjects: true,
-    remarks: 'Chief Executive & System Super Administrator with unrestricted governance',
-    isDemo: true,
-    lastLogin: '2026-09-14T08:00:00Z',
-    createdAt: '2026-01-01T00:00:00Z',
-  },
-  {
-    id: 'usr-accounts-manager',
-    email: 'accounts.mgr@construction.om',
-    username: 'accounts.mgr',
-    fullName: 'Muna Al Rahbi',
-    mobile: '+968 9822 3344',
-    roleId: 'role-accounts-manager',
-    roleCode: 'accounts_manager',
-    roleName: 'Accounts Manager',
-    status: 'active',
-    department: 'Accounting & Finance',
-    employeeId: 'EMP-002',
-    assignedProjectIds: [],
-    isAllProjects: true,
-    remarks: 'Head of Accounting Operations; manages workflows, approvals, and day-to-day accounts',
-    isDemo: true,
-    lastLogin: '2026-09-13T14:30:00Z',
-    createdAt: '2026-01-05T00:00:00Z',
-  },
-  {
-    id: 'usr-finance-manager',
-    email: 'finance.mgr@construction.om',
-    username: 'finance.mgr',
-    fullName: 'Rashid Al Balushi',
-    mobile: '+968 9733 4455',
-    roleId: 'role-finance-manager',
-    roleCode: 'finance_manager',
-    roleName: 'Finance Manager',
-    status: 'active',
-    department: 'Financial Control',
-    employeeId: 'EMP-003',
-    assignedProjectIds: [],
-    isAllProjects: true,
-    remarks: 'Financial controller overseeing budgets, audits, and approvals up to OMR 10,000',
-    isDemo: true,
-    lastLogin: '2026-09-12T11:20:00Z',
-    createdAt: '2026-01-10T00:00:00Z',
-  },
-  {
-    id: 'usr-accountant',
-    email: 'accountant@construction.om',
-    username: 'fatima.acc',
-    fullName: 'Fatima Al Lawati',
-    mobile: '+968 9644 5566',
-    roleId: 'role-accountant',
-    roleCode: 'accountant',
-    roleName: 'Accountant',
-    status: 'active',
-    department: 'Accounting',
-    employeeId: 'EMP-004',
-    assignedProjectIds: [],
-    isAllProjects: true,
-    remarks: 'Senior site & transaction accountant handling vouchers, IPCs, and bills',
-    isDemo: true,
-    lastLogin: '2026-09-14T07:15:00Z',
-    createdAt: '2026-01-15T00:00:00Z',
-  },
-  {
-    id: 'usr-project-accountant',
-    email: 'project.acc@construction.om',
-    username: 'said.site',
-    fullName: 'Said Al Habsi',
-    mobile: '+968 9555 6677',
-    roleId: 'role-project-accountant',
-    roleCode: 'project_accountant',
-    roleName: 'Project Accountant',
-    status: 'active',
-    department: 'Site Operations',
-    employeeId: 'EMP-005',
-    assignedProjectIds: ['prj-akv-001'],
-    isAllProjects: false,
-    remarks: 'Assigned solely to PRJ-AKV-001 (Al Khoudh Villa Project). Cannot access Bausher Plaza.',
-    isDemo: true,
-    lastLogin: '2026-09-11T09:00:00Z',
-    createdAt: '2026-02-01T00:00:00Z',
-  },
-  {
-    id: 'usr-treasury',
-    email: 'treasury@construction.om',
-    username: 'zayed.cash',
-    fullName: 'Zayed Al Hinai',
-    mobile: '+968 9466 7788',
-    roleId: 'role-treasury-user',
-    roleCode: 'treasury_user',
-    roleName: 'Treasury / Cashier User',
-    status: 'active',
-    department: 'Treasury',
-    employeeId: 'EMP-006',
-    assignedProjectIds: [],
-    isAllProjects: true,
-    remarks: 'Disburses cash, manages petty cash envelopes and commercial bank transfers',
-    isDemo: true,
-    lastLogin: '2026-09-10T16:45:00Z',
-    createdAt: '2026-02-10T00:00:00Z',
-  },
-  {
-    id: 'usr-viewer',
-    email: 'viewer@construction.om',
-    username: 'auditor.view',
-    fullName: 'Auditor External Reviewer',
-    mobile: '+968 9377 8899',
-    roleId: 'role-viewer',
-    roleCode: 'viewer',
-    roleName: 'Viewer',
-    status: 'active',
-    department: 'External Audit',
-    employeeId: 'AUD-001',
-    assignedProjectIds: [],
-    isAllProjects: true,
-    remarks: 'Read-only compliance auditor with strictly no write, edit, reverse, or approve permissions',
-    isDemo: true,
-    lastLogin: '2026-09-08T10:00:00Z',
-    createdAt: '2026-03-01T00:00:00Z',
-  },
-  {
-    id: 'usr-inactive-user',
-    email: 'inactive@construction.om',
-    username: 'former.staff',
-    fullName: 'Former Staff Member',
-    mobile: '+968 9288 9900',
-    roleId: 'role-accountant',
-    roleCode: 'accountant',
-    roleName: 'Accountant',
-    status: 'inactive',
-    department: 'Accounting',
-    employeeId: 'EMP-999',
-    assignedProjectIds: [],
-    isAllProjects: true,
-    remarks: 'Deactivated account for testing access blocking and inactive login prevention',
-    isDemo: true,
-    lastLogin: '2026-05-01T12:00:00Z',
-    createdAt: '2026-01-01T00:00:00Z',
-  },
-];
+const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } })
+  : null;
 
-// Helper functions for reading/writing users
-function readUsers(): any[] {
-  try {
-    if (fs.existsSync(USERS_FILE)) {
-      const data = fs.readFileSync(USERS_FILE, 'utf-8');
-      const users = JSON.parse(data);
-      if (Array.isArray(users) && users.length > 0) {
-        return users;
-      }
+function log(level: 'info' | 'warn' | 'error', message: string, meta?: Record<string, unknown>) {
+  const entry = { level, message, time: new Date().toISOString(), ...meta };
+  // eslint-disable-next-line no-console
+  console[level === 'info' ? 'log' : level](JSON.stringify(entry));
+}
+
+// ==========================================
+// SECURITY MIDDLEWARE
+// ==========================================
+app.use(helmet());
+app.use(
+  cors({
+    origin: process.env.ALLOWED_ORIGIN ? process.env.ALLOWED_ORIGIN.split(',') : true,
+    credentials: true,
+  })
+);
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/admin', adminLimiter);
+
+// ==========================================
+// CALLER AUTHENTICATION / AUTHORIZATION HELPERS
+// Every admin endpoint independently verifies the caller's Supabase JWT and
+// re-checks their permission server-side — the browser's own claim of
+// "I have this permission" is never trusted.
+// ==========================================
+interface CallerContext {
+  userId: string;
+  email: string;
+  profile: Record<string, any>;
+  role: Record<string, any> | null;
+}
+
+async function getCallerContext(req: express.Request): Promise<CallerContext | null> {
+  if (!supabaseAdmin) return null;
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  const token = authHeader.slice('Bearer '.length);
+
+  const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+  if (userError || !userData.user) return null;
+
+  const { data: profile } = await supabaseAdmin.from('profiles').select('*').eq('id', userData.user.id).maybeSingle();
+  if (!profile || profile.status !== 'active') return null;
+
+  const { data: role } = await supabaseAdmin.from('roles').select('*').eq('code', profile.role_code).maybeSingle();
+
+  return { userId: userData.user.id, email: userData.user.email || profile.email, profile, role: role ?? null };
+}
+
+function callerHasPermission(caller: CallerContext, permissionCode: string): boolean {
+  if (caller.role?.code === 'super_admin') return true;
+  return Boolean(caller.role?.permissions?.includes(permissionCode));
+}
+
+function requireAdmin(permissionCode: string) {
+  return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (!supabaseAdmin) {
+      return res.status(503).json({ success: false, error: 'Server is not configured with Supabase admin credentials.' });
     }
-  } catch (err) {
-    console.error('[Server] Error reading users file:', err);
-  }
-  // Initialize with seed users
-  writeUsers(SEED_USERS);
-  return SEED_USERS;
-}
-
-function writeUsers(users: any[]): boolean {
-  try {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
-    return true;
-  } catch (err) {
-    console.error('[Server] Error writing users file:', err);
-    return false;
-  }
-}
-
-// Helper functions for reading/writing demo requests
-function readDemoRequests(): any[] {
-  try {
-    if (fs.existsSync(DEMO_REQUESTS_FILE)) {
-      const data = fs.readFileSync(DEMO_REQUESTS_FILE, 'utf-8');
-      const requests = JSON.parse(data);
-      if (Array.isArray(requests)) {
-        return requests;
-      }
+    const caller = await getCallerContext(req);
+    if (!caller) {
+      return res.status(401).json({ success: false, error: 'Unauthorized: invalid or missing session.' });
     }
-  } catch (err) {
-    console.error('[Server] Error reading demo requests file:', err);
-  }
-  return [];
+    if (!callerHasPermission(caller, permissionCode)) {
+      return res.status(403).json({ success: false, error: `Forbidden: missing required permission "${permissionCode}".` });
+    }
+    (req as any).caller = caller;
+    next();
+  };
 }
-
-function writeDemoRequests(requests: any[]): boolean {
-  try {
-    fs.writeFileSync(DEMO_REQUESTS_FILE, JSON.stringify(requests, null, 2), 'utf-8');
-    return true;
-  } catch (err) {
-    console.error('[Server] Error writing demo requests file:', err);
-    return false;
-  }
-}
-
-// Initialize seed data on startup
-readUsers();
 
 // ==========================================
 // API ROUTES
 // ==========================================
-
-// Health Check
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// GET all centralized users (accessible by any device)
-app.get('/api/auth/users', (req, res) => {
-  const users = readUsers();
-  res.json({ success: true, users });
-});
+const publicLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false });
 
-// POST create a new user (persisted centrally on server)
-app.post('/api/auth/users', (req, res) => {
+// Relays a "new demo request" notification to the admin mailbox server-side,
+// so the destination address is never present in the client bundle.
+app.post('/api/demo-requests/notify-admin', publicLimiter, async (req, res) => {
+  const ADMIN_NOTIFICATION_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL;
+  if (!ADMIN_NOTIFICATION_EMAIL || !supabaseAdmin) {
+    return res.status(202).json({ success: true }); // Non-critical; request is already persisted in Supabase.
+  }
   try {
-    const newUser = req.body;
-    if (!newUser || !newUser.email || !newUser.fullName) {
-      return res.status(400).json({ success: false, error: 'Missing required user fields (email, fullName).' });
-    }
+    const { requestId } = req.body || {};
+    const { data: request } = await supabaseAdmin.from('demo_requests').select('*').eq('id', requestId).maybeSingle();
+    if (!request) return res.status(202).json({ success: true });
 
-    const normalizedEmail = newUser.email.trim().toLowerCase();
-    const users = readUsers();
+    await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(ADMIN_NOTIFICATION_EMAIL)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        _subject: `[Action Required] Demo Account Approval Request: ${request.full_name} - ${request.role_name}`,
+        applicant_name: request.full_name,
+        applicant_email: request.email,
+        company_name: request.company_name,
+        contact_phone: request.phone || 'Not provided',
+        requested_role: request.role_name,
+        request_reference: request.id,
+        message: `A visitor has requested demo access.\n\nApplicant: ${request.full_name} (${request.email})\nCompany: ${request.company_name}\nRole Requested: ${request.role_name}\n\nReview and approve from the admin console.`,
+      }),
+    }).catch(() => {});
 
-    const existingIndex = users.findIndex((u: any) => u.email.toLowerCase() === normalizedEmail);
-    if (existingIndex !== -1) {
-      return res.status(409).json({ success: false, error: 'A user with this email address already exists.' });
-    }
-
-    if (newUser.username) {
-      const cleanUsername = newUser.username.trim().toLowerCase();
-      if (users.some((u: any) => u.username?.toLowerCase() === cleanUsername)) {
-        return res.status(409).json({ success: false, error: `Username "${newUser.username}" is already assigned to another user.` });
-      }
-    }
-
-    const createdUser = {
-      ...newUser,
-      id: newUser.id || `usr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      email: normalizedEmail,
-      createdAt: newUser.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    users.push(createdUser);
-    writeUsers(users);
-
-    console.log(`[Server] User created and synced centrally: ${createdUser.email} (${createdUser.fullName})`);
-    return res.status(201).json({ success: true, user: createdUser });
+    return res.json({ success: true });
   } catch (err: any) {
-    console.error('[Server] Failed to create user:', err);
-    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+    log('warn', 'Admin notification relay failed', { error: err?.message });
+    return res.status(202).json({ success: true });
   }
 });
 
-// PUT update an existing user
-app.put('/api/auth/users/:id', (req, res) => {
+// POST create a user with a real Supabase Auth account (service-role only operation)
+app.post('/api/admin/users', requireAdmin('users.create'), async (req, res) => {
+  const caller = (req as any).caller as CallerContext;
+  try {
+    const {
+      email,
+      password,
+      fullName,
+      username,
+      mobile,
+      roleCode,
+      isAllProjects,
+      assignedProjectIds,
+      department,
+      employeeId,
+      status,
+      remarks,
+    } = req.body || {};
+
+    if (!email || !password || !fullName || !roleCode) {
+      return res.status(400).json({ success: false, error: 'email, password, fullName and roleCode are required.' });
+    }
+    if (String(password).length < 8) {
+      return res.status(400).json({ success: false, error: 'Password must be at least 8 characters.' });
+    }
+    if (roleCode === 'super_admin' && caller.role?.code !== 'super_admin') {
+      return res.status(403).json({ success: false, error: 'Only a Super Administrator can create another Super Administrator.' });
+    }
+
+    const { data: created, error: createError } = await supabaseAdmin!.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { full_name: fullName, role_code: roleCode },
+    });
+    if (createError || !created.user) {
+      return res.status(409).json({ success: false, error: createError?.message || 'Failed to create auth user.' });
+    }
+
+    const newUserId = created.user.id;
+    const { error: profileError } = await supabaseAdmin!
+      .from('profiles')
+      .update({
+        username: username || null,
+        mobile: mobile || null,
+        role_code: roleCode,
+        department: department || null,
+        employee_id: employeeId || null,
+        is_all_projects: Boolean(isAllProjects),
+        remarks: remarks || null,
+        status: status || 'active',
+      })
+      .eq('id', newUserId);
+    if (profileError) {
+      log('error', 'Failed to finalize profile after auth user creation', { error: profileError.message });
+    }
+
+    if (!isAllProjects && Array.isArray(assignedProjectIds) && assignedProjectIds.length) {
+      await supabaseAdmin!
+        .from('user_project_assignments')
+        .insert(assignedProjectIds.map((pid: string) => ({ user_id: newUserId, project_id: pid })));
+    }
+
+    const { data: finalProfile } = await supabaseAdmin!.from('profiles').select('*').eq('id', newUserId).maybeSingle();
+
+    log('info', 'Admin created user', { actor: caller.email, target: email });
+    return res.status(201).json({ success: true, user: finalProfile });
+  } catch (err: any) {
+    log('error', 'Admin create user failed', { error: err?.message });
+    return res.status(500).json({ success: false, error: 'Internal server error.' });
+  }
+});
+
+// POST set another user's password (service-role only operation; super_admin only)
+app.post('/api/admin/users/:id/set-password', requireAdmin('users.edit'), async (req, res) => {
+  const caller = (req as any).caller as CallerContext;
+  if (caller.role?.code !== 'super_admin') {
+    return res.status(403).json({ success: false, error: 'Only a Super Administrator can reset another user’s password.' });
+  }
   try {
     const { id } = req.params;
-    const updates = req.body;
-    const users = readUsers();
-
-    const index = users.findIndex((u: any) => u.id === id);
-    if (index === -1) {
-      return res.status(404).json({ success: false, error: 'User not found.' });
+    const { password } = req.body || {};
+    if (!password || String(password).length < 8) {
+      return res.status(400).json({ success: false, error: 'Password must be at least 8 characters.' });
     }
+    const { error } = await supabaseAdmin!.auth.admin.updateUserById(id, { password });
+    if (error) return res.status(400).json({ success: false, error: error.message });
 
-    const existingUser = users[index];
-    const updatedUser = {
-      ...existingUser,
-      ...updates,
-      id: existingUser.id, // Immutable ID
-      updatedAt: new Date().toISOString(),
-    };
-
-    users[index] = updatedUser;
-    writeUsers(users);
-
-    console.log(`[Server] User updated and synced centrally: ${updatedUser.email}`);
-    return res.json({ success: true, user: updatedUser });
+    await supabaseAdmin!.from('profiles').update({ force_password_reset: false }).eq('id', id);
+    log('info', 'Admin reset user password', { actor: caller.email, target: id });
+    return res.json({ success: true });
   } catch (err: any) {
-    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+    log('error', 'Admin set-password failed', { error: err?.message });
+    return res.status(500).json({ success: false, error: 'Internal server error.' });
   }
 });
 
-// POST deactivate an existing user
-app.post('/api/auth/users/:id/deactivate', (req, res) => {
+// POST approve a demo request: provisions/links a real Supabase Auth account
+// and returns a one-time sign-in link. No password is ever generated or stored.
+app.post('/api/admin/demo-requests/:id/approve', requireAdmin('users.create'), async (req, res) => {
+  const caller = (req as any).caller as CallerContext;
   try {
     const { id } = req.params;
-    const users = readUsers();
+    const { data: request } = await supabaseAdmin!.from('demo_requests').select('*').eq('id', id).maybeSingle();
+    if (!request) return res.status(404).json({ success: false, error: 'Demo request not found.' });
 
-    const user = users.find((u: any) => u.id === id);
-    if (!user) {
-      return res.status(404).json({ success: false, error: 'User not found.' });
-    }
+    const email = String(request.email).trim().toLowerCase();
+    const roleCode = request.role_code || 'viewer';
 
-    user.status = 'inactive';
-    user.updatedAt = new Date().toISOString();
-    writeUsers(users);
+    let actionLink: string | null = null;
+    let targetUserId: string | null = null;
 
-    return res.json({ success: true, user });
-  } catch (err: any) {
-    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
-  }
-});
+    const invite = await supabaseAdmin!.auth.admin.generateLink({
+      type: 'invite',
+      email,
+      options: { data: { full_name: request.full_name, role_code: roleCode } },
+    });
 
-// POST verify credentials / login
-app.post('/api/auth/login', (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email) {
-      return res.status(400).json({ success: false, error: 'Email or username is required.' });
-    }
-
-    const normalized = email.trim().toLowerCase();
-    const users = readUsers();
-
-    const user = users.find(
-      (u: any) =>
-        u.email.toLowerCase() === normalized ||
-        (u.username && u.username.toLowerCase() === normalized)
-    );
-
-    if (!user) {
-      return res.status(401).json({ success: false, error: 'Invalid credentials or user not registered in system.' });
-    }
-
-    if (user.status !== 'active') {
-      return res.status(403).json({ success: false, error: `Account is ${user.status}. Access denied. Please contact your system administrator.` });
-    }
-
-    // If a custom password was saved, verify it
-    if (user.password && password && user.password !== password) {
-      return res.status(401).json({ success: false, error: 'Incorrect password.' });
-    }
-
-    user.lastLogin = new Date().toISOString();
-    writeUsers(users);
-
-    // Return user profile (exclude plaintext password)
-    const { password: _, ...safeUser } = user;
-    return res.json({ success: true, user: safeUser });
-  } catch (err: any) {
-    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
-  }
-});
-
-// ==========================================
-// DEMO REQUESTS CENTRALIZED API
-// ==========================================
-
-// GET all demo requests
-app.get('/api/demo-requests', (req, res) => {
-  const requests = readDemoRequests();
-  res.json({ success: true, requests });
-});
-
-// POST create/submit a new demo request
-app.post('/api/demo-requests', (req, res) => {
-  try {
-    const newRequest = req.body;
-    if (!newRequest || !newRequest.email || !newRequest.fullName) {
-      return res.status(400).json({ success: false, error: 'Missing required request fields.' });
-    }
-
-    const requests = readDemoRequests();
-    // Prepend or update
-    const existingIndex = requests.findIndex((r: any) => r.id === newRequest.id);
-    if (existingIndex !== -1) {
-      requests[existingIndex] = { ...requests[existingIndex], ...newRequest };
+    if (invite.error && /already.*registered/i.test(invite.error.message)) {
+      const magic = await supabaseAdmin!.auth.admin.generateLink({ type: 'magiclink', email });
+      if (magic.error) return res.status(400).json({ success: false, error: magic.error.message });
+      actionLink = magic.data.properties?.action_link ?? null;
+      targetUserId = magic.data.user?.id ?? null;
+    } else if (invite.error) {
+      return res.status(400).json({ success: false, error: invite.error.message });
     } else {
-      requests.unshift(newRequest);
+      actionLink = invite.data.properties?.action_link ?? null;
+      targetUserId = invite.data.user?.id ?? null;
     }
 
-    writeDemoRequests(requests);
-    return res.status(201).json({ success: true, request: newRequest });
+    if (targetUserId) {
+      await supabaseAdmin!
+        .from('profiles')
+        .update({
+          role_code: roleCode,
+          is_demo: true,
+          status: 'active',
+          department: request.company_name ? `${request.company_name} (Demo)` : 'Demo Evaluation Sandbox',
+          remarks: `Authorized demo user for ${request.company_name || 'Corporate Evaluation'}`,
+        })
+        .eq('id', targetUserId);
+    }
+
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    await supabaseAdmin!
+      .from('demo_requests')
+      .update({
+        status: 'approved',
+        approved_at: new Date().toISOString(),
+        one_time_secure_link: actionLink
+          ? { link: actionLink, createdAt: new Date().toISOString(), expiresAt, used: false, dispatchedToEmail: email, dispatchedAt: new Date().toISOString() }
+          : null,
+      })
+      .eq('id', id);
+
+    log('info', 'Admin approved demo request', { actor: caller.email, target: email });
+    return res.json({ success: true, link: actionLink });
   } catch (err: any) {
-    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
-  }
-});
-
-// POST approve a demo request and dispatch activation
-app.post('/api/demo-requests/:id/approve', (req, res) => {
-  try {
-    const { id } = req.params;
-    const { oneTimeSecureLink, roleCode, roleName } = req.body;
-    const requests = readDemoRequests();
-
-    const request = requests.find((r: any) => r.id === id);
-    if (!request) {
-      return res.status(404).json({ success: false, error: 'Demo request not found.' });
-    }
-
-    request.status = 'approved';
-    request.approvedAt = new Date().toISOString();
-    if (oneTimeSecureLink) {
-      request.oneTimeSecureLink = oneTimeSecureLink;
-    }
-
-    writeDemoRequests(requests);
-
-    // Ensure authorized demo user exists in centralized users list
-    const users = readUsers();
-    const normalizedEmail = request.email.trim().toLowerCase();
-    let existingUser = users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
-
-    if (!existingUser) {
-      const demoUser = {
-        id: `usr-demo-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        email: normalizedEmail,
-        username: normalizedEmail.split('@')[0],
-        fullName: request.fullName,
-        roleId: `role-${request.roleCode || 'accountant'}`,
-        roleCode: request.roleCode || 'accountant',
-        roleName: request.roleName || 'Accountant',
-        status: 'active',
-        department: 'Demo Evaluation Sandbox',
-        employeeId: `DEMO-${Math.floor(100 + Math.random() * 900)}`,
-        assignedProjectIds: [],
-        isAllProjects: true,
-        remarks: `Authorized demo user for ${request.companyName || 'Enterprise'}`,
-        isDemo: true,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-      };
-      users.push(demoUser);
-      writeUsers(users);
-    } else {
-      existingUser.status = 'active';
-      existingUser.roleCode = request.roleCode || existingUser.roleCode;
-      existingUser.roleName = request.roleName || existingUser.roleName;
-      existingUser.roleId = `role-${existingUser.roleCode}`;
-      writeUsers(users);
-    }
-
-    return res.json({ success: true, request });
-  } catch (err: any) {
-    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
-  }
-});
-
-// POST redeem one-time secure link token
-app.post('/api/demo-requests/redeem', (req, res) => {
-  try {
-    const { token, requestId } = req.body;
-    if (!token) {
-      return res.status(400).json({ success: false, error: 'Token is required.' });
-    }
-
-    const requests = readDemoRequests();
-    let request: any = null;
-
-    if (requestId) {
-      request = requests.find((r: any) => r.id === requestId);
-    }
-    if (!request) {
-      request = requests.find((r: any) => r.oneTimeSecureLink?.token === token);
-    }
-
-    if (!request || !request.oneTimeSecureLink) {
-      return res.status(404).json({ success: false, error: 'One-time access link is invalid or expired.' });
-    }
-
-    const link = request.oneTimeSecureLink;
-    if (link.token !== token) {
-      return res.status(401).json({ success: false, error: 'Invalid access token.' });
-    }
-
-    if (link.used) {
-      return res.status(410).json({
-        success: false,
-        error: `This single-use access link has already been used on ${new Date(link.usedAt || Date.now()).toLocaleString()}. Single-use access links cannot be reused.`,
-      });
-    }
-
-    const now = new Date();
-    const expiresAt = new Date(link.expiresAt);
-    if (now > expiresAt) {
-      return res.status(410).json({ success: false, error: 'This demo access link has expired.' });
-    }
-
-    // Mark as used
-    link.used = true;
-    link.usedAt = now.toISOString();
-    writeDemoRequests(requests);
-
-    // Retrieve or activate user profile
-    const users = readUsers();
-    const normalizedEmail = request.email.trim().toLowerCase();
-    let user = users.find((u: any) => u.email.toLowerCase() === normalizedEmail);
-
-    if (!user) {
-      user = {
-        id: `usr-demo-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        email: normalizedEmail,
-        username: normalizedEmail.split('@')[0],
-        fullName: request.fullName,
-        roleId: `role-${request.roleCode || 'accountant'}`,
-        roleCode: request.roleCode || 'accountant',
-        roleName: request.roleName || 'Accountant',
-        status: 'active',
-        department: 'Demo Evaluation Sandbox',
-        employeeId: `DEMO-${Math.floor(100 + Math.random() * 900)}`,
-        assignedProjectIds: [],
-        isAllProjects: true,
-        remarks: `Authorized demo user for ${request.companyName || 'Enterprise'}`,
-        isDemo: true,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-      };
-      users.push(user);
-      writeUsers(users);
-    } else {
-      user.status = 'active';
-      user.lastLogin = new Date().toISOString();
-      writeUsers(users);
-    }
-
-    const { password: _, ...safeUser } = user;
-    return res.json({ success: true, request, user: safeUser });
-  } catch (err: any) {
-    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+    log('error', 'Demo request approval failed', { error: err?.message });
+    return res.status(500).json({ success: false, error: 'Internal server error.' });
   }
 });
 
 // ==========================================
 // VITE MIDDLEWARE (Development) & STATIC SERVING (Production)
 // ==========================================
+let httpServer: ReturnType<typeof app.listen> | null = null;
+
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
@@ -590,15 +325,31 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    app.use(express.static(distPath, { index: false }));
+    app.get('*', (_req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[Server] Express + Vite backend listening on http://0.0.0.0:${PORT}`);
+  httpServer = app.listen(PORT, '0.0.0.0', () => {
+    log('info', `Express + Vite backend listening on http://0.0.0.0:${PORT}`);
   });
 }
+
+function shutdown(signal: string) {
+  log('info', `Received ${signal}, shutting down gracefully.`);
+  if (httpServer) {
+    httpServer.close(() => {
+      log('info', 'HTTP server closed.');
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(1), 10_000).unref();
+  } else {
+    process.exit(0);
+  }
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 startServer();

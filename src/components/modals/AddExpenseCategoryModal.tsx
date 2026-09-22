@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Layers, AlertCircle, CheckCircle2, Cloud, Sparkles, Database } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
-import { supabaseService, saveExpenseCategoryToSupabase } from '../../services/supabaseClient';
+import { supabaseService } from '../../services/supabaseClient';
 import { ExpenseHead } from '../../types';
 
 export interface AddExpenseCategoryModalProps {
@@ -100,8 +100,7 @@ export const AddExpenseCategoryModal: React.FC<AddExpenseCategoryModalProps> = (
     setIsSubmitting(true);
 
     try {
-      // 1. Create in local mirror state & audit log
-      const created = accountingService.createExpenseHead({
+      const created = await accountingService.createExpenseHead({
         name: cleanName,
         category: resolvedGroup,
         description: description.trim() || undefined,
@@ -109,20 +108,7 @@ export const AddExpenseCategoryModal: React.FC<AddExpenseCategoryModalProps> = (
         remarks: description.trim() || undefined,
       });
 
-      // 2. Update ExpenseCategory master list in Supabase
-      const supabaseResult = await saveExpenseCategoryToSupabase({
-        name: created.name,
-        description: created.description,
-        category: created.category,
-        status: created.status,
-        remarks: created.remarks,
-      });
-
-      if (supabaseResult.synced) {
-        setSyncStatus('Successfully synced to Supabase database!');
-      } else if (isSupabaseLive && !supabaseResult.success) {
-        console.info('[AddExpenseCategoryModal] Supabase notice:', supabaseResult.message);
-      }
+      setSyncStatus('Successfully saved to the database!');
 
       if (onSuccess) {
         onSuccess(created);

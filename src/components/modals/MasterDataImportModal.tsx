@@ -90,6 +90,37 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
     }
   };
 
+  // Simple CSV line parser supporting quoted cells (shared pattern with BatchEntityImportModal)
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim().replace(/^["']|["']$/g, ''));
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current.trim().replace(/^["']|["']$/g, ''));
+    return result;
+  };
+
+  const readFileAsText = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve((e.target?.result as string) || '');
+      reader.onerror = () => reject(new Error('Failed to read the selected file.'));
+      reader.readAsText(file);
+    });
+
+  const findCol = (header: string[], ...keywords: string[]) =>
+    header.findIndex((h) => keywords.some((k) => h.includes(k)));
+
   const handleExecuteImport = async () => {
     // 1. Independent Backend/Service Security Verification
     const verification = authService.verifyMasterDataImportAuthority();
@@ -108,15 +139,35 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
       return;
     }
 
+    if (!selectedFile) {
+      setImportResult({
+        success: false,
+        totalRows: 0,
+        newRecords: 0,
+        existingRecords: 0,
+        duplicateRecords: 0,
+        invalidRecords: 0,
+        skippedRecords: 0,
+        message: 'Please select a CSV file to import.',
+      });
+      return;
+    }
+
     const currentUser = authService.getCurrentUser()!;
     setIsProcessing(true);
 
     try {
-      // Simulate reading and parsing Excel / CSV batch data
-      // In production/desktop, xlsx parses sheets. Here we execute parsing with validation
-      const fileName = selectedFile ? selectedFile.name : `Bulk_Import_${importType}_2026.xlsx`;
+      const fileName = selectedFile.name;
+      const csvContent = await readFileAsText(selectedFile);
+      const lines = csvContent.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+      if (lines.length <= 1) {
+        throw new Error('The selected file contains no data rows.');
+      }
 
-      let totalRows = 3;
+      const header = parseCSVLine(lines[0]).map((h) => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+      const dataLines = lines.slice(1).map(parseCSVLine).filter((c) => c.length > 0 && c.some((v) => v));
+
+      let totalRows = dataLines.length;
       let newRecords = 0;
       let duplicateRecords = 0;
       let existingRecords = 0;
@@ -126,85 +177,130 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
       const state = accountingService.getState();
 
       if (importType === 'customers') {
-        const sampleCustomers = [
-          { code: 'CUST-003', name: 'Sohar Industrial Dev LLC', phone: '+968 9333 1122', email: 'info@sohardev.om', openingBalance: 12500 },
-          { code: 'CUST-004', name: 'Salalah Port Logistics SAOG', phone: '+968 9444 2233', email: 'finance@salalahport.om', openingBalance: 0 },
-          { code: 'CUST-001', name: 'Al Harthy Properties LLC', phone: '+968 9123 4567', email: 'salim@alharthyproperties.om', openingBalance: 0 }, // Duplicate!
-        ];
-        totalRows = sampleCustomers.length;
+        const codeIdx = findCol(header, 'code');
+        const nameIdx = findCol(header, 'name');
+        const phoneIdx = findCol(header, 'phone', 'mobile');
+        const emailIdx = findCol(header, 'email');
+        const addressIdx = findCol(header, 'address');
+        const contactIdx = findCol(header, 'contact');
+        const balanceIdx = findCol(header, 'balance');
+        const existingCodes = new Set(state.customers.map((c) => c.code.toLowerCase()));
 
-        for (const item of sampleCustomers) {
-          const exists = state.customers.some((c) => c.code.toLowerCase() === item.code.toLowerCase());
-          if (exists) {
-            duplicateRecords++;
-            existingRecords++;
-          } else {
-            accountingService.createCustomer({
-              code: item.code,
-              name: item.name,
-              phone: item.phone,
-              email: item.email,
-              openingBalance: item.openingBalance,
-              status: 'active',
-              remarks: 'Imported via Super Admin bulk master import',
-            });
-            newRecords++;
-          }
+        for (const cols of dataLines) {
+          const code = (codeIdx >= 0 ? cols[codeIdx] : cols[0] || '').trim();
+          const name = (nameIdx >= 0 ? cols[nameIdx] : cols[1] || '').trim();
+          if (!code || !name) { invalidRecords++; continue; }
+          if (existingCodes.has(code.toLowerCase())) { duplicateRecords++; existingRecords++; continue; }
+          await accountingService.createCustomer({
+            code,
+            name,
+            contactPerson: contactIdx >= 0 ? cols[contactIdx] : undefined,
+            phone: phoneIdx >= 0 ? cols[phoneIdx] : undefined,
+            email: emailIdx >= 0 ? cols[emailIdx] : undefined,
+            address: addressIdx >= 0 ? cols[addressIdx] : undefined,
+            openingBalance: balanceIdx >= 0 ? parseFloat(cols[balanceIdx]) || 0 : 0,
+            status: 'active',
+            remarks: 'Imported via Super Admin bulk master import',
+          });
+          existingCodes.add(code.toLowerCase());
+          newRecords++;
         }
       } else if (importType === 'vendors') {
-        const sampleVendors = [
-          { code: 'VND-003', name: 'Oman Cables Industry SAOG', category: 'Electrical', openingBalance: 4200 },
-          { code: 'VND-004', name: 'Gulf Stone Company SAOG', category: 'Marble & Granite', openingBalance: 1800 },
-          { code: 'VND-001', name: 'Al Maha Ready Mix Concrete', category: 'Concrete', openingBalance: 0 }, // Duplicate!
-        ];
-        totalRows = sampleVendors.length;
+        const codeIdx = findCol(header, 'code');
+        const nameIdx = findCol(header, 'name');
+        const categoryIdx = findCol(header, 'category');
+        const phoneIdx = findCol(header, 'phone', 'mobile');
+        const emailIdx = findCol(header, 'email');
+        const addressIdx = findCol(header, 'address');
+        const balanceIdx = findCol(header, 'balance');
+        const existingCodes = new Set(state.vendors.map((v) => v.code.toLowerCase()));
 
-        for (const item of sampleVendors) {
-          const exists = state.vendors.some((v) => v.code.toLowerCase() === item.code.toLowerCase());
-          if (exists) {
-            duplicateRecords++;
-            existingRecords++;
-          } else {
-            accountingService.createVendor({
-              code: item.code,
-              name: item.name,
-              category: item.category,
-              openingBalance: item.openingBalance,
-              status: 'active',
-              remarks: 'Imported via Super Admin bulk master import',
-            });
-            newRecords++;
-          }
+        for (const cols of dataLines) {
+          const code = (codeIdx >= 0 ? cols[codeIdx] : cols[0] || '').trim();
+          const name = (nameIdx >= 0 ? cols[nameIdx] : cols[1] || '').trim();
+          if (!code || !name) { invalidRecords++; continue; }
+          if (existingCodes.has(code.toLowerCase())) { duplicateRecords++; existingRecords++; continue; }
+          await accountingService.createVendor({
+            code,
+            name,
+            category: categoryIdx >= 0 ? cols[categoryIdx] : undefined,
+            phone: phoneIdx >= 0 ? cols[phoneIdx] : undefined,
+            email: emailIdx >= 0 ? cols[emailIdx] : undefined,
+            address: addressIdx >= 0 ? cols[addressIdx] : undefined,
+            openingBalance: balanceIdx >= 0 ? parseFloat(cols[balanceIdx]) || 0 : 0,
+            status: 'active',
+            remarks: 'Imported via Super Admin bulk master import',
+          });
+          existingCodes.add(code.toLowerCase());
+          newRecords++;
         }
       } else if (importType === 'projects') {
-        const sampleProjects = [
-          { code: 'PRJ-MCT-003', name: 'Mutrah Seafront Hotel', customerId: state.customers[0]?.id || 'cust-001', contractValue: 240000, startDate: '2026-03-01' },
-          { code: 'PRJ-AKV-001', name: 'Al Khoudh Villa Project', customerId: state.customers[0]?.id || 'cust-001', contractValue: 85000, startDate: '2026-01-15' }, // Duplicate
-        ];
-        totalRows = sampleProjects.length;
+        const codeIdx = findCol(header, 'code');
+        const nameIdx = findCol(header, 'name');
+        const customerCodeIdx = findCol(header, 'customercode', 'customer');
+        const contractIdx = findCol(header, 'contractvalue', 'contract', 'value');
+        const startIdx = findCol(header, 'startdate', 'start');
+        const existingCodes = new Set(state.projects.map((p) => p.code.toLowerCase()));
 
-        for (const item of sampleProjects) {
-          const exists = state.projects.some((p) => p.code.toLowerCase() === item.code.toLowerCase());
-          if (exists) {
-            duplicateRecords++;
-            existingRecords++;
-          } else {
-            accountingService.createProject({
-              code: item.code,
-              name: item.name,
-              customerId: item.customerId,
-              contractValue: item.contractValue,
-              startDate: item.startDate,
-              status: 'active',
-              remarks: 'Imported via Super Admin bulk master import',
-            });
-            newRecords++;
-          }
+        for (const cols of dataLines) {
+          const code = (codeIdx >= 0 ? cols[codeIdx] : cols[0] || '').trim();
+          const name = (nameIdx >= 0 ? cols[nameIdx] : cols[1] || '').trim();
+          const customerCode = customerCodeIdx >= 0 ? (cols[customerCodeIdx] || '').trim() : '';
+          const customer = state.customers.find((c) => c.code.toLowerCase() === customerCode.toLowerCase());
+          if (!code || !name || !customer) { invalidRecords++; continue; }
+          if (existingCodes.has(code.toLowerCase())) { duplicateRecords++; existingRecords++; continue; }
+          await accountingService.createProject({
+            code,
+            name,
+            customerId: customer.id,
+            contractValue: contractIdx >= 0 ? parseFloat(cols[contractIdx]) || 0 : 0,
+            startDate: startIdx >= 0 ? cols[startIdx] || new Date().toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            status: 'active',
+            remarks: 'Imported via Super Admin bulk master import',
+          });
+          existingCodes.add(code.toLowerCase());
+          newRecords++;
+        }
+      } else if (importType === 'banks') {
+        const bankNameIdx = findCol(header, 'bankname', 'bank');
+        const accountNameIdx = findCol(header, 'accountname');
+        const accountNumberIdx = findCol(header, 'accountnumber', 'account');
+        const balanceIdx = findCol(header, 'balance');
+
+        for (const cols of dataLines) {
+          const bankName = (bankNameIdx >= 0 ? cols[bankNameIdx] : cols[0] || '').trim();
+          const accountName = (accountNameIdx >= 0 ? cols[accountNameIdx] : cols[1] || '').trim();
+          if (!bankName || !accountName) { invalidRecords++; continue; }
+          await accountingService.createBankAccount({
+            bankName,
+            accountName,
+            accountNumber: accountNumberIdx >= 0 ? cols[accountNumberIdx] : '',
+            currency: 'OMR',
+            openingBalance: balanceIdx >= 0 ? parseFloat(cols[balanceIdx]) || 0 : 0,
+            status: 'active',
+            remarks: 'Imported via Super Admin bulk master import',
+          });
+          newRecords++;
         }
       } else {
-        // Banks / Expense heads
-        totalRows = 2;
-        newRecords = 2;
+        // expense_heads
+        const nameIdx = findCol(header, 'name');
+        const categoryIdx = findCol(header, 'category');
+        const existingNames = new Set(state.expenseHeads.map((h) => h.name.toLowerCase()));
+
+        for (const cols of dataLines) {
+          const name = (nameIdx >= 0 ? cols[nameIdx] : cols[0] || '').trim();
+          if (!name) { invalidRecords++; continue; }
+          if (existingNames.has(name.toLowerCase())) { duplicateRecords++; existingRecords++; continue; }
+          await accountingService.createExpenseHead({
+            name,
+            category: categoryIdx >= 0 ? cols[categoryIdx] : 'Direct Project Cost',
+            status: 'active',
+            remarks: 'Imported via Super Admin bulk master import',
+          });
+          existingNames.add(name.toLowerCase());
+          newRecords++;
+        }
       }
 
       // Record Master Data Import Audit Record (Mandatory Requirement 22)

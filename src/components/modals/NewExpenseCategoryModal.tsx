@@ -87,7 +87,7 @@ export const NewExpenseCategoryModal: React.FC<NewExpenseCategoryModalProps> = (
     setError('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -106,7 +106,7 @@ export const NewExpenseCategoryModal: React.FC<NewExpenseCategoryModalProps> = (
     setIsSubmitting(true);
     try {
       if (editCategory) {
-        const updated = accountingService.updateExpenseHead(editCategory.id, {
+        const updated = await accountingService.updateExpenseHead(editCategory.id, {
           name: cleanName,
           category: resolvedGroup,
           description: description.trim() || undefined,
@@ -115,7 +115,7 @@ export const NewExpenseCategoryModal: React.FC<NewExpenseCategoryModalProps> = (
         });
         if (onSuccess) onSuccess(updated);
       } else {
-        const created = accountingService.createExpenseHead({
+        const created = await accountingService.createExpenseHead({
           name: cleanName,
           category: resolvedGroup,
           description: description.trim() || undefined,

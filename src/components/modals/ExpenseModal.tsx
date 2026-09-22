@@ -85,7 +85,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
         attachmentName = uploadRes.name;
       }
 
-      accountingService.createDirectExpense({
+      await accountingService.createDirectExpense({
         expenseDate: date,
         projectId,
         expenseHeadId,

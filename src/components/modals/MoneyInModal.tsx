@@ -106,7 +106,7 @@ export const MoneyInModal: React.FC<MoneyInModalProps> = ({ isOpen, onClose, pre
         attachmentName = uploadRes.name;
       }
 
-      accountingService.recordMoneyIn({
+      await accountingService.recordMoneyIn({
         transactionDate: date,
         receivedFrom,
         customerId: customerId || undefined,

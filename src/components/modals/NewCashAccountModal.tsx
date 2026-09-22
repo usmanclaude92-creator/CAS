@@ -40,7 +40,7 @@ export const NewCashAccountModal: React.FC<NewCashAccountModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!accountName.trim()) {
       setError('Account name is required.');
@@ -63,7 +63,7 @@ export const NewCashAccountModal: React.FC<NewCashAccountModalProps> = ({
 
     try {
       if (accountType === 'cash') {
-        accountingService.createCashAccount({
+        await accountingService.createCashAccount({
           accountName: accountName.trim(),
           openingBalance: numBalance,
           openingDate,
@@ -77,7 +77,7 @@ export const NewCashAccountModal: React.FC<NewCashAccountModalProps> = ({
           `Registered with opening balance OMR ${numBalance.toFixed(3)}.`
         );
       } else {
-        accountingService.createPettyCashAccount({
+        await accountingService.createPettyCashAccount({
           accountName: accountName.trim(),
           openingBalance: numBalance,
           openingDate,

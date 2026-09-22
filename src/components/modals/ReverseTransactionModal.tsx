@@ -22,7 +22,7 @@ export const ReverseTransactionModal: React.FC<ReverseTransactionModalProps> = (
 
   if (!isOpen || !transaction) return null;
 
-  const handleReverse = (e: React.FormEvent) => {
+  const handleReverse = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reason.trim()) {
       setError('A mandatory reason is required to reverse an accounting transaction.');
@@ -31,7 +31,7 @@ export const ReverseTransactionModal: React.FC<ReverseTransactionModalProps> = (
 
     setIsSubmitting(true);
     try {
-      accountingService.reverseTransaction(transaction.id, reason.trim());
+      await accountingService.reverseTransaction(transaction.id, reason.trim());
       notificationCenter.recordReversed(transaction.documentRef, reason.trim());
       onClose();
     } catch (err: any) {
