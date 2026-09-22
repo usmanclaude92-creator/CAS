@@ -326,11 +326,11 @@ function AppContent() {
           onRefresh={async () => {
             setTick((t) => t + 1);
             if (supabaseService.isConfigured()) {
-              await supabaseService.testConnection().catch(() => {});
+              await supabaseService.pullRemoteChanges().catch(() => {});
             }
           }}
         >
-          <main className="flex-1 py-3 sm:py-6 lg:py-8 w-[96%] sm:w-[94%] max-w-[94%] mx-auto space-y-4 sm:space-y-6 pb-28 sm:pb-32 lg:pb-8">
+          <main className="flex-1 py-3 sm:py-6 lg:py-8 w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-4 sm:space-y-6 pb-28 sm:pb-32 lg:pb-8">
           {/* Access Denied View if user lacks view permission */}
           {!hasAccessToActiveView ? (
             <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-rose-200 dark:border-rose-900/60 shadow-xs space-y-4 max-w-lg mx-auto mt-12">
