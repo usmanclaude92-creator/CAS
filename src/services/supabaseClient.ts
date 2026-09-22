@@ -8,6 +8,12 @@ export interface UploadedAttachment {
   name: string;
 }
 
+export interface ConnectionTestResult {
+  success: boolean;
+  message: string;
+  error?: string;
+}
+
 let listeners: Array<() => void> = [];
 
 const notifyListeners = () => {
@@ -225,21 +231,42 @@ export const supabaseClientManager = {
   testConnection: async (
     testUrl?: string,
     testKey?: string
-  ): Promise<{ success: boolean; message?: string; error?: string }> => {
+  ): Promise<ConnectionTestResult> => {
     try {
       const urlToTest = testUrl || getStoredOrEnvUrl();
       const keyToTest = testKey || getStoredOrEnvKey();
       if (!urlToTest || !keyToTest || urlToTest.includes('placeholder.supabase.co')) {
-        return { success: false, error: 'Supabase credentials are not configured.' };
+        return {
+          success: false,
+          message: 'Supabase credentials are not configured.',
+          error: 'Credentials missing',
+        };
       }
       const client = createClientInstance(urlToTest, keyToTest);
       const { error } = await client.from('projects').select('id').limit(1);
-      if (error && error.message && !error.message.includes('relation') && !error.message.includes('does not exist')) {
-        return { success: false, error: error.message };
+      if (
+        error &&
+        error.message &&
+        !error.message.includes('relation') &&
+        !error.message.includes('does not exist')
+      ) {
+        return {
+          success: false,
+          message: error.message,
+          error: error.message,
+        };
       }
-      return { success: true, message: 'Connected to Supabase successfully.' };
+      return {
+        success: true,
+        message: 'Connected to Supabase successfully.',
+      };
     } catch (err: any) {
-      return { success: false, error: err?.message || 'Connection test failed' };
+      const errMsg = err?.message || 'Connection test failed';
+      return {
+        success: false,
+        message: errMsg,
+        error: errMsg,
+      };
     }
   },
 
