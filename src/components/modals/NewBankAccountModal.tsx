@@ -18,7 +18,7 @@ export const NewBankAccountModal: React.FC<NewBankAccountModalProps> = ({ isOpen
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!bankName.trim() || !accountName.trim() || !accountNumber.trim()) {
       setError('Bank name, account name, and account number are required.');
@@ -26,7 +26,7 @@ export const NewBankAccountModal: React.FC<NewBankAccountModalProps> = ({ isOpen
     }
 
     try {
-      accountingService.createBankAccount({
+      await accountingService.createBankAccount({
         bankName: bankName.trim(),
         accountName: accountName.trim(),
         accountNumber: accountNumber.trim(),

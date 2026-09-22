@@ -124,7 +124,7 @@ export function exportToExcel(options: ExportOptions): void {
   }));
 
   const workbook = XLSX.utils.book_new();
-  const safeSheetName = sheetName.replace(/[:\\/?*\[\]]/g, '').substring(0, 31) || 'Report';
+  const safeSheetName = sheetName.replace(/[:\\/?*[\]]/g, '').substring(0, 31) || 'Report';
   XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName);
 
   XLSX.writeFile(workbook, cleanFilename, { bookType: 'xlsx' });

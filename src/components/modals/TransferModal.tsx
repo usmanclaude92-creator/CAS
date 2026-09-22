@@ -69,7 +69,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({ isOpen, onClose })
         attachmentName = uploadRes.name;
       }
 
-      accountingService.createTransfer({
+      await accountingService.createTransfer({
         date,
         transferFromType,
         transferFromId,

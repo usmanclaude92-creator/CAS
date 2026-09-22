@@ -1054,21 +1054,6 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
                 </div>
               </div>
 
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm('Reset all demo entities to official standard seed data?')) {
-                      accountingService.resetToSeedData();
-                      toast.success('Seed Data Reloaded', 'Default construction entities and ledger restored.');
-                    }
-                  }}
-                  className="px-3.5 py-2 text-xs font-semibold rounded-xl text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 hover:bg-rose-100 cursor-pointer flex items-center gap-1.5"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  Reload Standard Seed Data
-                </button>
-              </div>
             </div>
           </div>
         </div>

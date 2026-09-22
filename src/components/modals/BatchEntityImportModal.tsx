@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { authService } from '../../services/authService';
-import { supabaseService } from '../../services/supabaseClient';
 import { useToast } from '../../context/ToastContext';
 
 export type BatchEntityType = 'customers' | 'vendors';
@@ -240,13 +239,11 @@ export const BatchEntityImportModal: React.FC<BatchEntityImportModalProps> = ({
     let imported = 0;
     let failed = 0;
 
-    const supabaseClient = supabaseService.getClient();
-
     try {
       for (const row of validRows) {
         try {
           if (entityType === 'customers') {
-            accountingService.createCustomer({
+            await accountingService.createCustomer({
               code: row.data.code,
               name: row.data.name,
               contactPerson: row.data.contactPerson,
@@ -257,22 +254,8 @@ export const BatchEntityImportModal: React.FC<BatchEntityImportModalProps> = ({
               status: 'active',
               remarks: row.data.remarks || 'Batch imported via CSV',
             });
-
-            // If Supabase is connected, commit to Supabase customers table
-            if (supabaseClient) {
-              await supabaseClient.from('customers').insert({
-                code: row.data.code,
-                name: row.data.name,
-                contact_person: row.data.contactPerson,
-                phone: row.data.phone,
-                email: row.data.email,
-                address: row.data.address,
-                opening_balance: row.data.openingBalance,
-                status: 'active',
-              });
-            }
           } else {
-            accountingService.createVendor({
+            await accountingService.createVendor({
               code: row.data.code,
               name: row.data.name,
               contactPerson: row.data.contactPerson,
@@ -283,19 +266,6 @@ export const BatchEntityImportModal: React.FC<BatchEntityImportModalProps> = ({
               status: 'active',
               remarks: row.data.remarks || 'Batch imported via CSV',
             });
-
-            if (supabaseClient) {
-              await supabaseClient.from('vendors').insert({
-                code: row.data.code,
-                name: row.data.name,
-                contact_person: row.data.contactPerson,
-                phone: row.data.phone,
-                email: row.data.email,
-                address: row.data.address,
-                opening_balance: row.data.openingBalance,
-                status: 'active',
-              });
-            }
           }
           imported++;
         } catch (e) {

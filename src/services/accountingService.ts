@@ -20,8 +20,6 @@ import {
   JournalEntry,
   AuditLogEntry,
   ProjectProfitability,
-  User,
-  UserRole,
   TreasuryAccountType,
   TransactionStatus,
   Transaction,
@@ -30,29 +28,11 @@ import { addMoney, subtractMoney } from '../utils/formatters';
 import { getSupabaseClient } from './supabaseClient';
 import { authService } from './authService';
 
-// Storage keys for strict isolation between Demo Sandbox and Real Production databases
-const STORAGE_KEY_DEMO = 'construction_accounting_db_demo_v2';
-const STORAGE_KEY_REAL = 'construction_accounting_db_real_v2';
-const STORAGE_KEY_ACTIVE_MODE = 'construction_accounting_active_db_mode_v2';
-const STORAGE_KEY_LEGACY = 'construction_accounting_db_v1';
-
-export type DatabaseMode = 'demo' | 'real';
-
 let globalMonotonicCounter = 0;
 
 /**
- * Robust monotonic unique identifier generator with timestamp, monotonic counter, and random entropy.
- * Prevents key collision even across tight bulk loops or identical millisecond timestamps.
- */
-export function generateUniqueId(prefix: string): string {
-  globalMonotonicCounter += 1;
-  const time = Date.now();
-  const rand = Math.random().toString(36).substring(2, 8);
-  return `${prefix}-${time}-${globalMonotonicCounter}-${rand}`;
-}
-
-/**
- * Robust unique document reference generator
+ * Robust unique document reference generator (used for entry numbers /
+ * default document refs before a row exists in the database).
  */
 export function generateUniqueRef(prefix: string): string {
   globalMonotonicCounter += 1;
@@ -62,7 +42,6 @@ export function generateUniqueRef(prefix: string): string {
 }
 
 export interface AppDatabaseState {
-  currentUser: User;
   projects: Project[];
   customers: Customer[];
   vendors: Vendor[];
@@ -81,580 +60,512 @@ export interface AppDatabaseState {
   auditLogs: AuditLogEntry[];
 }
 
-// Initial seed data including Acceptance Test foundations
-const initialSeedState: AppDatabaseState = {
-  currentUser: {
-    id: 'usr-admin-001',
-    name: 'Chief Financial Officer',
-    email: 'cfo@construction.om',
-    role: 'admin',
-  },
-  projects: [
-    {
-      id: 'prj-akv-001',
-      code: 'PRJ-AKV-001',
-      name: 'Al Khoudh Villa Project',
-      customerId: 'cust-001',
-      customerName: 'Al Harthy Properties LLC',
-      contractValue: 85000.0,
-      startDate: '2026-01-15',
-      status: 'active',
-      remarks: 'G+2 Luxury Villa Construction in Al Khoudh 6',
-      createdAt: '2026-01-15T08:00:00Z',
-    },
-    {
-      id: 'prj-bsh-002',
-      code: 'PRJ-BSH-002',
-      name: 'Bausher Commercial Plaza',
-      customerId: 'cust-002',
-      customerName: 'Oman Golden Sands Dev',
-      contractValue: 120000.0,
-      startDate: '2026-02-01',
-      status: 'active',
-      remarks: 'Commercial complex with 12 retail units',
-      createdAt: '2026-02-01T08:00:00Z',
-    },
-  ],
-  customers: [
-    {
-      id: 'cust-001',
-      code: 'CUST-001',
-      name: 'Al Harthy Properties LLC',
-      contactPerson: 'Eng. Salim Al Harthy',
-      phone: '+968 9123 4567',
-      email: 'salim@alharthyproperties.om',
-      address: 'Al Khoudh, Seeb, Muscat',
-      openingBalance: 0,
-      status: 'active',
-      remarks: 'Residential and commercial developer',
-      createdAt: '2026-01-01T00:00:00Z',
-    },
-    {
-      id: 'cust-002',
-      code: 'CUST-002',
-      name: 'Oman Golden Sands Dev',
-      contactPerson: 'Tariq Al Balushi',
-      phone: '+968 9988 7766',
-      email: 'tariq@goldensands.om',
-      address: 'Bausher, Muscat',
-      openingBalance: 0,
-      status: 'active',
-      remarks: 'Corporate commercial projects',
-      createdAt: '2026-01-01T00:00:00Z',
-    },
-  ],
-  vendors: [
-    {
-      id: 'vend-001',
-      code: 'VEND-001',
-      name: 'Al Batinah Building Materials LLC',
-      contactPerson: 'Nasser Al Farsi',
-      phone: '+968 9456 1234',
-      email: 'sales@batinahmaterials.om',
-      address: 'Barka Industrial Area, Oman',
-      openingBalance: 0,
-      status: 'active',
-      remarks: 'Primary rebar, steel and cement supplier',
-      createdAt: '2026-01-01T00:00:00Z',
-    },
-    {
-      id: 'vend-002',
-      code: 'VEND-002',
-      name: 'Muscat ReadyMix Concrete SAOC',
-      contactPerson: 'Rajesh Kumar',
-      phone: '+968 9234 5678',
-      email: 'orders@muscatreadymix.om',
-      address: 'Rusayl Industrial Estate',
-      openingBalance: 0,
-      status: 'active',
-      remarks: 'Structural certified concrete batches',
-      createdAt: '2026-01-01T00:00:00Z',
-    },
-  ],
-  bankAccounts: [
-    {
-      id: 'bank-muscat-001',
-      bankName: 'Bank Muscat',
-      accountName: 'Bank Muscat — Main Operating Account',
-      accountNumber: '0315-01234567-001',
-      currency: 'OMR',
-      openingBalance: 25000.0,
-      currentBalance: 25000.0,
-      openingDate: '2026-01-01',
-      status: 'active',
-      remarks: 'Primary corporate treasury account',
-      createdAt: '2026-01-01T00:00:00Z',
-    },
-    {
-      id: 'bank-nbo-002',
-      bankName: 'National Bank of Oman',
-      accountName: 'NBO — SMI Project Escrow Account',
-      accountNumber: '1004-98765432-002',
-      currency: 'OMR',
-      openingBalance: 10000.0,
-      currentBalance: 10000.0,
-      openingDate: '2026-01-01',
-      status: 'active',
-      remarks: 'Designated escrow retention account',
-      createdAt: '2026-01-01T00:00:00Z',
-    },
-  ],
-  cashAccounts: [
-    {
-      id: 'cash-head-office-001',
-      accountName: 'Head Office Cash in Hand',
-      openingBalance: 1500.0,
-      currentBalance: 1500.0,
-      openingDate: '2026-01-01',
-      status: 'active',
-      remarks: 'Secure cash locker at head office',
-      createdAt: '2026-01-01T00:00:00Z',
-    },
-  ],
-  pettyCashAccounts: [
-    {
-      id: 'petty-site-001',
-      accountName: 'Site Petty Cash Custodian',
-      openingBalance: 500.0,
-      currentBalance: 500.0,
-      openingDate: '2026-01-01',
-      status: 'active',
-      remarks: 'Site manager emergency float',
-      createdAt: '2026-01-01T00:00:00Z',
-    },
-  ],
-  expenseHeads: [
-    { id: 'exp-head-site', name: 'Site Expenses', category: 'Direct Project Cost', status: 'active' },
-    { id: 'exp-head-fuel', name: 'Fuel & Transport', category: 'Direct Project Cost', status: 'active' },
-    { id: 'exp-head-wages', name: 'Salaries & Wages', category: 'Direct Labor', status: 'active' },
-    { id: 'exp-head-materials', name: 'Materials', category: 'Direct Project Cost', status: 'active' },
-    { id: 'exp-head-rent', name: 'Rent', category: 'Overhead', status: 'active' },
-    { id: 'exp-head-utilities', name: 'Utilities', category: 'Overhead', status: 'active' },
-    { id: 'exp-head-office', name: 'Office Expenses', category: 'Overhead', status: 'active' },
-    { id: 'exp-head-repairs', name: 'Repairs & Maintenance', category: 'Direct Project Cost', status: 'active' },
-    { id: 'exp-head-equipment', name: 'Equipment', category: 'Direct Project Cost', status: 'active' },
-    { id: 'exp-head-other', name: 'Other Expenses', category: 'Miscellaneous', status: 'active' },
-  ],
-  clientInvoices: [],
-  purchases: [],
-  moneyInList: [],
-  moneyOutList: [],
-  directExpenses: [],
-  transfers: [],
-  openingBalances: [],
-  journalEntries: [],
-  auditLogs: [
-    {
-      id: 'log-seed-001',
-      timestamp: '2026-01-01T00:00:00Z',
-      userId: 'usr-admin-001',
-      userName: 'Chief Financial Officer',
-      userRole: 'admin',
-      action: 'SYSTEM_INITIALIZED',
-      module: 'Settings',
-      details: 'Construction Accounting System initialized with Chart of Accounts and masters.',
-    },
-  ],
-};
+function emptyState(): AppDatabaseState {
+  return {
+    projects: [],
+    customers: [],
+    vendors: [],
+    bankAccounts: [],
+    cashAccounts: [],
+    pettyCashAccounts: [],
+    expenseHeads: [],
+    clientInvoices: [],
+    purchases: [],
+    moneyInList: [],
+    moneyOutList: [],
+    directExpenses: [],
+    transfers: [],
+    openingBalances: [],
+    journalEntries: [],
+    auditLogs: [],
+  };
+}
 
-// Initial clean state for Real Enterprise Database (strictly isolated from demo sandbox data)
-export const initialRealEnterpriseState: AppDatabaseState = {
-  currentUser: {
-    id: 'usr-real-superadmin-artify',
-    name: 'Super Administrator',
-    email: 'admin@artifysols.com',
-    role: 'super_admin',
-  },
-  projects: [],
-  customers: [],
-  vendors: [],
-  bankAccounts: [],
-  cashAccounts: [],
-  pettyCashAccounts: [],
-  expenseHeads: [
-    { id: 'exp-head-site', name: 'Site Expenses', category: 'Direct Project Cost', status: 'active' },
-    { id: 'exp-head-fuel', name: 'Fuel & Transport', category: 'Direct Project Cost', status: 'active' },
-    { id: 'exp-head-wages', name: 'Salaries & Wages', category: 'Direct Labor', status: 'active' },
-    { id: 'exp-head-materials', name: 'Materials', category: 'Direct Project Cost', status: 'active' },
-    { id: 'exp-head-rent', name: 'Rent', category: 'Overhead', status: 'active' },
-    { id: 'exp-head-utilities', name: 'Utilities', category: 'Overhead', status: 'active' },
-    { id: 'exp-head-office', name: 'Office Expenses', category: 'Overhead', status: 'active' },
-    { id: 'exp-head-repairs', name: 'Repairs & Maintenance', category: 'Direct Project Cost', status: 'active' },
-    { id: 'exp-head-equipment', name: 'Equipment', category: 'Direct Project Cost', status: 'active' },
-    { id: 'exp-head-other', name: 'Other Expenses', category: 'Miscellaneous', status: 'active' },
-  ],
-  clientInvoices: [],
-  purchases: [],
-  moneyInList: [],
-  moneyOutList: [],
-  directExpenses: [],
-  transfers: [],
-  openingBalances: [],
-  journalEntries: [],
-  auditLogs: [
-    {
-      id: 'log-real-init-001',
-      timestamp: new Date().toISOString(),
-      userId: 'usr-real-superadmin-artify',
-      userName: 'Super Administrator',
-      userRole: 'super_admin',
-      action: 'PRODUCTION_DATABASE_INITIALIZED',
-      module: 'System Governance',
-      details: 'Artify Solutions production accounting ledger initialized in pristine blank state with zero demo transactions.',
-    },
-  ],
-};
+// -------------------------------------------------------------
+// ROW <-> APP MODEL MAPPERS
+// Supabase is the sole source of truth; the in-memory `state` below is a
+// read cache populated from these tables and kept fresh via subscribe() +
+// Realtime change notifications. Denormalized display names (customerName,
+// projectName, accountName, etc.) are resolved from the in-memory master
+// data cache, matching prior in-app behavior.
+// -------------------------------------------------------------
+const workflowFields = (row: any) => ({
+  createdBy: row.created_by ?? undefined,
+  submittedBy: row.submitted_by ?? undefined,
+  submittedAt: row.submitted_at ?? undefined,
+  approvedBy: row.approved_by ?? undefined,
+  approvedByName: row.approved_by_name ?? undefined,
+  approvedAt: row.approved_at ?? undefined,
+  postedBy: row.posted_by ?? undefined,
+  postedAt: row.posted_at ?? undefined,
+  rejectionReason: row.rejection_reason ?? undefined,
+});
 
 class AccountingService {
-  private state: AppDatabaseState;
+  private state: AppDatabaseState = emptyState();
   private listeners: (() => void)[] = [];
-  private activeDbMode: DatabaseMode = 'demo';
+  private loaded = false;
+  private loadError: string | null = null;
+  private realtimeChannel: ReturnType<NonNullable<ReturnType<typeof getSupabaseClient>>['channel']> | null = null;
 
   constructor() {
-    console.log('[AccountingService] Initializing accounting engine service entry point...');
-
-    try {
-      const currentUser = authService.getCurrentUser();
-      if (currentUser && !currentUser.isDemo) {
-        this.activeDbMode = 'real';
-      } else {
-        const savedMode = localStorage.getItem(STORAGE_KEY_ACTIVE_MODE) as DatabaseMode | null;
-        if (savedMode === 'demo' || savedMode === 'real') {
-          this.activeDbMode = savedMode;
-        }
+    authService.subscribe(() => {
+      if (authService.isAuthenticated() && !this.loaded) {
+        this.loadAll();
       }
-    } catch {
-      this.activeDbMode = 'real';
-    }
-
-    this.state = this.loadState();
-
-    // Auto-seed historical monthly data for PRJ-BSH-002 only if demo database is empty of transactions
-    if (this.activeDbMode === 'demo') {
-      if ((!this.state.clientInvoices || this.state.clientInvoices.length === 0) &&
-          (!this.state.purchases || this.state.purchases.length === 0)) {
-        this.seedHistoricalMonthlyData();
+      if (!authService.isAuthenticated()) {
+        this.teardownRealtime();
+        this.state = emptyState();
+        this.loaded = false;
+        this.notify();
       }
-    }
-
-    // Subscribe to auth service changes so database mode stays in sync with current user type
-    try {
-      authService.subscribe(() => {
-        const user = authService.getCurrentUser();
-        if (user) {
-          this.syncWithUser(user);
-        }
-      });
-    } catch (e) {
-      console.warn('[AccountingService] Could not register authService subscriber:', e);
-    }
-
-    console.log('[AccountingService] Engine state initialized successfully without failures.', {
-      databaseMode: this.activeDbMode,
-      currentUser: this.state.currentUser.name,
-      projectsCount: this.state.projects?.length ?? 0,
-      bankAccountsCount: this.state.bankAccounts?.length ?? 0,
-      customersCount: this.state.customers?.length ?? 0,
-      vendorsCount: this.state.vendors?.length ?? 0,
-      clientInvoicesCount: this.state.clientInvoices?.length ?? 0,
-      purchasesCount: this.state.purchases?.length ?? 0,
-      moneyInCount: this.state.moneyInList?.length ?? 0,
-      moneyOutCount: this.state.moneyOutList?.length ?? 0,
-      directExpensesCount: this.state.directExpenses?.length ?? 0,
-      transfersCount: this.state.transfers?.length ?? 0,
-      journalEntriesCount: this.state.journalEntries?.length ?? 0,
     });
+    if (authService.isAuthenticated()) {
+      this.loadAll();
+    }
   }
 
-  public getStorageKey(): string {
-    return this.activeDbMode === 'demo' ? STORAGE_KEY_DEMO : STORAGE_KEY_REAL;
+  // -------------------------------------------------------------
+  // LOAD / SYNC
+  // -------------------------------------------------------------
+  public isLoaded(): boolean {
+    return this.loaded;
   }
 
-  public getDatabaseMode(): DatabaseMode {
-    return this.activeDbMode;
+  public getLoadError(): string | null {
+    return this.loadError;
   }
 
-  public setDatabaseMode(mode: DatabaseMode): void {
-    if (this.activeDbMode === mode) return;
+  public async refreshFromStorage(): Promise<void> {
+    await this.loadAll();
+  }
+
+  private async loadAll(): Promise<void> {
+    const client = getSupabaseClient();
+    if (!client) {
+      this.loadError = 'Supabase is not configured.';
+      this.notify();
+      return;
+    }
+
     try {
-      localStorage.setItem(this.getStorageKey(), JSON.stringify(this.state));
-    } catch (e) {
-      console.warn('Could not save state before switching database mode:', e);
-    }
-    this.activeDbMode = mode;
-    try {
-      localStorage.setItem(STORAGE_KEY_ACTIVE_MODE, mode);
-    } catch {
-      // ignore
-    }
-    this.state = this.loadState();
-    if (mode === 'demo' && (!this.state.clientInvoices || this.state.clientInvoices.length === 0)) {
-      this.seedHistoricalMonthlyData();
-    }
-    this.notify();
-  }
+      const [
+        projects, customers, vendors, bankAccounts, cashAccounts, pettyCashAccounts,
+        expenseHeads, clientInvoices, purchases, moneyIn, moneyOut, directExpenses,
+        transfers, openingBalances, journalEntries, auditLogs,
+      ] = await Promise.all([
+        client.from('projects').select('*').order('created_at', { ascending: true }),
+        client.from('customers').select('*').order('created_at', { ascending: true }),
+        client.from('vendors').select('*').order('created_at', { ascending: true }),
+        client.from('bank_accounts').select('*').order('created_at', { ascending: true }),
+        client.from('cash_accounts').select('*').order('created_at', { ascending: true }),
+        client.from('petty_cash_accounts').select('*').order('created_at', { ascending: true }),
+        client.from('expense_heads').select('*').order('created_at', { ascending: true }),
+        client.from('client_invoices').select('*').order('created_at', { ascending: true }),
+        client.from('purchases').select('*').order('created_at', { ascending: true }),
+        client.from('money_in').select('*').order('created_at', { ascending: true }),
+        client.from('money_out').select('*').order('created_at', { ascending: true }),
+        client.from('direct_expenses').select('*').order('created_at', { ascending: true }),
+        client.from('transfers').select('*').order('created_at', { ascending: true }),
+        client.from('opening_balances').select('*').order('created_at', { ascending: true }),
+        client.from('journal_entries').select('*').order('created_at', { ascending: true }),
+        client.from('audit_logs').select('*').order('timestamp', { ascending: false }).limit(2000),
+      ]);
 
-  public syncWithUser(user: { isDemo?: boolean; email?: string; fullName?: string } | null): void {
-    if (!user) return;
-    const targetMode: DatabaseMode = user.isDemo ? 'demo' : 'real';
-    if (this.activeDbMode !== targetMode) {
-      this.setDatabaseMode(targetMode);
-    }
-    if (targetMode === 'real' && user.email?.toLowerCase() === 'admin@artifysols.com') {
-      this.state.currentUser = {
-        id: 'usr-real-superadmin-artify',
-        name: user.fullName || 'Super Administrator',
-        email: 'admin@artifysols.com',
-        role: 'super_admin',
+      const firstError = [
+        projects, customers, vendors, bankAccounts, cashAccounts, pettyCashAccounts, expenseHeads,
+        clientInvoices, purchases, moneyIn, moneyOut, directExpenses, transfers, openingBalances,
+        journalEntries, auditLogs,
+      ].find((r) => r.error)?.error;
+      if (firstError) throw firstError;
+
+      const newState: AppDatabaseState = {
+        projects: (projects.data ?? []).map(this.mapProject),
+        customers: (customers.data ?? []).map(this.mapCustomer),
+        vendors: (vendors.data ?? []).map(this.mapVendor),
+        bankAccounts: (bankAccounts.data ?? []).map(this.mapBankAccount),
+        cashAccounts: (cashAccounts.data ?? []).map(this.mapCashAccount),
+        pettyCashAccounts: (pettyCashAccounts.data ?? []).map(this.mapPettyCashAccount),
+        expenseHeads: (expenseHeads.data ?? []).map(this.mapExpenseHead),
+        clientInvoices: [],
+        purchases: [],
+        moneyInList: [],
+        moneyOutList: [],
+        directExpenses: [],
+        transfers: [],
+        openingBalances: [],
+        journalEntries: (journalEntries.data ?? []).map(this.mapJournalEntry),
+        auditLogs: (auditLogs.data ?? []).map(this.mapAuditLog),
       };
-      this.saveState();
+
+      // Second pass: map transactional tables now that master data is available
+      // for denormalized display-name resolution.
+      this.state = newState;
+      this.state.clientInvoices = (clientInvoices.data ?? []).map((r) => this.mapClientInvoice(r));
+      this.state.purchases = (purchases.data ?? []).map((r) => this.mapPurchase(r));
+      this.state.moneyInList = (moneyIn.data ?? []).map((r) => this.mapMoneyIn(r));
+      this.state.moneyOutList = (moneyOut.data ?? []).map((r) => this.mapMoneyOut(r));
+      this.state.directExpenses = (directExpenses.data ?? []).map((r) => this.mapDirectExpense(r));
+      this.state.transfers = (transfers.data ?? []).map((r) => this.mapTransfer(r));
+      this.state.openingBalances = (openingBalances.data ?? []).map((r) => this.mapOpeningBalance(r));
+
+      this.loaded = true;
+      this.loadError = null;
+      this.setupRealtime();
+      this.notify();
+    } catch (err: any) {
+      this.loadError = err?.message || 'Failed to load accounting data from Supabase.';
+      console.error('[AccountingService] loadAll failed:', err);
+      this.notify();
     }
   }
 
-  private loadState(): AppDatabaseState {
-    const key = this.getStorageKey();
-    const baseState = this.activeDbMode === 'demo' ? initialSeedState : initialRealEnterpriseState;
-
-    try {
-      const saved = localStorage.getItem(key);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-
-        // If in real mode and previously had legacy mock corporate admin, reset to pristine blank production state
-        if (this.activeDbMode === 'real') {
-          if (
-            parsed.currentUser?.email === 'admin@company.om' ||
-            !localStorage.getItem('artify_blank_real_db_v2')
-          ) {
-            localStorage.setItem('artify_blank_real_db_v2', 'true');
-            localStorage.setItem(key, JSON.stringify(initialRealEnterpriseState));
-            return JSON.parse(JSON.stringify(initialRealEnterpriseState));
-          }
-        }
-
-        const merged: AppDatabaseState = {
-          ...baseState,
-          ...parsed,
-          currentUser: parsed.currentUser || baseState.currentUser,
-        };
-
-        const { state: cleanState, modified } = this.sanitizeAndDeduplicateState(merged);
-        if (modified) {
-          try {
-            localStorage.setItem(key, JSON.stringify(cleanState));
-            console.log('[AccountingService] Repaired and deduplicated corrupted stored IDs successfully.');
-          } catch (err) {
-            console.warn('[AccountingService] Could not persist sanitized state:', err);
-          }
-        }
-        return cleanState;
-      }
-
-      // If in demo mode and legacy key exists, migrate legacy to demo storage
-      if (this.activeDbMode === 'demo') {
-        const legacy = localStorage.getItem(STORAGE_KEY_LEGACY);
-        if (legacy) {
-          const parsed = JSON.parse(legacy);
-          const merged: AppDatabaseState = {
-            ...initialSeedState,
-            ...parsed,
-            currentUser: parsed.currentUser || initialSeedState.currentUser,
-          };
-          const { state: cleanState } = this.sanitizeAndDeduplicateState(merged);
-          try {
-            localStorage.setItem(STORAGE_KEY_DEMO, JSON.stringify(cleanState));
-          } catch {
-            // ignore
-          }
-          return cleanState;
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to parse saved state from storage for key:', key, e);
-    }
-    return JSON.parse(JSON.stringify(baseState));
-  }
-
-  /**
-   * Scans all entities in the database state to guarantee unique IDs.
-   * If legacy duplicate IDs (e.g. from tight loops with Date.now()) exist in localStorage,
-   * this repairs them and updates relational references so React components maintain pristine keys.
-   */
-  private sanitizeAndDeduplicateState(inputState: AppDatabaseState): { state: AppDatabaseState; modified: boolean } {
-    let modified = false;
-    const state: AppDatabaseState = { ...inputState };
-
-    // 1. Client Invoices
-    const seenInvoiceIds = new Set<string>();
-    state.clientInvoices = (state.clientInvoices || []).map((inv) => {
-      if (!inv.id || seenInvoiceIds.has(inv.id)) {
-        const newId = generateUniqueId('inv');
-        modified = true;
-        seenInvoiceIds.add(newId);
-        return { ...inv, id: newId };
-      }
-      seenInvoiceIds.add(inv.id);
-      return inv;
-    });
-
-    // 2. Purchases
-    const seenPurchaseIds = new Set<string>();
-    state.purchases = (state.purchases || []).map((pur) => {
-      if (!pur.id || seenPurchaseIds.has(pur.id)) {
-        const newId = generateUniqueId('pur');
-        modified = true;
-        seenPurchaseIds.add(newId);
-        return { ...pur, id: newId };
-      }
-      seenPurchaseIds.add(pur.id);
-      return pur;
-    });
-
-    // 3. Money In (re-link to matched invoice)
-    const seenMoneyInIds = new Set<string>();
-    state.moneyInList = (state.moneyInList || []).map((m) => {
-      const updated = { ...m };
-      if (!updated.id || seenMoneyInIds.has(updated.id)) {
-        updated.id = generateUniqueId('mi');
-        modified = true;
-      }
-      seenMoneyInIds.add(updated.id);
-
-      if (updated.against === 'invoice' || updated.invoiceNumber) {
-        const matchingInv = state.clientInvoices.find(
-          (inv) =>
-            (updated.invoiceNumber && inv.invoiceNumber === updated.invoiceNumber) ||
-            (updated.remarks && inv.invoiceNumber && updated.remarks.includes(inv.invoiceNumber))
-        );
-        if (matchingInv && updated.invoiceId !== matchingInv.id) {
-          updated.invoiceId = matchingInv.id;
-          updated.invoiceNumber = matchingInv.invoiceNumber;
-          modified = true;
-        }
-      }
-      return updated;
-    });
-
-    // 4. Money Out (re-link to matched purchase)
-    const seenMoneyOutIds = new Set<string>();
-    state.moneyOutList = (state.moneyOutList || []).map((mo) => {
-      const updated = { ...mo };
-      if (!updated.id || seenMoneyOutIds.has(updated.id)) {
-        updated.id = generateUniqueId('mo');
-        modified = true;
-      }
-      seenMoneyOutIds.add(updated.id);
-
-      if (updated.paymentFor === 'purchase' || updated.purchaseInvoiceNumber) {
-        const matchingPur = state.purchases.find(
-          (p) =>
-            (updated.purchaseInvoiceNumber && p.purchaseInvoiceNumber === updated.purchaseInvoiceNumber) ||
-            (updated.remarks && p.purchaseInvoiceNumber && updated.remarks.includes(p.purchaseInvoiceNumber))
-        );
-        if (matchingPur && updated.purchaseId !== matchingPur.id) {
-          updated.purchaseId = matchingPur.id;
-          updated.purchaseInvoiceNumber = matchingPur.purchaseInvoiceNumber;
-          modified = true;
-        }
-      }
-      return updated;
-    });
-
-    // 5. Direct Expenses
-    const seenExpenseIds = new Set<string>();
-    state.directExpenses = (state.directExpenses || []).map((exp) => {
-      if (!exp.id || seenExpenseIds.has(exp.id)) {
-        const newId = generateUniqueId('exp');
-        modified = true;
-        seenExpenseIds.add(newId);
-        return { ...exp, id: newId };
-      }
-      seenExpenseIds.add(exp.id);
-      return exp;
-    });
-
-    // 6. Transfers
-    const seenTransferIds = new Set<string>();
-    state.transfers = (state.transfers || []).map((tr) => {
-      if (!tr.id || seenTransferIds.has(tr.id)) {
-        const newId = generateUniqueId('xfer');
-        modified = true;
-        seenTransferIds.add(newId);
-        return { ...tr, id: newId };
-      }
-      seenTransferIds.add(tr.id);
-      return tr;
-    });
-
-    // 7. Journal Entries
-    const seenJournalIds = new Set<string>();
-    const seenEntryNumbers = new Set<string>();
-    state.journalEntries = (state.journalEntries || []).map((je) => {
-      const updated = { ...je };
-      if (!updated.id || seenJournalIds.has(updated.id)) {
-        updated.id = generateUniqueId('je');
-        modified = true;
-      }
-      seenJournalIds.add(updated.id);
-
-      if (!updated.entryNumber || seenEntryNumbers.has(updated.entryNumber)) {
-        updated.entryNumber = generateUniqueRef('JE');
-        modified = true;
-      }
-      seenEntryNumbers.add(updated.entryNumber);
-
-      return updated;
-    });
-
-    // 8. Audit Logs
-    const seenAuditLogIds = new Set<string>();
-    state.auditLogs = (state.auditLogs || []).map((log) => {
-      if (!log.id || seenAuditLogIds.has(log.id)) {
-        const newId = generateUniqueId('log');
-        modified = true;
-        seenAuditLogIds.add(newId);
-        return { ...log, id: newId };
-      }
-      seenAuditLogIds.add(log.id);
-      return log;
-    });
-
-    // 9. Masters
-    const dedupeMasterList = <T extends { id: string }>(items: T[], prefix: string): T[] => {
-      const seen = new Set<string>();
-      return (items || []).map((item) => {
-        if (!item.id || seen.has(item.id)) {
-          const newId = generateUniqueId(prefix);
-          modified = true;
-          seen.add(newId);
-          return { ...item, id: newId };
-        }
-        seen.add(item.id);
-        return item;
+  private setupRealtime() {
+    const client = getSupabaseClient();
+    if (!client || this.realtimeChannel) return;
+    const tables = [
+      'projects', 'customers', 'vendors', 'bank_accounts', 'cash_accounts', 'petty_cash_accounts',
+      'expense_heads', 'client_invoices', 'purchases', 'money_in', 'money_out', 'direct_expenses',
+      'transfers', 'opening_balances', 'journal_entries',
+    ];
+    let channel = client.channel('accounting-data-sync');
+    tables.forEach((table) => {
+      channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => {
+        // Coarse-grained refresh on any remote change (from this device, the
+        // web app, or the Android app) keeps every client's cache authoritative.
+        this.loadAll();
       });
-    };
-
-    state.projects = dedupeMasterList(state.projects, 'prj');
-    state.customers = dedupeMasterList(state.customers, 'cust');
-    state.vendors = dedupeMasterList(state.vendors, 'vend');
-    state.bankAccounts = dedupeMasterList(state.bankAccounts, 'bank');
-    state.cashAccounts = dedupeMasterList(state.cashAccounts, 'cash');
-    state.pettyCashAccounts = dedupeMasterList(state.pettyCashAccounts, 'petty');
-    state.expenseHeads = dedupeMasterList(state.expenseHeads, 'exp-head');
-    state.openingBalances = dedupeMasterList(state.openingBalances, 'ob');
-
-    return { state, modified };
+    });
+    channel.subscribe();
+    this.realtimeChannel = channel;
   }
 
-  private saveState() {
-    try {
-      localStorage.setItem(this.getStorageKey(), JSON.stringify(this.state));
-    } catch (e) {
-      console.error('Failed to persist database state:', e);
+  private teardownRealtime() {
+    const client = getSupabaseClient();
+    if (client && this.realtimeChannel) {
+      client.removeChannel(this.realtimeChannel);
     }
-    this.notify();
+    this.realtimeChannel = null;
   }
 
+  // -------------------------------------------------------------
+  // MAPPERS
+  // -------------------------------------------------------------
+  private mapProject = (row: any): Project => ({
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    customerId: row.customer_id,
+    customerName: this.state.customers?.find((c) => c.id === row.customer_id)?.name,
+    contractValue: Number(row.contract_value) || 0,
+    budgetCost: row.budget_cost != null ? Number(row.budget_cost) : undefined,
+    startDate: row.start_date,
+    endDate: row.end_date ?? undefined,
+    status: row.status,
+    remarks: row.remarks ?? undefined,
+    createdAt: row.created_at,
+  });
+
+  private mapCustomer = (row: any): Customer => ({
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    contactPerson: row.contact_person ?? undefined,
+    phone: row.phone ?? undefined,
+    email: row.email ?? undefined,
+    address: row.address ?? undefined,
+    openingBalance: Number(row.opening_balance) || 0,
+    status: row.status,
+    remarks: row.remarks ?? undefined,
+    createdAt: row.created_at,
+  });
+
+  private mapVendor = (row: any): Vendor => ({
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    category: row.category ?? undefined,
+    contactPerson: row.contact_person ?? undefined,
+    phone: row.phone ?? undefined,
+    email: row.email ?? undefined,
+    address: row.address ?? undefined,
+    openingBalance: Number(row.opening_balance) || 0,
+    status: row.status,
+    remarks: row.remarks ?? undefined,
+    createdAt: row.created_at,
+  });
+
+  private mapBankAccount = (row: any): BankAccount => ({
+    id: row.id,
+    bankName: row.bank_name,
+    accountName: row.account_name,
+    accountNumber: row.account_number ?? '',
+    iban: row.iban ?? undefined,
+    branch: row.branch ?? undefined,
+    currency: 'OMR',
+    openingBalance: Number(row.opening_balance) || 0,
+    currentBalance: Number(row.current_balance) || 0,
+    openingDate: row.opening_date ?? undefined,
+    status: row.status,
+    remarks: row.remarks ?? undefined,
+    createdAt: row.created_at,
+  });
+
+  private mapCashAccount = (row: any): CashAccount => ({
+    id: row.id,
+    accountName: row.account_name,
+    openingBalance: Number(row.opening_balance) || 0,
+    currentBalance: Number(row.current_balance) || 0,
+    openingDate: row.opening_date ?? undefined,
+    status: row.status,
+    remarks: row.remarks ?? undefined,
+    createdAt: row.created_at,
+  });
+
+  private mapPettyCashAccount = (row: any): PettyCashAccount => ({
+    id: row.id,
+    accountName: row.account_name,
+    openingBalance: Number(row.opening_balance) || 0,
+    currentBalance: Number(row.current_balance) || 0,
+    openingDate: row.opening_date ?? undefined,
+    status: row.status,
+    remarks: row.remarks ?? undefined,
+    createdAt: row.created_at,
+  });
+
+  private mapExpenseHead = (row: any): ExpenseHead => ({
+    id: row.id,
+    name: row.name,
+    category: row.category ?? undefined,
+    description: row.remarks ?? undefined,
+    status: row.status,
+    remarks: row.remarks ?? undefined,
+  });
+
+  private resolveAccountName(type: TreasuryAccountType, id?: string): string | undefined {
+    if (!id) return undefined;
+    return this.getAccountName(type, id);
+  }
+
+  private mapClientInvoice = (row: any): ClientInvoice => {
+    const customer = this.state.customers.find((c) => c.id === row.customer_id);
+    const project = this.state.projects.find((p) => p.id === row.project_id);
+    return {
+      id: row.id,
+      invoiceType: row.invoice_type,
+      invoiceNumber: row.invoice_number,
+      date: row.date,
+      customerId: row.customer_id,
+      customerName: customer?.name || 'Unknown Customer',
+      projectId: row.project_id,
+      projectName: project?.name || 'Unknown Project',
+      description: row.description ?? '',
+      amount: Number(row.amount) || 0,
+      documentRef: row.document_ref,
+      attachmentUrl: row.attachment_url ?? undefined,
+      attachmentName: row.attachment_name ?? undefined,
+      receivedAmount: Number(row.received_amount) || 0,
+      outstandingAmount: Number(row.outstanding_amount) || 0,
+      status: row.status,
+      remarks: row.remarks ?? undefined,
+      createdAt: row.created_at,
+      ...workflowFields(row),
+    };
+  };
+
+  private mapPurchase = (row: any): Purchase => {
+    const vendor = this.state.vendors.find((v) => v.id === row.vendor_id);
+    const project = this.state.projects.find((p) => p.id === row.project_id);
+    return {
+      id: row.id,
+      purchaseInvoiceNumber: row.purchase_invoice_number,
+      date: row.date,
+      vendorId: row.vendor_id,
+      vendorName: vendor?.name || 'Unknown Vendor',
+      projectId: row.project_id,
+      projectName: project?.name || 'Unknown Project',
+      purchaseCategory: row.purchase_category ?? 'Materials',
+      description: row.description ?? '',
+      amount: Number(row.amount) || 0,
+      documentRef: row.document_ref,
+      attachmentUrl: row.attachment_url ?? undefined,
+      attachmentName: row.attachment_name ?? undefined,
+      paidAmount: Number(row.paid_amount) || 0,
+      outstandingAmount: Number(row.outstanding_amount) || 0,
+      status: row.status,
+      remarks: row.remarks ?? undefined,
+      createdAt: row.created_at,
+      ...workflowFields(row),
+    };
+  };
+
+  private mapMoneyIn = (row: any): MoneyIn => {
+    const customer = row.customer_id ? this.state.customers.find((c) => c.id === row.customer_id) : undefined;
+    const project = this.state.projects.find((p) => p.id === row.project_id);
+    const invoice = row.invoice_id ? this.state.clientInvoices.find((i) => i.id === row.invoice_id) : undefined;
+    return {
+      id: row.id,
+      transactionDate: row.transaction_date,
+      receivedFrom: row.received_from,
+      customerId: row.customer_id ?? undefined,
+      customerName: customer?.name,
+      projectId: row.project_id,
+      projectName: project?.name || 'Unknown Project',
+      against: row.against,
+      invoiceId: row.invoice_id ?? undefined,
+      invoiceNumber: invoice?.invoiceNumber,
+      amount: Number(row.amount) || 0,
+      receivedInto: row.received_into,
+      accountId: row.account_id,
+      accountName: this.resolveAccountName(row.received_into, row.account_id) || 'Account',
+      documentRef: row.document_ref,
+      attachmentUrl: row.attachment_url ?? undefined,
+      attachmentName: row.attachment_name ?? undefined,
+      status: row.status,
+      remarks: row.remarks ?? undefined,
+      createdAt: row.created_at,
+      ...workflowFields(row),
+    };
+  };
+
+  private mapMoneyOut = (row: any): MoneyOut => {
+    const vendor = row.vendor_id ? this.state.vendors.find((v) => v.id === row.vendor_id) : undefined;
+    const project = row.project_id ? this.state.projects.find((p) => p.id === row.project_id) : undefined;
+    const purchase = row.purchase_id ? this.state.purchases.find((p) => p.id === row.purchase_id) : undefined;
+    const expenseHead = row.expense_head_id ? this.state.expenseHeads.find((e) => e.id === row.expense_head_id) : undefined;
+    return {
+      id: row.id,
+      transactionDate: row.transaction_date,
+      paidTo: row.paid_to,
+      vendorId: row.vendor_id ?? undefined,
+      vendorName: vendor?.name,
+      projectId: row.project_id ?? undefined,
+      projectName: project?.name,
+      paymentFor: row.payment_for,
+      purchaseId: row.purchase_id ?? undefined,
+      purchaseInvoiceNumber: purchase?.purchaseInvoiceNumber,
+      expenseHeadId: row.expense_head_id ?? undefined,
+      expenseHeadName: expenseHead?.name,
+      amount: Number(row.amount) || 0,
+      paidFrom: row.paid_from,
+      accountId: row.account_id,
+      accountName: this.resolveAccountName(row.paid_from, row.account_id) || 'Account',
+      documentRef: row.document_ref,
+      attachmentUrl: row.attachment_url ?? undefined,
+      attachmentName: row.attachment_name ?? undefined,
+      status: row.status,
+      remarks: row.remarks ?? undefined,
+      createdAt: row.created_at,
+      ...workflowFields(row),
+    };
+  };
+
+  private mapDirectExpense = (row: any): DirectExpense => {
+    const project = this.state.projects.find((p) => p.id === row.project_id);
+    const expenseHead = this.state.expenseHeads.find((e) => e.id === row.expense_head_id);
+    return {
+      id: row.id,
+      expenseDate: row.expense_date,
+      projectId: row.project_id,
+      projectName: project?.name || 'Unknown Project',
+      projectCode: project?.code,
+      expenseHeadId: row.expense_head_id,
+      expenseHeadName: expenseHead?.name || 'General Expense',
+      description: row.description ?? '',
+      amount: Number(row.amount) || 0,
+      paidFrom: row.paid_from,
+      accountId: row.account_id,
+      accountName: this.resolveAccountName(row.paid_from, row.account_id) || 'Account',
+      documentRef: row.document_ref,
+      attachmentUrl: row.attachment_url ?? undefined,
+      attachmentName: row.attachment_name ?? undefined,
+      status: row.status,
+      remarks: row.remarks ?? undefined,
+      createdAt: row.created_at,
+      ...workflowFields(row),
+    };
+  };
+
+  private mapTransfer = (row: any): AccountTransfer => ({
+    id: row.id,
+    date: row.date,
+    transferFromType: row.transfer_from_type,
+    transferFromId: row.transfer_from_id,
+    transferFromName: this.resolveAccountName(row.transfer_from_type, row.transfer_from_id) || 'Account',
+    transferToType: row.transfer_to_type,
+    transferToId: row.transfer_to_id,
+    transferToName: this.resolveAccountName(row.transfer_to_type, row.transfer_to_id) || 'Account',
+    amount: Number(row.amount) || 0,
+    documentRef: row.document_ref,
+    attachmentUrl: row.attachment_url ?? undefined,
+    attachmentName: row.attachment_name ?? undefined,
+    status: row.status,
+    remarks: row.remarks ?? undefined,
+    createdAt: row.created_at,
+    createdBy: row.created_by ?? undefined,
+    approvedBy: row.approved_by ?? undefined,
+    approvedAt: row.approved_at ?? undefined,
+  });
+
+  private mapOpeningBalance = (row: any): OpeningBalanceEntry => ({
+    id: row.id,
+    accountType: row.account_type,
+    accountId: row.account_id,
+    accountName:
+      row.account_type === 'customer'
+        ? this.state.customers.find((c) => c.id === row.account_id)?.name || 'Account'
+        : row.account_type === 'vendor'
+        ? this.state.vendors.find((v) => v.id === row.account_id)?.name || 'Account'
+        : this.resolveAccountName(row.account_type, row.account_id) || 'Account',
+    openingDate: row.opening_date,
+    amount: Number(row.amount) || 0,
+    documentRef: row.document_ref ?? undefined,
+    attachmentUrl: row.attachment_url ?? undefined,
+    remarks: row.remarks ?? undefined,
+    createdAt: row.created_at,
+  });
+
+  private mapJournalEntry = (row: any): JournalEntry => ({
+    id: row.id,
+    entryNumber: row.entry_number,
+    date: row.date,
+    sourceType: row.source_type,
+    sourceId: row.source_id,
+    projectId: row.project_id ?? undefined,
+    customerId: row.customer_id ?? undefined,
+    vendorId: row.vendor_id ?? undefined,
+    description: row.description,
+    debitAccount: row.debit_account,
+    creditAccount: row.credit_account,
+    amount: Number(row.amount) || 0,
+    status: row.status,
+    createdAt: row.created_at,
+  });
+
+  private mapAuditLog = (row: any): AuditLogEntry => ({
+    id: row.id,
+    timestamp: row.timestamp,
+    userId: row.user_id ?? '',
+    userName: row.user_name,
+    userRole: row.user_role,
+    action: row.action,
+    module: row.module,
+    entityType: row.entity_type ?? undefined,
+    entityId: row.entity_id ?? undefined,
+    transactionId: row.transaction_id ?? undefined,
+    documentRef: row.document_ref ?? undefined,
+    reason: row.reason ?? undefined,
+    oldValue: row.old_value ?? undefined,
+    newValue: row.new_value ?? undefined,
+    oldValues: row.old_values ?? undefined,
+    newValues: row.new_values ?? undefined,
+    details: row.details,
+    ipAddress: row.ip_address ?? undefined,
+  });
+
+  // -------------------------------------------------------------
+  // SUBSCRIBE / STATE ACCESS
+  // -------------------------------------------------------------
   public subscribe(listener: () => void) {
     this.listeners.push(listener);
     return () => {
@@ -670,73 +581,10 @@ class AccountingService {
     return this.state;
   }
 
-  public refreshFromStorage(): void {
-    this.state = this.loadState();
-    this.notify();
-  }
-
-  public getCurrentUser(): User {
-    return this.state.currentUser;
-  }
-
-  public setCurrentUser(user: Partial<User>) {
-    this.state.currentUser = {
-      ...this.state.currentUser,
-      ...user,
-    };
-    this.saveState();
-  }
-
-  public setCurrentUserRole(role: UserRole) {
-    this.state.currentUser.role = role;
-    this.saveState();
-  }
-
   public verifyProjectAccess(projectId: string): void {
     if (!projectId) return;
     if (!authService.hasProjectAccess(projectId)) {
       throw new Error(`Unauthorized: Your account does not have access to project "${projectId}". Access restricted by Project Scope policy.`);
-    }
-  }
-
-  public addAuditLog(action: string, module: string, details: string, docRef?: string, txId?: string, oldVal?: string, newVal?: string) {
-    const authUser = authService.getCurrentUser();
-    const entry: AuditLogEntry = {
-      id: generateUniqueId('log'),
-      timestamp: new Date().toISOString(),
-      userId: authUser ? authUser.id : this.state.currentUser.id,
-      userName: authUser ? authUser.fullName : this.state.currentUser.name,
-      userRole: authUser ? (authUser.roleCode as any) : this.state.currentUser.role,
-      action,
-      module,
-      transactionId: txId,
-      documentRef: docRef,
-      oldValue: oldVal,
-      newValue: newVal,
-      details,
-    };
-    this.state.auditLogs.unshift(entry);
-  }
-
-  // -------------------------------------------------------------
-  // HELPER ACCOUNT LOOKUP & BALANCE MODIFICATION
-  // -------------------------------------------------------------
-  private updateAccountBalance(accountType: TreasuryAccountType, accountId: string, delta: number) {
-    if (accountType === 'bank') {
-      const acc = this.state.bankAccounts.find((b) => b.id === accountId);
-      if (acc) {
-        acc.currentBalance = addMoney(acc.currentBalance, delta);
-      }
-    } else if (accountType === 'cash') {
-      const acc = this.state.cashAccounts.find((c) => c.id === accountId);
-      if (acc) {
-        acc.currentBalance = addMoney(acc.currentBalance, delta);
-      }
-    } else if (accountType === 'petty_cash') {
-      const acc = this.state.pettyCashAccounts.find((p) => p.id === accountId);
-      if (acc) {
-        acc.currentBalance = addMoney(acc.currentBalance, delta);
-      }
     }
   }
 
@@ -753,10 +601,20 @@ class AccountingService {
     return 'Unknown Account';
   }
 
+  private requireClient() {
+    const client = getSupabaseClient();
+    if (!client) throw new Error('Supabase is not configured. Data cannot be saved.');
+    return client;
+  }
+
+  private currentUserName(): string {
+    return authService.getCurrentUser()?.fullName || 'Unknown User';
+  }
+
   // -------------------------------------------------------------
   // 1. CLIENT INVOICE / IPC
   // -------------------------------------------------------------
-  public createClientInvoice(data: {
+  public async createClientInvoice(data: {
     invoiceType: 'IPC' | 'Invoice';
     invoiceNumber: string;
     date: string;
@@ -768,79 +626,49 @@ class AccountingService {
     attachmentUrl?: string;
     attachmentName?: string;
     remarks?: string;
-  }): ClientInvoice {
+  }): Promise<ClientInvoice> {
     if (!data.invoiceNumber?.trim()) throw new Error('Invoice / IPC Number is required.');
     if (!data.customerId) throw new Error('Customer is required.');
     if (!data.projectId) throw new Error('Project is required.');
     if (data.amount <= 0) throw new Error('Amount must be positive.');
     if (!data.documentRef?.trim()) throw new Error('Document Reference is required.');
 
-    // Check duplicate number
-    const existing = this.state.clientInvoices.find(
-      (inv) => inv.invoiceNumber.toLowerCase() === data.invoiceNumber.toLowerCase() && inv.status !== 'reversed'
-    );
-    if (existing) {
-      throw new Error(`Invoice / IPC number "${data.invoiceNumber}" already exists.`);
-    }
-
+    const client = this.requireClient();
     const customer = this.state.customers.find((c) => c.id === data.customerId);
     const project = this.state.projects.find((p) => p.id === data.projectId);
+    const customerName = customer ? customer.name : 'Unknown Customer';
+    const projectName = project ? project.name : 'Unknown Project';
 
-    const invoice: ClientInvoice = {
-      id: generateUniqueId('inv'),
-      invoiceType: data.invoiceType,
-      invoiceNumber: data.invoiceNumber.trim(),
-      date: data.date,
-      customerId: data.customerId,
-      customerName: customer ? customer.name : 'Unknown Customer',
-      projectId: data.projectId,
-      projectName: project ? project.name : 'Unknown Project',
-      description: data.description,
-      amount: data.amount,
-      documentRef: data.documentRef.trim(),
-      attachmentUrl: data.attachmentUrl,
-      attachmentName: data.attachmentName,
-      receivedAmount: 0,
-      outstandingAmount: data.amount,
-      status: 'posted',
-      remarks: data.remarks,
-      createdAt: new Date().toISOString(),
-    };
-
-    this.state.clientInvoices.push(invoice);
-
-    // Double-entry Journal Entry:
-    // Debit: Accounts Receivable (Customer)
-    // Credit: Project Revenue
-    this.createJournalEntry({
-      entryNumber: generateUniqueRef('JE-INV'),
-      date: data.date,
-      sourceType: 'invoice',
-      sourceId: invoice.id,
-      projectId: invoice.projectId,
-      customerId: invoice.customerId,
-      description: `${data.invoiceType} #${invoice.invoiceNumber} - ${invoice.customerName}`,
-      debitAccount: `Accounts Receivable (${invoice.customerName})`,
-      creditAccount: `Project Revenue (${invoice.projectName})`,
-      amount: data.amount,
+    const { data: row, error } = await client.rpc('create_client_invoice', {
+      payload: {
+        invoiceType: data.invoiceType,
+        invoiceNumber: data.invoiceNumber.trim(),
+        date: data.date,
+        customerId: data.customerId,
+        projectId: data.projectId,
+        description: data.description,
+        amount: data.amount,
+        documentRef: data.documentRef.trim(),
+        attachmentUrl: data.attachmentUrl,
+        attachmentName: data.attachmentName,
+        remarks: data.remarks,
+        entryNumber: generateUniqueRef('JE-INV'),
+        journalDescription: `${data.invoiceType} #${data.invoiceNumber.trim()} - ${customerName}`,
+        debitAccount: `Accounts Receivable (${customerName})`,
+        creditAccount: `Project Revenue (${projectName})`,
+        auditDetails: `Posted ${data.invoiceType} #${data.invoiceNumber} for OMR ${data.amount} to Project "${projectName}".`,
+      },
     });
+    if (error) throw new Error(error.message);
 
-    this.addAuditLog(
-      'CREATE_CLIENT_INVOICE',
-      'Invoices & IPC',
-      `Posted ${data.invoiceType} #${data.invoiceNumber} for OMR ${data.amount} to Project "${project?.name}".`,
-      data.documentRef,
-      invoice.id
-    );
-
-    this.saveState();
-    return invoice;
+    await this.loadAll();
+    return this.state.clientInvoices.find((i) => i.id === row.id) || this.mapClientInvoice(row);
   }
 
   // -------------------------------------------------------------
   // 2. MONEY IN (Client Receipts & Incoming Treasury)
   // -------------------------------------------------------------
-  public recordMoneyIn(data: {
+  public async recordMoneyIn(data: {
     transactionDate: string;
     receivedFrom: string;
     customerId?: string;
@@ -854,100 +682,56 @@ class AccountingService {
     attachmentUrl?: string;
     attachmentName?: string;
     remarks?: string;
-  }): MoneyIn {
+  }): Promise<MoneyIn> {
     if (!data.receivedFrom?.trim()) throw new Error('Received From is required.');
     if (!data.projectId) throw new Error('Project is required.');
     if (data.amount <= 0) throw new Error('Amount must be positive.');
     if (!data.accountId) throw new Error('Please select receiving Bank/Cash account.');
-
-    let invoice: ClientInvoice | undefined;
-    if (data.against === 'invoice') {
-      if (!data.invoiceId) throw new Error('Client Invoice / IPC must be selected when against invoice.');
-      invoice = this.state.clientInvoices.find((i) => i.id === data.invoiceId);
-      if (!invoice) throw new Error('Selected invoice not found.');
-      if (invoice.status === 'reversed') throw new Error('Cannot apply payment to a reversed invoice.');
-      if (data.amount > invoice.outstandingAmount) {
-        throw new Error(
-          `Payment amount (OMR ${data.amount.toFixed(3)}) cannot exceed invoice outstanding balance (OMR ${invoice.outstandingAmount.toFixed(3)}).`
-        );
-      }
+    if (data.against === 'invoice' && !data.invoiceId) {
+      throw new Error('Client Invoice / IPC must be selected when against invoice.');
     }
 
-    const project = this.state.projects.find((p) => p.id === data.projectId);
+    const client = this.requireClient();
+    const invoice = data.invoiceId ? this.state.clientInvoices.find((i) => i.id === data.invoiceId) : undefined;
     const customer = data.customerId
       ? this.state.customers.find((c) => c.id === data.customerId)
       : invoice
       ? this.state.customers.find((c) => c.id === invoice.customerId)
       : undefined;
-
     const accountName = this.getAccountName(data.receivedInto, data.accountId);
 
-    const record: MoneyIn = {
-      id: generateUniqueId('mi'),
-      transactionDate: data.transactionDate,
-      receivedFrom: data.receivedFrom.trim(),
-      customerId: customer?.id,
-      customerName: customer?.name,
-      projectId: data.projectId,
-      projectName: project ? project.name : 'Unknown Project',
-      against: data.against,
-      invoiceId: invoice?.id,
-      invoiceNumber: invoice?.invoiceNumber,
-      amount: data.amount,
-      receivedInto: data.receivedInto,
-      accountId: data.accountId,
-      accountName,
-      documentRef: data.documentRef?.trim() || generateUniqueRef('RECEIPT'),
-      attachmentUrl: data.attachmentUrl,
-      attachmentName: data.attachmentName,
-      status: 'posted',
-      remarks: data.remarks,
-      createdAt: new Date().toISOString(),
-    };
-
-    this.state.moneyInList.push(record);
-
-    // 1. Increase Receiving Account balance
-    this.updateAccountBalance(data.receivedInto, data.accountId, data.amount);
-
-    // 2. If against invoice, reduce invoice outstanding
-    if (invoice) {
-      invoice.receivedAmount = addMoney(invoice.receivedAmount, data.amount);
-      invoice.outstandingAmount = subtractMoney(invoice.amount, invoice.receivedAmount);
-    }
-
-    // 3. Double-entry Journal Entry:
-    // Debit: Receiving Bank/Cash Account
-    // Credit: Accounts Receivable (or Other Receipts)
-    this.createJournalEntry({
-      entryNumber: generateUniqueRef('JE-RCPT'),
-      date: data.transactionDate,
-      sourceType: 'money_in',
-      sourceId: record.id,
-      projectId: record.projectId,
-      customerId: record.customerId,
-      description: `Client Receipt from ${data.receivedFrom} via ${accountName}`,
-      debitAccount: `${accountName} (${data.receivedInto.toUpperCase()})`,
-      creditAccount: customer ? `Accounts Receivable (${customer.name})` : 'Other Receipts',
-      amount: data.amount,
+    const { data: row, error } = await client.rpc('record_money_in', {
+      payload: {
+        transactionDate: data.transactionDate,
+        receivedFrom: data.receivedFrom.trim(),
+        customerId: customer?.id,
+        projectId: data.projectId,
+        against: data.against,
+        invoiceId: data.invoiceId,
+        amount: data.amount,
+        receivedInto: data.receivedInto,
+        accountId: data.accountId,
+        documentRef: data.documentRef?.trim() || generateUniqueRef('RECEIPT'),
+        attachmentUrl: data.attachmentUrl,
+        attachmentName: data.attachmentName,
+        remarks: data.remarks,
+        entryNumber: generateUniqueRef('JE-RCPT'),
+        journalDescription: `Client Receipt from ${data.receivedFrom} via ${accountName}`,
+        debitAccount: `${accountName} (${data.receivedInto.toUpperCase()})`,
+        creditAccount: customer ? `Accounts Receivable (${customer.name})` : 'Other Receipts',
+        auditDetails: `Received OMR ${data.amount} from "${data.receivedFrom}" into "${accountName}".`,
+      },
     });
+    if (error) throw new Error(error.message);
 
-    this.addAuditLog(
-      'RECORD_MONEY_IN',
-      'Banking & Treasury',
-      `Received OMR ${data.amount} from "${data.receivedFrom}" into "${accountName}". Ref: ${record.documentRef}.`,
-      record.documentRef,
-      record.id
-    );
-
-    this.saveState();
-    return record;
+    await this.loadAll();
+    return this.state.moneyInList.find((m) => m.id === row.id) || this.mapMoneyIn(row);
   }
 
   // -------------------------------------------------------------
   // 3. PURCHASES (Vendor Bill)
   // -------------------------------------------------------------
-  public createPurchase(data: {
+  public async createPurchase(data: {
     purchaseInvoiceNumber: string;
     date: string;
     vendorId: string;
@@ -959,78 +743,49 @@ class AccountingService {
     attachmentUrl?: string;
     attachmentName?: string;
     remarks?: string;
-  }): Purchase {
+  }): Promise<Purchase> {
     if (!data.purchaseInvoiceNumber?.trim()) throw new Error('Purchase Invoice Number is required.');
     if (!data.vendorId) throw new Error('Vendor is required.');
     if (!data.projectId) throw new Error('Project is required.');
     if (data.amount <= 0) throw new Error('Amount must be positive.');
     if (!data.documentRef?.trim()) throw new Error('Document Reference is required.');
 
-    const existing = this.state.purchases.find(
-      (p) => p.purchaseInvoiceNumber.toLowerCase() === data.purchaseInvoiceNumber.toLowerCase() && p.status !== 'reversed'
-    );
-    if (existing) {
-      throw new Error(`Purchase Invoice #${data.purchaseInvoiceNumber} already exists.`);
-    }
-
+    const client = this.requireClient();
     const vendor = this.state.vendors.find((v) => v.id === data.vendorId);
     const project = this.state.projects.find((p) => p.id === data.projectId);
+    const vendorName = vendor ? vendor.name : 'Unknown Vendor';
+    const projectName = project ? project.name : 'Unknown Project';
 
-    const purchase: Purchase = {
-      id: generateUniqueId('pur'),
-      purchaseInvoiceNumber: data.purchaseInvoiceNumber.trim(),
-      date: data.date,
-      vendorId: data.vendorId,
-      vendorName: vendor ? vendor.name : 'Unknown Vendor',
-      projectId: data.projectId,
-      projectName: project ? project.name : 'Unknown Project',
-      purchaseCategory: data.purchaseCategory || 'Materials',
-      description: data.description,
-      amount: data.amount,
-      documentRef: data.documentRef.trim(),
-      attachmentUrl: data.attachmentUrl,
-      attachmentName: data.attachmentName,
-      paidAmount: 0,
-      outstandingAmount: data.amount,
-      status: 'posted',
-      remarks: data.remarks,
-      createdAt: new Date().toISOString(),
-    };
-
-    this.state.purchases.push(purchase);
-
-    // Double-entry Journal Entry:
-    // Debit: Project Cost (Purchases)
-    // Credit: Accounts Payable (Vendor)
-    this.createJournalEntry({
-      entryNumber: generateUniqueRef('JE-PUR'),
-      date: data.date,
-      sourceType: 'purchase',
-      sourceId: purchase.id,
-      projectId: purchase.projectId,
-      vendorId: purchase.vendorId,
-      description: `Purchase Invoice #${purchase.purchaseInvoiceNumber} - ${purchase.vendorName}`,
-      debitAccount: `Project Cost - Materials (${purchase.projectName})`,
-      creditAccount: `Accounts Payable (${purchase.vendorName})`,
-      amount: data.amount,
+    const { data: row, error } = await client.rpc('create_purchase', {
+      payload: {
+        purchaseInvoiceNumber: data.purchaseInvoiceNumber.trim(),
+        date: data.date,
+        vendorId: data.vendorId,
+        projectId: data.projectId,
+        purchaseCategory: data.purchaseCategory || 'Materials',
+        description: data.description,
+        amount: data.amount,
+        documentRef: data.documentRef.trim(),
+        attachmentUrl: data.attachmentUrl,
+        attachmentName: data.attachmentName,
+        remarks: data.remarks,
+        entryNumber: generateUniqueRef('JE-PUR'),
+        journalDescription: `Purchase Invoice #${data.purchaseInvoiceNumber.trim()} - ${vendorName}`,
+        debitAccount: `Project Cost - Materials (${projectName})`,
+        creditAccount: `Accounts Payable (${vendorName})`,
+        auditDetails: `Posted Purchase #${data.purchaseInvoiceNumber} from "${vendorName}" for OMR ${data.amount}.`,
+      },
     });
+    if (error) throw new Error(error.message);
 
-    this.addAuditLog(
-      'CREATE_PURCHASE',
-      'Purchases & Payables',
-      `Posted Purchase #${data.purchaseInvoiceNumber} from "${vendor?.name}" for OMR ${data.amount}.`,
-      data.documentRef,
-      purchase.id
-    );
-
-    this.saveState();
-    return purchase;
+    await this.loadAll();
+    return this.state.purchases.find((p) => p.id === row.id) || this.mapPurchase(row);
   }
 
   // -------------------------------------------------------------
   // 4. MONEY OUT (Vendor Payments, Expenses & Treasury Disbursals)
   // -------------------------------------------------------------
-  public recordMoneyOut(data: {
+  public async recordMoneyOut(data: {
     transactionDate: string;
     paidTo: string;
     vendorId?: string;
@@ -1045,118 +800,67 @@ class AccountingService {
     attachmentUrl?: string;
     attachmentName?: string;
     remarks?: string;
-  }): MoneyOut {
+  }): Promise<MoneyOut> {
     if (!data.paidTo?.trim()) throw new Error('Paid To is required.');
     if (data.amount <= 0) throw new Error('Amount must be positive.');
     if (!data.accountId) throw new Error('Please select paying Bank/Cash account.');
-
-    let purchase: Purchase | undefined;
-    if (data.paymentFor === 'purchase') {
-      if (!data.purchaseId) throw new Error('Purchase Invoice must be selected for purchase payment.');
-      purchase = this.state.purchases.find((p) => p.id === data.purchaseId);
-      if (!purchase) throw new Error('Selected purchase invoice not found.');
-      if (purchase.status === 'reversed') throw new Error('Cannot make payment against a reversed purchase.');
-      if (data.amount > purchase.outstandingAmount) {
-        throw new Error(
-          `Payment amount (OMR ${data.amount.toFixed(3)}) cannot exceed purchase outstanding balance (OMR ${purchase.outstandingAmount.toFixed(3)}).`
-        );
-      }
+    if (data.paymentFor === 'purchase' && !data.purchaseId) {
+      throw new Error('Purchase Invoice must be selected for purchase payment.');
     }
 
-    const accountName = this.getAccountName(data.paidFrom, data.accountId);
+    const client = this.requireClient();
+    const purchase = data.purchaseId ? this.state.purchases.find((p) => p.id === data.purchaseId) : undefined;
     const vendor = data.vendorId
       ? this.state.vendors.find((v) => v.id === data.vendorId)
       : purchase
       ? this.state.vendors.find((v) => v.id === purchase.vendorId)
       : undefined;
-
     const project = data.projectId
       ? this.state.projects.find((p) => p.id === data.projectId)
       : purchase
       ? this.state.projects.find((p) => p.id === purchase.projectId)
       : undefined;
+    const expenseHead = data.expenseHeadId ? this.state.expenseHeads.find((e) => e.id === data.expenseHeadId) : undefined;
+    const accountName = this.getAccountName(data.paidFrom, data.accountId);
 
-    const expenseHead = data.expenseHeadId
-      ? this.state.expenseHeads.find((e) => e.id === data.expenseHeadId)
-      : undefined;
-
-    const record: MoneyOut = {
-      id: generateUniqueId('mo'),
-      transactionDate: data.transactionDate,
-      paidTo: data.paidTo.trim(),
-      vendorId: vendor?.id,
-      vendorName: vendor?.name,
-      projectId: project?.id,
-      projectName: project?.name,
-      paymentFor: data.paymentFor,
-      purchaseId: purchase?.id,
-      purchaseInvoiceNumber: purchase?.purchaseInvoiceNumber,
-      expenseHeadId: expenseHead?.id,
-      expenseHeadName: expenseHead?.name,
-      amount: data.amount,
-      paidFrom: data.paidFrom,
-      accountId: data.accountId,
-      accountName,
-      documentRef: data.documentRef?.trim() || generateUniqueRef('PAYMENT'),
-      attachmentUrl: data.attachmentUrl,
-      attachmentName: data.attachmentName,
-      status: 'posted',
-      remarks: data.remarks,
-      createdAt: new Date().toISOString(),
-    };
-
-    this.state.moneyOutList.push(record);
-
-    // 1. Decrease Paying Account balance
-    this.updateAccountBalance(data.paidFrom, data.accountId, -data.amount);
-
-    // 2. If payment for purchase, update purchase paid & outstanding
-    if (purchase) {
-      purchase.paidAmount = addMoney(purchase.paidAmount, data.amount);
-      purchase.outstandingAmount = subtractMoney(purchase.amount, purchase.paidAmount);
-    }
-
-    // 3. Double-entry Journal Entry:
-    // If purchase:
-    // Debit: Accounts Payable (Vendor)
-    // Credit: Bank/Cash Account
-    // If direct expense:
-    // Debit: Expense Head / Project Cost
-    // Credit: Bank/Cash Account
-    this.createJournalEntry({
-      entryNumber: generateUniqueRef('JE-PYMT'),
-      date: data.transactionDate,
-      sourceType: 'money_out',
-      sourceId: record.id,
-      projectId: record.projectId,
-      vendorId: record.vendorId,
-      description: `Payment to ${data.paidTo} from ${accountName}`,
-      debitAccount:
-        data.paymentFor === 'purchase' && vendor
-          ? `Accounts Payable (${vendor.name})`
-          : data.paymentFor === 'expense' && expenseHead
-          ? `Expense (${expenseHead.name})`
-          : `General Expenses (${data.paidTo})`,
-      creditAccount: `${accountName} (${data.paidFrom.toUpperCase()})`,
-      amount: data.amount,
+    const { data: row, error } = await client.rpc('record_money_out', {
+      payload: {
+        transactionDate: data.transactionDate,
+        paidTo: data.paidTo.trim(),
+        vendorId: vendor?.id,
+        projectId: project?.id,
+        paymentFor: data.paymentFor,
+        purchaseId: data.purchaseId,
+        expenseHeadId: data.expenseHeadId,
+        amount: data.amount,
+        paidFrom: data.paidFrom,
+        accountId: data.accountId,
+        documentRef: data.documentRef?.trim() || generateUniqueRef('PAYMENT'),
+        attachmentUrl: data.attachmentUrl,
+        attachmentName: data.attachmentName,
+        remarks: data.remarks,
+        entryNumber: generateUniqueRef('JE-PYMT'),
+        journalDescription: `Payment to ${data.paidTo} from ${accountName}`,
+        debitAccount:
+          data.paymentFor === 'purchase' && vendor
+            ? `Accounts Payable (${vendor.name})`
+            : data.paymentFor === 'expense' && expenseHead
+            ? `Expense (${expenseHead.name})`
+            : `General Expenses (${data.paidTo})`,
+        creditAccount: `${accountName} (${data.paidFrom.toUpperCase()})`,
+        auditDetails: `Paid OMR ${data.amount} to "${data.paidTo}" from "${accountName}".`,
+      },
     });
+    if (error) throw new Error(error.message);
 
-    this.addAuditLog(
-      'RECORD_MONEY_OUT',
-      'Purchases & Payables',
-      `Paid OMR ${data.amount} to "${data.paidTo}" from "${accountName}". Ref: ${record.documentRef}.`,
-      record.documentRef,
-      record.id
-    );
-
-    this.saveState();
-    return record;
+    await this.loadAll();
+    return this.state.moneyOutList.find((m) => m.id === row.id) || this.mapMoneyOut(row);
   }
 
   // -------------------------------------------------------------
   // 5. DIRECT EXPENSES
   // -------------------------------------------------------------
-  public createDirectExpense(data: {
+  public async createDirectExpense(data: {
     expenseDate: string;
     projectId: string;
     expenseHeadId: string;
@@ -1168,71 +872,47 @@ class AccountingService {
     attachmentUrl?: string;
     attachmentName?: string;
     remarks?: string;
-  }): DirectExpense {
+  }): Promise<DirectExpense> {
     if (!data.projectId) throw new Error('Project is required.');
     if (!data.expenseHeadId) throw new Error('Expense Head is required.');
     if (!data.description?.trim()) throw new Error('Description is required.');
     if (data.amount <= 0) throw new Error('Amount must be positive.');
     if (!data.accountId) throw new Error('Paid From account is required.');
 
+    const client = this.requireClient();
     const project = this.state.projects.find((p) => p.id === data.projectId);
     const expenseHead = this.state.expenseHeads.find((e) => e.id === data.expenseHeadId);
     const accountName = this.getAccountName(data.paidFrom, data.accountId);
+    const expenseHeadName = expenseHead ? expenseHead.name : 'General Expense';
+    const projectName = project ? project.name : 'Unknown Project';
 
-    const expense: DirectExpense = {
-      id: generateUniqueId('exp'),
-      expenseDate: data.expenseDate,
-      projectId: data.projectId,
-      projectName: project ? project.name : 'Unknown Project',
-      projectCode: project ? project.code : undefined,
-      expenseHeadId: data.expenseHeadId,
-      expenseHeadName: expenseHead ? expenseHead.name : 'General Expense',
-      description: data.description.trim(),
-      amount: data.amount,
-      paidFrom: data.paidFrom,
-      accountId: data.accountId,
-      accountName,
-      documentRef: data.documentRef?.trim() || generateUniqueRef('EXP'),
-      attachmentUrl: data.attachmentUrl,
-      attachmentName: data.attachmentName,
-      status: 'posted',
-      remarks: data.remarks,
-      createdAt: new Date().toISOString(),
-    };
-
-    this.state.directExpenses.push(expense);
-
-    // 1. Decrease paying account balance
-    this.updateAccountBalance(data.paidFrom, data.accountId, -data.amount);
-
-    // 2. Double-entry Journal Entry:
-    // Debit: Expense Head / Project Cost
-    // Credit: Bank / Cash / Petty Cash
-    this.createJournalEntry({
-      entryNumber: generateUniqueRef('JE-EXP'),
-      date: data.expenseDate,
-      sourceType: 'expense',
-      sourceId: expense.id,
-      projectId: expense.projectId,
-      description: `Direct Expense: ${expense.expenseHeadName} (${expense.description}) on ${expense.projectName}`,
-      debitAccount: `Project Cost - ${expense.expenseHeadName} (${expense.projectName})`,
-      creditAccount: `${accountName} (${data.paidFrom.toUpperCase()})`,
-      amount: data.amount,
+    const { data: row, error } = await client.rpc('create_direct_expense', {
+      payload: {
+        expenseDate: data.expenseDate,
+        projectId: data.projectId,
+        expenseHeadId: data.expenseHeadId,
+        description: data.description.trim(),
+        amount: data.amount,
+        paidFrom: data.paidFrom,
+        accountId: data.accountId,
+        documentRef: data.documentRef?.trim() || generateUniqueRef('EXP'),
+        attachmentUrl: data.attachmentUrl,
+        attachmentName: data.attachmentName,
+        remarks: data.remarks,
+        entryNumber: generateUniqueRef('JE-EXP'),
+        journalDescription: `Direct Expense: ${expenseHeadName} (${data.description}) on ${projectName}`,
+        debitAccount: `Project Cost - ${expenseHeadName} (${projectName})`,
+        creditAccount: `${accountName} (${data.paidFrom.toUpperCase()})`,
+        auditDetails: `Recorded expense OMR ${data.amount} for "${expenseHeadName}" from "${accountName}" on project "${projectName}".`,
+      },
     });
+    if (error) throw new Error(error.message);
 
-    this.addAuditLog(
-      'RECORD_EXPENSE',
-      'Expenses',
-      `Recorded expense OMR ${data.amount} for "${expense.expenseHeadName}" from "${accountName}" on project "${project?.name}". Ref: ${expense.documentRef}.`,
-      expense.documentRef,
-      expense.id
-    );
-
-    this.saveState();
-    return expense;
+    await this.loadAll();
+    return this.state.directExpenses.find((e) => e.id === row.id) || this.mapDirectExpense(row);
   }
 
-  public recordDirectExpense(data: {
+  public async recordDirectExpense(data: {
     expenseDate: string;
     projectId: string;
     expenseHeadId: string;
@@ -1244,14 +924,14 @@ class AccountingService {
     attachmentUrl?: string;
     attachmentName?: string;
     remarks?: string;
-  }): DirectExpense {
+  }): Promise<DirectExpense> {
     return this.createDirectExpense(data);
   }
 
   // -------------------------------------------------------------
   // 6. TRANSFERS (Between Company Accounts)
   // -------------------------------------------------------------
-  public createTransfer(data: {
+  public async createTransfer(data: {
     date: string;
     transferFromType: TreasuryAccountType;
     transferFromId: string;
@@ -1262,542 +942,415 @@ class AccountingService {
     attachmentUrl?: string;
     attachmentName?: string;
     remarks?: string;
-  }): AccountTransfer {
+  }): Promise<AccountTransfer> {
     if (data.amount <= 0) throw new Error('Transfer amount must be positive.');
     if (!data.documentRef?.trim()) throw new Error('Document reference is required for transfer.');
     if (data.transferFromType === data.transferToType && data.transferFromId === data.transferToId) {
       throw new Error('Source and destination accounts cannot be identical.');
     }
 
+    const client = this.requireClient();
     const fromName = this.getAccountName(data.transferFromType, data.transferFromId);
     const toName = this.getAccountName(data.transferToType, data.transferToId);
 
-    const transfer: AccountTransfer = {
-      id: generateUniqueId('xfer'),
-      date: data.date,
-      transferFromType: data.transferFromType,
-      transferFromId: data.transferFromId,
-      transferFromName: fromName,
-      transferToType: data.transferToType,
-      transferToId: data.transferToId,
-      transferToName: toName,
-      amount: data.amount,
-      documentRef: data.documentRef.trim(),
-      attachmentUrl: data.attachmentUrl,
-      attachmentName: data.attachmentName,
-      status: 'posted',
-      remarks: data.remarks,
-      createdAt: new Date().toISOString(),
-    };
-
-    this.state.transfers.push(transfer);
-
-    // Decrease from account, increase to account
-    this.updateAccountBalance(data.transferFromType, data.transferFromId, -data.amount);
-    this.updateAccountBalance(data.transferToType, data.transferToId, data.amount);
-
-    // Double-entry Journal Entry:
-    // Debit: Destination Account
-    // Credit: Source Account
-    // (NO REVENUE OR EXPENSE CREATED!)
-    this.createJournalEntry({
-      entryNumber: generateUniqueRef('JE-XFER'),
-      date: data.date,
-      sourceType: 'transfer',
-      sourceId: transfer.id,
-      description: `Internal Transfer: ${fromName} -> ${toName}`,
-      debitAccount: `${toName} (${data.transferToType.toUpperCase()})`,
-      creditAccount: `${fromName} (${data.transferFromType.toUpperCase()})`,
-      amount: data.amount,
+    const { data: row, error } = await client.rpc('create_transfer', {
+      payload: {
+        date: data.date,
+        transferFromType: data.transferFromType,
+        transferFromId: data.transferFromId,
+        transferToType: data.transferToType,
+        transferToId: data.transferToId,
+        amount: data.amount,
+        documentRef: data.documentRef.trim(),
+        attachmentUrl: data.attachmentUrl,
+        attachmentName: data.attachmentName,
+        remarks: data.remarks,
+        entryNumber: generateUniqueRef('JE-XFER'),
+        journalDescription: `Internal Transfer: ${fromName} -> ${toName}`,
+        debitAccount: `${toName} (${data.transferToType.toUpperCase()})`,
+        creditAccount: `${fromName} (${data.transferFromType.toUpperCase()})`,
+        auditDetails: `Transferred OMR ${data.amount} from "${fromName}" to "${toName}".`,
+      },
     });
+    if (error) throw new Error(error.message);
 
-    this.addAuditLog(
-      'RECORD_TRANSFER',
-      'Banking & Treasury',
-      `Transferred OMR ${data.amount} from "${fromName}" to "${toName}". Ref: ${transfer.documentRef}.`,
-      transfer.documentRef,
-      transfer.id
-    );
-
-    this.saveState();
-    return transfer;
+    await this.loadAll();
+    return this.state.transfers.find((t) => t.id === row.id) || this.mapTransfer(row);
   }
 
   // -------------------------------------------------------------
   // 7. OPENING BALANCES
   // -------------------------------------------------------------
-  public setOpeningBalance(data: {
+  public async setOpeningBalance(data: {
     accountType: 'bank' | 'cash' | 'petty_cash' | 'customer' | 'vendor' | 'other';
     accountId: string;
     openingDate: string;
     amount: number;
     documentRef?: string;
     remarks?: string;
-  }): OpeningBalanceEntry {
+  }): Promise<OpeningBalanceEntry> {
+    const client = this.requireClient();
     let name = 'Account';
-    if (data.accountType === 'bank') {
-      const b = this.state.bankAccounts.find((x) => x.id === data.accountId);
-      if (b) {
-        b.openingBalance = data.amount;
-        b.currentBalance = data.amount;
-        name = b.accountName;
-      }
-    } else if (data.accountType === 'cash') {
-      const c = this.state.cashAccounts.find((x) => x.id === data.accountId);
-      if (c) {
-        c.openingBalance = data.amount;
-        c.currentBalance = data.amount;
-        name = c.accountName;
-      }
-    } else if (data.accountType === 'petty_cash') {
-      const p = this.state.pettyCashAccounts.find((x) => x.id === data.accountId);
-      if (p) {
-        p.openingBalance = data.amount;
-        p.currentBalance = data.amount;
-        name = p.accountName;
-      }
-    } else if (data.accountType === 'customer') {
-      const cust = this.state.customers.find((x) => x.id === data.accountId);
-      if (cust) {
-        cust.openingBalance = data.amount;
-        name = cust.name;
-      }
-    } else if (data.accountType === 'vendor') {
-      const vend = this.state.vendors.find((x) => x.id === data.accountId);
-      if (vend) {
-        vend.openingBalance = data.amount;
-        name = vend.name;
-      }
-    }
+    if (data.accountType === 'bank') name = this.state.bankAccounts.find((b) => b.id === data.accountId)?.accountName || name;
+    else if (data.accountType === 'cash') name = this.state.cashAccounts.find((c) => c.id === data.accountId)?.accountName || name;
+    else if (data.accountType === 'petty_cash') name = this.state.pettyCashAccounts.find((p) => p.id === data.accountId)?.accountName || name;
+    else if (data.accountType === 'customer') name = this.state.customers.find((c) => c.id === data.accountId)?.name || name;
+    else if (data.accountType === 'vendor') name = this.state.vendors.find((v) => v.id === data.accountId)?.name || name;
 
-    const entry: OpeningBalanceEntry = {
-      id: generateUniqueId('ob'),
-      accountType: data.accountType,
-      accountId: data.accountId,
-      accountName: name,
-      openingDate: data.openingDate,
-      amount: data.amount,
-      documentRef: data.documentRef,
-      remarks: data.remarks,
-      createdAt: new Date().toISOString(),
-    };
+    const { data: row, error } = await client.rpc('set_opening_balance', {
+      payload: {
+        accountType: data.accountType,
+        accountId: data.accountId,
+        openingDate: data.openingDate,
+        amount: data.amount,
+        documentRef: data.documentRef,
+        remarks: data.remarks,
+        auditDetails: `Set opening balance for ${name} (${data.accountType}) to OMR ${data.amount}.`,
+      },
+    });
+    if (error) throw new Error(error.message);
 
-    this.state.openingBalances.push(entry);
-
-    this.addAuditLog(
-      'SET_OPENING_BALANCE',
-      'Masters & Settings',
-      `Set opening balance for ${name} (${data.accountType}) to OMR ${data.amount}.`,
-      data.documentRef,
-      entry.id
-    );
-
-    this.saveState();
-    return entry;
+    await this.loadAll();
+    return this.state.openingBalances.find((o) => o.id === row.id) || this.mapOpeningBalance(row);
   }
 
   // -------------------------------------------------------------
   // 8. MASTER CREATION METHODS
   // -------------------------------------------------------------
-  public createProject(data: Omit<Project, 'id' | 'createdAt'>): Project {
+  public async createProject(data: Omit<Project, 'id' | 'createdAt'>): Promise<Project> {
     if (!data.code?.trim()) throw new Error('Project Code is required.');
     if (!data.name?.trim()) throw new Error('Project Name is required.');
     if (!data.customerId) throw new Error('Customer is required.');
 
-    const exists = this.state.projects.find((p) => p.code.toLowerCase() === data.code.toLowerCase());
-    if (exists) throw new Error(`Project Code "${data.code}" already exists.`);
+    const client = this.requireClient();
+    const { data: row, error } = await client
+      .from('projects')
+      .insert({
+        code: data.code.trim().toUpperCase(),
+        name: data.name.trim(),
+        customer_id: data.customerId,
+        contract_value: Number(data.contractValue) || 0,
+        budget_cost: data.budgetCost ?? null,
+        start_date: data.startDate,
+        end_date: data.endDate || null,
+        status: data.status,
+        remarks: data.remarks || null,
+        created_by: authService.getCurrentUser()?.id,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.code === '23505' ? `Project Code "${data.code}" already exists.` : error.message);
 
-    const customer = this.state.customers.find((c) => c.id === data.customerId);
-
-    const project: Project = {
-      id: generateUniqueId('prj'),
-      code: data.code.trim().toUpperCase(),
-      name: data.name.trim(),
-      customerId: data.customerId,
-      customerName: customer ? customer.name : data.customerName || '',
-      contractValue: Number(data.contractValue) || 0,
-      startDate: data.startDate,
-      endDate: data.endDate,
-      status: data.status,
-      remarks: data.remarks,
-      createdAt: new Date().toISOString(),
-    };
-
-    this.state.projects.push(project);
-    this.addAuditLog('CREATE_PROJECT', 'Projects', `Created project "${project.name}" (Code: ${project.code})`, project.code, project.id);
-    this.saveState();
-    return project;
+    await this.persistAuditLog('CREATE_PROJECT', 'Projects', `Created project "${row.name}" (Code: ${row.code})`, row.code, row.id);
+    await this.loadAll();
+    return this.state.projects.find((p) => p.id === row.id) || this.mapProject(row);
   }
 
-  public createCustomer(data: Omit<Customer, 'id' | 'createdAt'>): Customer {
+  public async createCustomer(data: Omit<Customer, 'id' | 'createdAt'>): Promise<Customer> {
     if (!data.code?.trim()) throw new Error('Customer Code is required.');
     if (!data.name?.trim()) throw new Error('Customer Name is required.');
 
-    const exists = this.state.customers.find((c) => c.code.toLowerCase() === data.code.toLowerCase());
-    if (exists) throw new Error(`Customer Code "${data.code}" already exists.`);
+    const client = this.requireClient();
+    const { data: row, error } = await client
+      .from('customers')
+      .insert({
+        code: data.code.trim().toUpperCase(),
+        name: data.name.trim(),
+        contact_person: data.contactPerson || null,
+        phone: data.phone || null,
+        email: data.email || null,
+        address: data.address || null,
+        opening_balance: Number(data.openingBalance) || 0,
+        status: data.status,
+        remarks: data.remarks || null,
+        created_by: authService.getCurrentUser()?.id,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.code === '23505' ? `Customer Code "${data.code}" already exists.` : error.message);
 
-    const customer: Customer = {
-      id: generateUniqueId('cust'),
-      code: data.code.trim().toUpperCase(),
-      name: data.name.trim(),
-      contactPerson: data.contactPerson,
-      phone: data.phone,
-      email: data.email,
-      address: data.address,
-      openingBalance: Number(data.openingBalance) || 0,
-      status: data.status,
-      remarks: data.remarks,
-      createdAt: new Date().toISOString(),
-    };
-
-    this.state.customers.push(customer);
-    this.addAuditLog('CREATE_CUSTOMER', 'Customers & Receivables', `Created customer "${customer.name}" (${customer.code})`, customer.code, customer.id);
-    this.saveState();
-    return customer;
+    await this.persistAuditLog('CREATE_CUSTOMER', 'Customers & Receivables', `Created customer "${row.name}" (${row.code})`, row.code, row.id);
+    await this.loadAll();
+    return this.state.customers.find((c) => c.id === row.id) || this.mapCustomer(row);
   }
 
-  public createVendor(data: Omit<Vendor, 'id' | 'createdAt'>): Vendor {
+  public async createVendor(data: Omit<Vendor, 'id' | 'createdAt'>): Promise<Vendor> {
     if (!data.code?.trim()) throw new Error('Vendor Code is required.');
     if (!data.name?.trim()) throw new Error('Vendor Name is required.');
 
-    const exists = this.state.vendors.find((v) => v.code.toLowerCase() === data.code.toLowerCase());
-    if (exists) throw new Error(`Vendor Code "${data.code}" already exists.`);
+    const client = this.requireClient();
+    const { data: row, error } = await client
+      .from('vendors')
+      .insert({
+        code: data.code.trim().toUpperCase(),
+        name: data.name.trim(),
+        category: data.category || null,
+        contact_person: data.contactPerson || null,
+        phone: data.phone || null,
+        email: data.email || null,
+        address: data.address || null,
+        opening_balance: Number(data.openingBalance) || 0,
+        status: data.status,
+        remarks: data.remarks || null,
+        created_by: authService.getCurrentUser()?.id,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.code === '23505' ? `Vendor Code "${data.code}" already exists.` : error.message);
 
-    const vendor: Vendor = {
-      id: generateUniqueId('vend'),
-      code: data.code.trim().toUpperCase(),
-      name: data.name.trim(),
-      contactPerson: data.contactPerson,
-      phone: data.phone,
-      email: data.email,
-      address: data.address,
-      openingBalance: Number(data.openingBalance) || 0,
-      status: data.status,
-      remarks: data.remarks,
-      createdAt: new Date().toISOString(),
-    };
-
-    this.state.vendors.push(vendor);
-    this.addAuditLog('CREATE_VENDOR', 'Purchases & Payables', `Created vendor "${vendor.name}" (${vendor.code})`, vendor.code, vendor.id);
-    this.saveState();
-    return vendor;
+    await this.persistAuditLog('CREATE_VENDOR', 'Purchases & Payables', `Created vendor "${row.name}" (${row.code})`, row.code, row.id);
+    await this.loadAll();
+    return this.state.vendors.find((v) => v.id === row.id) || this.mapVendor(row);
   }
 
-  public createBankAccount(data: Omit<BankAccount, 'id' | 'currentBalance' | 'createdAt'>): BankAccount {
+  public async createBankAccount(data: Omit<BankAccount, 'id' | 'currentBalance' | 'createdAt'>): Promise<BankAccount> {
     if (!data.bankName?.trim()) throw new Error('Bank Name is required.');
     if (!data.accountName?.trim()) throw new Error('Account Name is required.');
 
-    const bank: BankAccount = {
-      id: generateUniqueId('bank'),
-      bankName: data.bankName.trim(),
-      accountName: data.accountName.trim(),
-      accountNumber: data.accountNumber,
-      currency: 'OMR',
-      openingBalance: Number(data.openingBalance) || 0,
-      currentBalance: Number(data.openingBalance) || 0,
-      openingDate: data.openingDate || new Date().toISOString().split('T')[0],
-      status: data.status,
-      remarks: data.remarks,
-      createdAt: new Date().toISOString(),
-    };
+    const client = this.requireClient();
+    const opening = Number(data.openingBalance) || 0;
+    const { data: row, error } = await client
+      .from('bank_accounts')
+      .insert({
+        bank_name: data.bankName.trim(),
+        account_name: data.accountName.trim(),
+        account_number: data.accountNumber || null,
+        iban: data.iban || null,
+        branch: data.branch || null,
+        currency: 'OMR',
+        opening_balance: opening,
+        current_balance: opening,
+        opening_date: data.openingDate || new Date().toISOString().split('T')[0],
+        status: data.status,
+        remarks: data.remarks || null,
+        created_by: authService.getCurrentUser()?.id,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
 
-    this.state.bankAccounts.push(bank);
-    this.addAuditLog('CREATE_BANK_ACCOUNT', 'Banking & Treasury', `Created bank account "${bank.accountName}" at ${bank.bankName}`, bank.accountNumber, bank.id);
-    this.saveState();
-    return bank;
+    await this.persistAuditLog('CREATE_BANK_ACCOUNT', 'Banking & Treasury', `Created bank account "${row.account_name}" at ${row.bank_name}`, row.account_number, row.id);
+    await this.loadAll();
+    return this.state.bankAccounts.find((b) => b.id === row.id) || this.mapBankAccount(row);
   }
 
-  public createExpenseHead(data: Omit<ExpenseHead, 'id'>): ExpenseHead {
+  public async createCashAccount(data: Omit<CashAccount, 'id' | 'currentBalance' | 'createdAt'>): Promise<CashAccount> {
+    if (!data.accountName?.trim()) throw new Error('Cash Account Name is required.');
+
+    const client = this.requireClient();
+    const opening = Number(data.openingBalance) || 0;
+    const { data: row, error } = await client
+      .from('cash_accounts')
+      .insert({
+        account_name: data.accountName.trim(),
+        opening_balance: opening,
+        current_balance: opening,
+        opening_date: data.openingDate || new Date().toISOString().split('T')[0],
+        status: data.status || 'active',
+        remarks: data.remarks?.trim() || null,
+        created_by: authService.getCurrentUser()?.id,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+
+    await this.persistAuditLog('CREATE_CASH_ACCOUNT', 'Banking & Treasury', `Created Cash in Hand account "${row.account_name}"`, 'Cash in Hand', row.id);
+    await this.loadAll();
+    return this.state.cashAccounts.find((c) => c.id === row.id) || this.mapCashAccount(row);
+  }
+
+  public async createPettyCashAccount(data: Omit<PettyCashAccount, 'id' | 'currentBalance' | 'createdAt'>): Promise<PettyCashAccount> {
+    if (!data.accountName?.trim()) throw new Error('Petty Cash Account Name is required.');
+
+    const client = this.requireClient();
+    const opening = Number(data.openingBalance) || 0;
+    const { data: row, error } = await client
+      .from('petty_cash_accounts')
+      .insert({
+        account_name: data.accountName.trim(),
+        opening_balance: opening,
+        current_balance: opening,
+        opening_date: data.openingDate || new Date().toISOString().split('T')[0],
+        status: data.status || 'active',
+        remarks: data.remarks?.trim() || null,
+        created_by: authService.getCurrentUser()?.id,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+
+    await this.persistAuditLog('CREATE_PETTY_CASH_ACCOUNT', 'Banking & Treasury', `Created Petty Cash account "${row.account_name}"`, 'Petty Cash', row.id);
+    await this.loadAll();
+    return this.state.pettyCashAccounts.find((p) => p.id === row.id) || this.mapPettyCashAccount(row);
+  }
+
+  public async createExpenseHead(data: Omit<ExpenseHead, 'id'>): Promise<ExpenseHead> {
     if (!data.name?.trim()) throw new Error('Expense category name is required.');
     const trimmedName = data.name.trim();
 
-    const duplicate = this.state.expenseHeads.find(
-      (h) => h.name.toLowerCase() === trimmedName.toLowerCase()
-    );
-    if (duplicate) {
-      throw new Error(`Expense category "${trimmedName}" already exists.`);
-    }
+    const client = this.requireClient();
+    const { data: row, error } = await client
+      .from('expense_heads')
+      .insert({
+        name: trimmedName,
+        category: data.category?.trim() || 'Direct Project Cost',
+        status: data.status || 'active',
+        remarks: data.description?.trim() || data.remarks?.trim() || null,
+        created_by: authService.getCurrentUser()?.id,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.code === '23505' ? `Expense category "${trimmedName}" already exists.` : error.message);
 
-    const head: ExpenseHead = {
-      id: generateUniqueId('exp-head'),
-      name: trimmedName,
-      category: data.category?.trim() || 'Direct Project Cost',
-      description: data.description?.trim(),
-      status: data.status || 'active',
-      remarks: data.remarks?.trim(),
-    };
-    this.state.expenseHeads.push(head);
-    this.addAuditLog(
-      'CREATE_EXPENSE_HEAD',
-      'Masters & Settings',
-      `Created expense category "${head.name}" under grouping "${head.category}"`,
-      undefined,
-      head.id
-    );
-    this.saveState();
-    return head;
+    await this.persistAuditLog('CREATE_EXPENSE_HEAD', 'Masters & Settings', `Created expense category "${row.name}" under grouping "${row.category}"`, undefined, row.id);
+    await this.loadAll();
+    return this.state.expenseHeads.find((h) => h.id === row.id) || this.mapExpenseHead(row);
   }
 
-  public updateExpenseHead(
-    id: string,
-    updates: Partial<Omit<ExpenseHead, 'id'>>
-  ): ExpenseHead {
+  public async updateExpenseHead(id: string, updates: Partial<Omit<ExpenseHead, 'id'>>): Promise<ExpenseHead> {
     const head = this.state.expenseHeads.find((h) => h.id === id);
     if (!head) throw new Error('Expense category not found.');
 
+    const client = this.requireClient();
+    const patch: Record<string, any> = {};
     if (updates.name !== undefined) {
       const trimmedName = updates.name.trim();
       if (!trimmedName) throw new Error('Expense category name cannot be empty.');
-      const duplicate = this.state.expenseHeads.find(
-        (h) => h.id !== id && h.name.toLowerCase() === trimmedName.toLowerCase()
-      );
-      if (duplicate) {
-        throw new Error(`Expense category "${trimmedName}" already exists.`);
-      }
-      head.name = trimmedName;
+      patch.name = trimmedName;
+    }
+    if (updates.category !== undefined) patch.category = updates.category.trim();
+    if (updates.status !== undefined) patch.status = updates.status;
+    if (updates.description !== undefined || updates.remarks !== undefined) {
+      patch.remarks = updates.description?.trim() || updates.remarks?.trim() || null;
     }
 
-    if (updates.category !== undefined) head.category = updates.category.trim();
-    if (updates.description !== undefined) head.description = updates.description.trim();
-    if (updates.status !== undefined) head.status = updates.status;
-    if (updates.remarks !== undefined) head.remarks = updates.remarks.trim();
+    const { data: row, error } = await client.from('expense_heads').update(patch).eq('id', id).select().single();
+    if (error) throw new Error(error.code === '23505' ? `Expense category "${patch.name}" already exists.` : error.message);
 
-    this.addAuditLog(
-      'UPDATE_EXPENSE_HEAD',
-      'Masters & Settings',
-      `Updated expense category "${head.name}" (${head.category})`,
-      undefined,
-      head.id
-    );
-    this.saveState();
-    return head;
+    await this.persistAuditLog('UPDATE_EXPENSE_HEAD', 'Masters & Settings', `Updated expense category "${row.name}" (${row.category})`, undefined, row.id);
+    await this.loadAll();
+    return this.state.expenseHeads.find((h) => h.id === id) || this.mapExpenseHead(row);
   }
 
-  public deleteExpenseHead(id: string): void {
+  public async deleteExpenseHead(id: string): Promise<void> {
     const head = this.state.expenseHeads.find((h) => h.id === id);
     if (!head) throw new Error('Expense category not found.');
 
     const hasExpenses = this.state.directExpenses.some((e) => e.expenseHeadId === id);
     const hasMoneyOut = this.state.moneyOutList.some((m) => m.expenseHeadId === id);
     if (hasExpenses || hasMoneyOut) {
-      throw new Error(
-        `Cannot delete category "${head.name}" because transactions are recorded against it. You can mark it inactive instead.`
-      );
+      throw new Error(`Cannot delete category "${head.name}" because transactions are recorded against it. You can mark it inactive instead.`);
     }
 
-    this.state.expenseHeads = this.state.expenseHeads.filter((h) => h.id !== id);
-    this.addAuditLog(
-      'DELETE_EXPENSE_HEAD',
-      'Masters & Settings',
-      `Deleted expense category "${head.name}"`,
-      undefined,
-      id
-    );
-    this.saveState();
+    const client = this.requireClient();
+    const { error } = await client.from('expense_heads').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+
+    await this.persistAuditLog('DELETE_EXPENSE_HEAD', 'Masters & Settings', `Deleted expense category "${head.name}"`, undefined, id);
+    await this.loadAll();
   }
 
   // -------------------------------------------------------------
-  // 9. REVERSAL / VOID TRANSACTION WITH AUDIT TRAIL
+  // 9. REVERSAL / VOID TRANSACTION (server-enforced via reverse_transaction RPC)
   // -------------------------------------------------------------
-  public reverseTransaction(
-    typeOrId: 'invoice' | 'purchase' | 'money_in' | 'money_out' | 'expense' | 'transfer' | string,
-    idOrReason: string,
-    maybeReason?: string
-  ) {
+  public async reverseTransaction(typeOrId: string, idOrReason: string, maybeReason?: string): Promise<void> {
     let type = typeOrId;
     let id = idOrReason;
     let reason = maybeReason || '';
 
     if (!maybeReason) {
-      // 2-argument signature: reverseTransaction(id, reason)
       id = typeOrId;
       reason = idOrReason;
-
-      if (this.state.clientInvoices.some((i) => i.id === id)) {
-        type = 'invoice';
-      } else if (this.state.purchases.some((p) => p.id === id)) {
-        type = 'purchase';
-      } else if (this.state.moneyInList.some((m) => m.id === id)) {
-        type = 'money_in';
-      } else if (this.state.moneyOutList.some((m) => m.id === id)) {
-        type = 'money_out';
-      } else if (this.state.directExpenses.some((e) => e.id === id)) {
-        type = 'expense';
-      } else if (this.state.transfers.some((t) => t.id === id)) {
-        type = 'transfer';
-      } else {
-        throw new Error('Transaction not found');
-      }
+      if (this.state.clientInvoices.some((i) => i.id === id)) type = 'invoices';
+      else if (this.state.purchases.some((p) => p.id === id)) type = 'purchases';
+      else if (this.state.moneyInList.some((m) => m.id === id)) type = 'money_in';
+      else if (this.state.moneyOutList.some((m) => m.id === id)) type = 'money_out';
+      else if (this.state.directExpenses.some((e) => e.id === id)) type = 'expenses';
+      else if (this.state.transfers.some((t) => t.id === id)) type = 'transfers';
+      else throw new Error('Transaction not found');
+    } else {
+      // Normalize legacy singular module names to the RPC's module keys.
+      const moduleMap: Record<string, string> = {
+        invoice: 'invoices', purchase: 'purchases', money_in: 'money_in',
+        money_out: 'money_out', expense: 'expenses', transfer: 'transfers',
+      };
+      type = moduleMap[type] || type;
     }
 
     if (!reason?.trim()) throw new Error('Reversal reason is required.');
 
-    if (type === 'invoice') {
-      const inv = this.state.clientInvoices.find((i) => i.id === id);
-      if (!inv) throw new Error('Invoice not found');
-      if (inv.status === 'reversed') throw new Error('Invoice already reversed');
-      if (inv.receivedAmount > 0) throw new Error('Cannot reverse invoice with client receipts applied. Reverse receipts first.');
+    const client = this.requireClient();
+    const { error } = await client.rpc('reverse_transaction', { p_module: type, p_id: id, p_reason: reason });
+    if (error) throw new Error(error.message);
 
-      inv.status = 'reversed';
-      this.addAuditLog('REVERSE_INVOICE', 'Invoices & IPC', `Reversed Invoice #${inv.invoiceNumber}. Reason: ${reason}`, inv.documentRef, inv.id);
-    } else if (type === 'purchase') {
-      const pur = this.state.purchases.find((p) => p.id === id);
-      if (!pur) throw new Error('Purchase not found');
-      if (pur.status === 'reversed') throw new Error('Purchase already reversed');
-      if (pur.paidAmount > 0) throw new Error('Cannot reverse purchase with payments applied. Reverse payments first.');
-
-      pur.status = 'reversed';
-      this.addAuditLog('REVERSE_PURCHASE', 'Purchases & Payables', `Reversed Purchase #${pur.purchaseInvoiceNumber}. Reason: ${reason}`, pur.documentRef, pur.id);
-    } else if (type === 'money_in') {
-      const mi = this.state.moneyInList.find((m) => m.id === id);
-      if (!mi) throw new Error('Money In record not found');
-      if (mi.status === 'reversed') throw new Error('Transaction already reversed');
-
-      // Reverse account balance
-      this.updateAccountBalance(mi.receivedInto, mi.accountId, -mi.amount);
-
-      // Restore invoice balance
-      if (mi.invoiceId) {
-        const inv = this.state.clientInvoices.find((i) => i.id === mi.invoiceId);
-        if (inv) {
-          inv.receivedAmount = Math.max(0, subtractMoney(inv.receivedAmount, mi.amount));
-          inv.outstandingAmount = subtractMoney(inv.amount, inv.receivedAmount);
-        }
-      }
-      mi.status = 'reversed';
-      this.addAuditLog('REVERSE_MONEY_IN', 'Banking & Treasury', `Reversed Money In receipt of OMR ${mi.amount}. Reason: ${reason}`, mi.documentRef, mi.id);
-    } else if (type === 'money_out') {
-      const mo = this.state.moneyOutList.find((m) => m.id === id);
-      if (!mo) throw new Error('Money Out record not found');
-      if (mo.status === 'reversed') throw new Error('Transaction already reversed');
-
-      // Restore account balance
-      this.updateAccountBalance(mo.paidFrom, mo.accountId, mo.amount);
-
-      // Restore purchase balance
-      if (mo.purchaseId) {
-        const pur = this.state.purchases.find((p) => p.id === mo.purchaseId);
-        if (pur) {
-          pur.paidAmount = Math.max(0, subtractMoney(pur.paidAmount, mo.amount));
-          pur.outstandingAmount = subtractMoney(pur.amount, pur.paidAmount);
-        }
-      }
-      mo.status = 'reversed';
-      this.addAuditLog('REVERSE_MONEY_OUT', 'Purchases & Payables', `Reversed Money Out payment of OMR ${mo.amount}. Reason: ${reason}`, mo.documentRef, mo.id);
-    } else if (type === 'expense') {
-      const exp = this.state.directExpenses.find((e) => e.id === id);
-      if (!exp) throw new Error('Expense not found');
-      if (exp.status === 'reversed') throw new Error('Expense already reversed');
-
-      // Restore account balance
-      this.updateAccountBalance(exp.paidFrom, exp.accountId, exp.amount);
-      exp.status = 'reversed';
-      this.addAuditLog('REVERSE_EXPENSE', 'Expenses', `Reversed Direct Expense OMR ${exp.amount}. Reason: ${reason}`, exp.documentRef, exp.id);
-    } else if (type === 'transfer') {
-      const xfer = this.state.transfers.find((t) => t.id === id);
-      if (!xfer) throw new Error('Transfer not found');
-      if (xfer.status === 'reversed') throw new Error('Transfer already reversed');
-
-      // Reverse balances
-      this.updateAccountBalance(xfer.transferFromType, xfer.transferFromId, xfer.amount);
-      this.updateAccountBalance(xfer.transferToType, xfer.transferToId, -xfer.amount);
-      xfer.status = 'reversed';
-      this.addAuditLog('REVERSE_TRANSFER', 'Banking & Treasury', `Reversed Transfer OMR ${xfer.amount}. Reason: ${reason}`, xfer.documentRef, xfer.id);
-    }
-
-    // Update corresponding Journal Entry status to 'reversed' for full audit traceability
-    const matchingJE = this.state.journalEntries.find((j) => j.sourceId === id);
-    if (matchingJE) {
-      matchingJE.status = 'reversed';
-    }
-
-    this.saveState();
+    await this.loadAll();
   }
 
-  public updateTransactionWorkflowStatus(
+  // -------------------------------------------------------------
+  // APPROVAL WORKFLOW STATE TRANSITIONS (server-enforced via transition_transaction RPC)
+  // -------------------------------------------------------------
+  public async transitionTransaction(
+    module: 'invoices' | 'purchases' | 'money_in' | 'money_out' | 'expenses',
+    id: string,
+    action: 'submit' | 'approve' | 'reject' | 'post',
+    reason?: string
+  ): Promise<void> {
+    const client = this.requireClient();
+    const { error } = await client.rpc('transition_transaction', { p_module: module, p_id: id, p_action: action, p_reason: reason });
+    if (error) throw new Error(error.message);
+    await this.loadAll();
+  }
+
+  /** @deprecated retained for existing call sites; prefer transitionTransaction() which is server-enforced. */
+  public async updateTransactionWorkflowStatus(
     id: string,
     status: TransactionStatus,
     meta: {
-      submittedBy?: string;
-      submittedAt?: string;
-      approvedBy?: string;
-      approvedByName?: string;
-      approvedAt?: string;
-      postedBy?: string;
-      postedAt?: string;
-      rejectionReason?: string;
+      submittedBy?: string; submittedAt?: string; approvedBy?: string; approvedByName?: string;
+      approvedAt?: string; postedBy?: string; postedAt?: string; rejectionReason?: string;
     }
-  ): void {
-    const inv = this.state.clientInvoices.find((x) => x.id === id);
-    if (inv) {
-      inv.status = status;
-      Object.assign(inv, meta);
-      this.saveState();
-      return;
-    }
+  ): Promise<void> {
+    const moduleForId = (id: string): 'invoices' | 'purchases' | 'money_in' | 'money_out' | 'expenses' | null => {
+      if (this.state.clientInvoices.some((x) => x.id === id)) return 'invoices';
+      if (this.state.purchases.some((x) => x.id === id)) return 'purchases';
+      if (this.state.moneyInList.some((x) => x.id === id)) return 'money_in';
+      if (this.state.moneyOutList.some((x) => x.id === id)) return 'money_out';
+      if (this.state.directExpenses.some((x) => x.id === id)) return 'expenses';
+      return null;
+    };
+    const module = moduleForId(id);
+    if (!module) return;
 
-    const p = this.state.purchases.find((x) => x.id === id);
-    if (p) {
-      p.status = status;
-      Object.assign(p, meta);
-      this.saveState();
-      return;
-    }
+    const actionForStatus: Record<string, 'submit' | 'approve' | 'reject' | 'post'> = {
+      submitted: 'submit', approved: 'approve', rejected: 'reject', posted: 'post',
+    };
+    const action = actionForStatus[status];
+    if (!action) return;
 
-    const mi = this.state.moneyInList.find((x) => x.id === id);
-    if (mi) {
-      mi.status = status;
-      Object.assign(mi, meta);
-      this.saveState();
-      return;
-    }
-
-    const mo = this.state.moneyOutList.find((x) => x.id === id);
-    if (mo) {
-      mo.status = status;
-      Object.assign(mo, meta);
-      this.saveState();
-      return;
-    }
-
-    const exp = this.state.directExpenses.find((x) => x.id === id);
-    if (exp) {
-      exp.status = status;
-      Object.assign(exp, meta);
-      this.saveState();
-      return;
-    }
-
-    const t = this.state.transfers.find((x) => x.id === id);
-    if (t) {
-      t.status = status;
-      Object.assign(t, meta);
-      this.saveState();
-      return;
-    }
+    await this.transitionTransaction(module, id, action, meta.rejectionReason);
   }
 
   // -------------------------------------------------------------
-  // 10. DOUBLE ENTRY JOURNAL ENTRY ENGINE
+  // AUDIT LOG
   // -------------------------------------------------------------
-  private createJournalEntry(data: Omit<JournalEntry, 'id' | 'status' | 'createdAt'>) {
-    const entry: JournalEntry = {
-      id: generateUniqueId('je'),
-      entryNumber: data.entryNumber,
-      date: data.date,
-      sourceType: data.sourceType,
-      sourceId: data.sourceId,
-      projectId: data.projectId,
-      customerId: data.customerId,
-      vendorId: data.vendorId,
-      description: data.description,
-      debitAccount: data.debitAccount,
-      creditAccount: data.creditAccount,
-      amount: data.amount,
-      status: 'posted',
-      createdAt: new Date().toISOString(),
-    };
-    this.state.journalEntries.push(entry);
+  private async persistAuditLog(action: string, module: string, details: string, docRef?: string, txId?: string): Promise<void> {
+    const client = getSupabaseClient();
+    if (!client) return;
+    const authUser = authService.getCurrentUser();
+    await client.from('audit_logs').insert({
+      user_id: authUser?.id,
+      user_name: authUser?.fullName || 'Unknown User',
+      user_role: authUser?.roleCode || 'unknown',
+      action,
+      module,
+      transaction_id: txId,
+      document_ref: docRef,
+      details,
+    });
+  }
+
+  public addAuditLog(action: string, module: string, details: string, docRef?: string, txId?: string): void {
+    this.persistAuditLog(action, module, details, docRef, txId).then(() => this.loadAll());
   }
 
   public getJournalEntries(): JournalEntry[] {
@@ -2124,10 +1677,61 @@ class AccountingService {
     });
   }
 
+  private activeTreasuryAccountId: string = 'all';
+
+  public setActiveTreasuryAccountId(id: string): void {
+    this.activeTreasuryAccountId = id || 'all';
+  }
+
+  public getActiveTreasuryAccountId(): string {
+    return this.activeTreasuryAccountId;
+  }
+
   /**
    * Treasury Ledger for Bank, Cash or Petty Cash account
+   * Supports both (accountType, accountId) and single-argument polymorphic usage (accountTypeOrId)
    */
-  public getTreasuryLedger(accountType?: TreasuryAccountType, accountId?: string): TreasuryLedgerEntry[] {
+  public getTreasuryLedger(accountTypeOrId?: TreasuryAccountType | string, accountIdParam?: string): TreasuryLedgerEntry[] {
+    let effectiveType: TreasuryAccountType | undefined;
+    let effectiveAccountId: string | undefined;
+
+    if (accountIdParam) {
+      effectiveType = accountTypeOrId as TreasuryAccountType;
+      effectiveAccountId = accountIdParam;
+    } else if (accountTypeOrId && accountTypeOrId !== 'all') {
+      if (accountTypeOrId === 'bank' || accountTypeOrId === 'cash' || accountTypeOrId === 'petty_cash') {
+        effectiveType = accountTypeOrId as TreasuryAccountType;
+      } else if (accountTypeOrId.startsWith('group:')) {
+        effectiveType = accountTypeOrId.replace('group:', '') as TreasuryAccountType;
+      } else {
+        effectiveAccountId = accountTypeOrId;
+        // Auto-detect type if this is an account ID
+        if (this.state.bankAccounts.some((b) => b.id === effectiveAccountId)) {
+          effectiveType = 'bank';
+        } else if (this.state.cashAccounts.some((c) => c.id === effectiveAccountId)) {
+          effectiveType = 'cash';
+        } else if (this.state.pettyCashAccounts.some((p) => p.id === effectiveAccountId)) {
+          effectiveType = 'petty_cash';
+        }
+      }
+    }
+
+    const targetAccountObj = effectiveAccountId
+      ? this.state.bankAccounts.find((b) => b.id === effectiveAccountId) ||
+        this.state.cashAccounts.find((c) => c.id === effectiveAccountId) ||
+        this.state.pettyCashAccounts.find((p) => p.id === effectiveAccountId)
+      : undefined;
+
+    const matchesAccount = (txType: TreasuryAccountType, txAccountId?: string, txAccountName?: string): boolean => {
+      if (effectiveType && txType !== effectiveType) return false;
+      if (effectiveAccountId) {
+        if (txAccountId && txAccountId === effectiveAccountId) return true;
+        if (txAccountName && targetAccountObj && txAccountName === targetAccountObj.accountName) return true;
+        return false;
+      }
+      return true;
+    };
+
     const rawItems: {
       accountType: TreasuryAccountType;
       accountId: string;
@@ -2142,9 +1746,52 @@ class AccountingService {
       status: TransactionStatus;
     }[] = [];
 
+    // Opening Balances
+    if (targetAccountObj) {
+      if (targetAccountObj.openingBalance > 0) {
+        rawItems.push({
+          accountType: effectiveType || 'bank',
+          accountId: targetAccountObj.id,
+          accountName: targetAccountObj.accountName,
+          date: (targetAccountObj as any).openingDate || '2026-01-01',
+          type: 'Opening Balance',
+          documentRef: `OB-${targetAccountObj.id.toUpperCase()}`,
+          partyName: 'Opening Balance',
+          description: `Opening Balance for ${targetAccountObj.accountName}`,
+          inflow: targetAccountObj.openingBalance,
+          outflow: 0,
+          status: 'posted',
+        });
+      }
+    } else {
+      const allAccountsList = [
+        ...this.state.bankAccounts.map((b) => ({ ...b, type: 'bank' as TreasuryAccountType })),
+        ...this.state.cashAccounts.map((c) => ({ ...c, type: 'cash' as TreasuryAccountType })),
+        ...this.state.pettyCashAccounts.map((p) => ({ ...p, type: 'petty_cash' as TreasuryAccountType })),
+      ];
+
+      allAccountsList.forEach((acc) => {
+        if ((!effectiveType || acc.type === effectiveType) && acc.openingBalance > 0) {
+          rawItems.push({
+            accountType: acc.type,
+            accountId: acc.id,
+            accountName: acc.accountName,
+            date: (acc as any).openingDate || '2026-01-01',
+            type: 'Opening Balance',
+            documentRef: `OB-${acc.id.toUpperCase()}`,
+            partyName: 'Opening Balance',
+            description: `Opening Balance for ${acc.accountName}`,
+            inflow: acc.openingBalance,
+            outflow: 0,
+            status: 'posted',
+          });
+        }
+      });
+    }
+
     // Money In
     this.state.moneyInList
-      .filter((m) => (!accountType || m.receivedInto === accountType) && (!accountId || m.accountId === accountId))
+      .filter((m) => matchesAccount(m.receivedInto, m.accountId, m.accountName))
       .forEach((m) => {
         rawItems.push({
           accountType: m.receivedInto,
@@ -2163,7 +1810,7 @@ class AccountingService {
 
     // Money Out
     this.state.moneyOutList
-      .filter((m) => (!accountType || m.paidFrom === accountType) && (!accountId || m.accountId === accountId))
+      .filter((m) => matchesAccount(m.paidFrom, m.accountId, m.accountName))
       .forEach((m) => {
         rawItems.push({
           accountType: m.paidFrom,
@@ -2182,7 +1829,7 @@ class AccountingService {
 
     // Direct Expenses
     this.state.directExpenses
-      .filter((e) => (!accountType || e.paidFrom === accountType) && (!accountId || e.accountId === accountId))
+      .filter((e) => matchesAccount(e.paidFrom, e.accountId, e.accountName))
       .forEach((e) => {
         rawItems.push({
           accountType: e.paidFrom,
@@ -2202,7 +1849,7 @@ class AccountingService {
     // Transfers
     this.state.transfers.forEach((t) => {
       // Outflow side
-      if ((!accountType || t.transferFromType === accountType) && (!accountId || t.transferFromId === accountId)) {
+      if (matchesAccount(t.transferFromType, t.transferFromId, t.transferFromName)) {
         rawItems.push({
           accountType: t.transferFromType,
           accountId: t.transferFromId,
@@ -2218,7 +1865,7 @@ class AccountingService {
         });
       }
       // Inflow side
-      if ((!accountType || t.transferToType === accountType) && (!accountId || t.transferToId === accountId)) {
+      if (matchesAccount(t.transferToType, t.transferToId, t.transferToName)) {
         rawItems.push({
           accountType: t.transferToType,
           accountId: t.transferToId,
@@ -2343,7 +1990,7 @@ class AccountingService {
       projectId: project.id,
       projectName: project.name,
       projectCode: project.code,
-      customerName: project.customerName,
+      customerName: project.customerName || '',
       contractValue: project.contractValue,
       totalInvoiced,
       totalReceived,
@@ -2633,264 +2280,6 @@ class AccountingService {
     });
 
     return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }
-
-  // -------------------------------------------------------------
-  // 14. ACCEPTANCE TEST RUNNER (PROMPT SCENARIO 49)
-  // -------------------------------------------------------------
-  /**
-   * Automatically executes the exact scenario from prompt #49:
-   * 1. Project: Al Khoudh Villa Project (PRJ-AKV-001)
-   * 2. Client Invoice: IPC-001 OMR 10,000.000 (Customer: Al Harthy Properties LLC)
-   * 3. Client Receipt: OMR 5,000.000 into Bank Muscat (BR-001)
-   * 4. Vendor Purchase: PUR-001 OMR 3,000.000 (Vendor: Al Batinah Building Materials LLC)
-   * 5. Vendor Payment: OMR 1,000.000 from Bank Muscat (PV-001)
-   * 6. Direct Expense: Fuel OMR 50.000 from Petty Cash (EXP-001)
-   *
-   * Verifies that the resulting numbers match the test specification exactly:
-   * Customer: Invoice 10,000.000 | Received 5,000.000 | Outstanding 5,000.000
-   * Vendor: Purchase 3,000.000 | Paid 1,000.000 | Outstanding 2,000.000
-   * Project: Revenue 10,000.000 | Cost 3,050.000 | Profit 6,950.000
-   * Bank Muscat: Net change +4,000.000 (+5,000 receipt - 1,000 payment)
-   * Petty Cash: Net change -50.000
-   */
-  public executeAcceptanceTestScenario() {
-    const project = this.state.projects.find((p) => p.code === 'PRJ-AKV-001') || this.state.projects[0];
-    const customer = this.state.customers.find((c) => c.code === 'CUST-001') || this.state.customers[0];
-    const vendor = this.state.vendors.find((v) => v.code === 'VEND-001') || this.state.vendors[0];
-    const bank = this.state.bankAccounts.find((b) => b.bankName.includes('Muscat')) || this.state.bankAccounts[0];
-    const petty = this.state.pettyCashAccounts[0];
-
-    const today = new Date().toISOString().split('T')[0];
-
-    // Clean up any previous test runs of IPC-001 / PUR-001 to ensure idempotent clean execution
-    this.state.clientInvoices = this.state.clientInvoices.filter((i) => i.invoiceNumber !== 'IPC-001');
-    this.state.purchases = this.state.purchases.filter((p) => p.purchaseInvoiceNumber !== 'PUR-001');
-    this.state.moneyInList = this.state.moneyInList.filter((m) => m.documentRef !== 'BR-001');
-    this.state.moneyOutList = this.state.moneyOutList.filter((m) => m.documentRef !== 'PV-001');
-    this.state.directExpenses = this.state.directExpenses.filter((e) => e.documentRef !== 'EXP-001');
-
-    // 1. Client Invoice: IPC-001 OMR 10,000.000
-    const invoice = this.createClientInvoice({
-      invoiceType: 'IPC',
-      invoiceNumber: 'IPC-001',
-      date: today,
-      customerId: customer.id,
-      projectId: project.id,
-      description: 'Interim Payment Certificate #1 - Foundation & Substructure Works',
-      amount: 10000.0,
-      documentRef: 'IPC-001',
-      remarks: 'Certified by Consultant Engineer',
-    });
-
-    // 2. Client Receipt: OMR 5,000.000 into Bank Muscat (Ref: BR-001)
-    this.recordMoneyIn({
-      transactionDate: today,
-      receivedFrom: customer.name,
-      customerId: customer.id,
-      projectId: project.id,
-      against: 'invoice',
-      invoiceId: invoice.id,
-      amount: 5000.0,
-      receivedInto: 'bank',
-      accountId: bank.id,
-      documentRef: 'BR-001',
-      remarks: '50% advance settlement on IPC-001 via Wire Transfer',
-    });
-
-    // 3. Vendor Purchase: PUR-001 OMR 3,000.000 (Vendor: Al Batinah Building Materials)
-    const purchase = this.createPurchase({
-      purchaseInvoiceNumber: 'PUR-001',
-      date: today,
-      vendorId: vendor.id,
-      projectId: project.id,
-      purchaseCategory: 'Materials',
-      description: 'High tensile steel rebar 16mm & 12mm - 6 Tons',
-      amount: 3000.0,
-      documentRef: 'PUR-001',
-      remarks: 'Batch inspection certificate attached',
-    });
-
-    // 4. Vendor Payment: OMR 1,000.000 from Bank Muscat (Ref: PV-001)
-    this.recordMoneyOut({
-      transactionDate: today,
-      paidTo: vendor.name,
-      vendorId: vendor.id,
-      projectId: project.id,
-      paymentFor: 'purchase',
-      purchaseId: purchase.id,
-      amount: 1000.0,
-      paidFrom: 'bank',
-      accountId: bank.id,
-      documentRef: 'PV-001',
-      remarks: 'Part payment voucher for steel rebar invoice PUR-001',
-    });
-
-    // 5. Direct Expense: Fuel OMR 50.000 from Petty Cash (Ref: EXP-001)
-    const fuelHead = this.state.expenseHeads.find((h) => h.name.includes('Fuel')) || this.state.expenseHeads[0];
-    this.createDirectExpense({
-      expenseDate: today,
-      projectId: project.id,
-      expenseHeadId: fuelHead.id,
-      description: 'Diesel fuel for site 150kVA generator & excavator',
-      amount: 50.0,
-      paidFrom: 'petty_cash',
-      accountId: petty.id,
-      documentRef: 'EXP-001',
-      remarks: 'Shell Al Khoudh Station receipt #8841',
-    });
-
-    this.addAuditLog(
-      'ACCEPTANCE_TEST_EXECUTED',
-      'System',
-      'Successfully ran prompt #49 Acceptance Test Scenario (IPC-001, BR-001, PUR-001, PV-001, EXP-001).'
-    );
-
-    this.saveState();
-  }
-
-  /**
-   * Populate realistic multi-month historical construction transactions
-   * Specifically assigned to PRJ-BSH-002 (Bausher Commercial Plaza),
-   * leaving PRJ-AKV-001 completely clean for Acceptance Test #49 validation.
-   */
-  public seedHistoricalMonthlyData() {
-    const project = this.state.projects.find((p) => p.code === 'PRJ-BSH-002') || this.state.projects[1] || this.state.projects[0];
-    const customer = this.state.customers.find((c) => c.code === 'CUST-002') || this.state.customers[0];
-    const vendor = this.state.vendors.find((v) => v.code === 'VEND-002') || this.state.vendors[0];
-    const bank = this.state.bankAccounts[0];
-    const petty = this.state.pettyCashAccounts[0];
-
-    if (!project || !customer || !vendor) return;
-
-    // Avoid duplicate seeding
-    if (this.state.clientInvoices.some((i) => i.invoiceNumber.startsWith('IPC-BSH-'))) {
-      return;
-    }
-
-    const currentYear = new Date().getFullYear();
-    const months = [
-      { month: 4, label: '04', rev: 15000, pur: 6500, exp: 600, cashIn: 12000, cashOut: 4500, expDesc: 'Excavation & site preparation' },
-      { month: 5, label: '05', rev: 19000, pur: 8200, exp: 750, cashIn: 16000, cashOut: 6000, expDesc: 'Foundation concrete pouring & rebar' },
-      { month: 6, label: '06', rev: 23500, pur: 10400, exp: 900, cashIn: 20000, cashOut: 7500, expDesc: 'Ground floor slab & structural columns' },
-      { month: 7, label: '07', rev: 21000, pur: 9200, exp: 850, cashIn: 18000, cashOut: 7000, expDesc: 'First floor masonry & electrical conduits' },
-      { month: 8, label: '08', rev: 26000, pur: 11500, exp: 1100, cashIn: 22000, cashOut: 8500, expDesc: 'Second floor slab & MEP rough-ins' },
-      { month: 9, label: '09', rev: 18000, pur: 7800, exp: 700, cashIn: 15000, cashOut: 5500, expDesc: 'External plastering & perimeter works' },
-    ];
-
-    const fuelHead = this.state.expenseHeads.find((h) => h.name.includes('Site') || h.name.includes('Fuel')) || this.state.expenseHeads[0];
-
-    months.forEach((m, idx) => {
-      const dateStr = `${currentYear}-${m.label}-15`;
-      const numStr = String(idx + 1).padStart(3, '0');
-
-      // 1. Client Invoice IPC
-      const inv = this.createClientInvoice({
-        invoiceType: 'IPC',
-        invoiceNumber: `IPC-BSH-${numStr}`,
-        date: dateStr,
-        customerId: customer.id,
-        projectId: project.id,
-        description: `IPC #${idx + 1} - ${m.expDesc}`,
-        amount: m.rev,
-        documentRef: `IPC-BSH-${numStr}`,
-        remarks: 'Monthly certified progress bill',
-      });
-
-      // 2. Client Payment Received (Money In)
-      this.recordMoneyIn({
-        transactionDate: `${currentYear}-${m.label}-22`,
-        receivedFrom: customer.name,
-        customerId: customer.id,
-        projectId: project.id,
-        against: 'invoice',
-        invoiceId: inv.id,
-        amount: m.cashIn,
-        receivedInto: 'bank',
-        accountId: bank.id,
-        documentRef: `BR-BSH-${numStr}`,
-        remarks: `Client settlement for IPC-BSH-${numStr}`,
-      });
-
-      // 3. Vendor Material Purchase
-      const pur = this.createPurchase({
-        purchaseInvoiceNumber: `PUR-BSH-${numStr}`,
-        date: `${currentYear}-${m.label}-10`,
-        vendorId: vendor.id,
-        projectId: project.id,
-        purchaseCategory: 'Materials',
-        description: `Construction materials & certified batches - ${m.expDesc}`,
-        amount: m.pur,
-        documentRef: `PUR-BSH-${numStr}`,
-        remarks: 'Direct supplier delivery voucher',
-      });
-
-      // 4. Vendor Payment Out
-      this.recordMoneyOut({
-        transactionDate: `${currentYear}-${m.label}-25`,
-        paidTo: vendor.name,
-        vendorId: vendor.id,
-        projectId: project.id,
-        paymentFor: 'purchase',
-        purchaseId: pur.id,
-        amount: m.cashOut,
-        paidFrom: 'bank',
-        accountId: bank.id,
-        documentRef: `PV-BSH-${numStr}`,
-        remarks: `Progress vendor payment on PUR-BSH-${numStr}`,
-      });
-
-      // 5. Direct Site Expense
-      this.createDirectExpense({
-        expenseDate: `${currentYear}-${m.label}-18`,
-        projectId: project.id,
-        expenseHeadId: fuelHead.id,
-        description: `Direct site machinery fuel & supervision - ${m.expDesc}`,
-        amount: m.exp,
-        paidFrom: 'petty_cash',
-        accountId: petty.id,
-        documentRef: `EXP-BSH-${numStr}`,
-        remarks: 'Site custodian petty cash voucher',
-      });
-    });
-
-    this.addAuditLog(
-      'HISTORICAL_TREND_DATA_SEEDED',
-      'System',
-      'Populated 6-month historical revenue and expense transactions for Bausher Commercial Plaza.'
-    );
-
-    this.saveState();
-  }
-
-  /**
-   * Reset data to initial clean seed state (mode-aware)
-   */
-  public resetToSeedData() {
-    if (this.activeDbMode === 'demo') {
-      this.resetDemoData();
-    } else {
-      this.resetRealData();
-    }
-  }
-
-  /**
-   * Reset only the isolated Demo Sandbox database
-   */
-  public resetDemoData() {
-    this.activeDbMode = 'demo';
-    this.state = JSON.parse(JSON.stringify(initialSeedState));
-    this.seedHistoricalMonthlyData();
-    this.saveState();
-  }
-
-  /**
-   * Reset only the isolated Real Production database
-   */
-  public resetRealData() {
-    this.activeDbMode = 'real';
-    this.state = JSON.parse(JSON.stringify(initialRealEnterpriseState));
-    this.saveState();
   }
 }
 

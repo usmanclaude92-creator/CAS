@@ -12,6 +12,11 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, './src'),
       },
     },
+    test: {
+      environment: 'node',
+      globals: false,
+      include: ['src/**/*.test.ts'],
+    },
     server: {
       host: '0.0.0.0',
       port: 3000,

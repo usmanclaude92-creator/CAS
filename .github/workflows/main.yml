@@ -28,10 +28,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build web bundle with relative base paths
+      - name: Lint and test
         run: |
           npm run lint
-          npx vite build --base=./
+          npm test
+
+      - name: Build web bundle with relative base paths
+        run: npx vite build --base=./
 
       - name: Upload Web Build Artifact
         uses: actions/upload-artifact@v4

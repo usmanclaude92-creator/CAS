@@ -31,9 +31,9 @@ export const WorkflowSettingsView: React.FC = () => {
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setFeedback(null);
-    const res = authService.updateWorkflowSettings(settings);
+    const res = await authService.updateWorkflowSettings(settings);
     if (res.success) {
       setFeedback({
         type: 'success',

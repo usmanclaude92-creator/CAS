@@ -34,6 +34,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Never cache live data: Supabase REST/Realtime calls and our own /api/*
+  // admin endpoints must always hit the network, or the app can show stale
+  // financial data (or a stale permission/role) after it has changed.
+  const url = new URL(event.request.url);
+  if (url.hostname.endsWith('.supabase.co') || url.hostname.endsWith('.supabase.in') || url.pathname.startsWith('/api/')) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {

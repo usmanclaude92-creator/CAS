@@ -87,7 +87,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
         attachmentName = uploadRes.name;
       }
 
-      accountingService.createClientInvoice({
+      await accountingService.createClientInvoice({
         invoiceType,
         invoiceNumber: invoiceNumber.trim(),
         date,

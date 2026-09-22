@@ -161,7 +161,7 @@ export function exportMultiSheetExcel(options: MultiSheetExportOptions) {
       data: sheetDef.data,
     });
     // Excel worksheet names must be <= 31 characters and free of invalid chars : \ / ? * [ ]
-    const safeSheetName = sheetDef.sheetName.replace(/[:\\/?*\[\]]/g, '').substring(0, 31);
+    const safeSheetName = sheetDef.sheetName.replace(/[:\\/?*[\]]/g, '').substring(0, 31);
     XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName || 'Sheet');
   });
 

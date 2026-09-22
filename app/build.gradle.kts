@@ -5,26 +5,47 @@ plugins {
 }
 
 android {
-    namespace = "com.example.myapplication"
+    namespace = "com.artifysols.cas"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.myapplication"
+        applicationId = "com.artifysols.cas"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("CAS_RELEASE_KEYSTORE") ?: project.findProperty("CAS_RELEASE_KEYSTORE") as String?
+            if (!keystorePath.isNullOrBlank()) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("CAS_RELEASE_STORE_PASSWORD") ?: project.findProperty("CAS_RELEASE_STORE_PASSWORD") as String?
+                keyAlias = System.getenv("CAS_RELEASE_KEY_ALIAS") ?: project.findProperty("CAS_RELEASE_KEY_ALIAS") as String?
+                keyPassword = System.getenv("CAS_RELEASE_KEY_PASSWORD") ?: project.findProperty("CAS_RELEASE_KEY_PASSWORD") as String?
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Only applied when CAS_RELEASE_KEYSTORE is actually configured (see
+            // signingConfigs above and README-release-signing.md) — otherwise
+            // Gradle falls back to no signing config and the build fails loudly
+            // rather than silently reusing a debug/self-signed certificate.
+            val keystorePath = System.getenv("CAS_RELEASE_KEYSTORE") ?: project.findProperty("CAS_RELEASE_KEYSTORE") as String?
+            if (!keystorePath.isNullOrBlank()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
         debug {
             isMinifyEnabled = false
