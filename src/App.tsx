@@ -326,7 +326,7 @@ function AppContent() {
           onRefresh={async () => {
             setTick((t) => t + 1);
             if (supabaseService.isConfigured()) {
-              await supabaseService.pullRemoteChanges().catch(() => {});
+              await supabaseService.testConnection().catch(() => {});
             }
           }}
         >

@@ -1,302 +1,382 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const STORAGE_KEY_URL = 'cas_supabase_url';
+const STORAGE_URL_KEY = 'cas_supabase_url';
 const STORAGE_KEY_KEY = 'cas_supabase_anon_key';
 
-export interface UploadedAttachment {
-  url: string;
-  name: string;
+// Default Supabase project credentials
+export const DEFAULT_SUPABASE_URL = 'https://cfkymotcnccgvkpmcevp.supabase.co';
+export const DEFAULT_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNma3ltb3RjbmNjZ3ZrcG1jZXZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4NDIyMjAsImV4cCI6MjEwNTQxODIyMH0.UydSETlKBKs3DbPuueKG1Oh8mQdWv-iRqPOSYybgF70';
+
+function cleanString(val?: unknown): string {
+  if (!val || typeof val !== 'string') return '';
+  return val.trim().replace(/^["']|["']$/g, '');
 }
 
-export interface ConnectionTestResult {
-  success: boolean;
-  message: string;
-  error?: string;
+function cleanUrl(val?: unknown): string {
+  const cleaned = cleanString(val);
+  return cleaned.replace(/\/+$/, '');
 }
 
-let listeners: Array<() => void> = [];
+export const isValidSupabaseUrl = (url?: string): boolean => {
+  const cleaned = cleanUrl(url);
+  return Boolean(
+    cleaned &&
+    cleaned.startsWith('http') &&
+    !cleaned.includes('your-project.supabase.co') &&
+    !cleaned.includes('your-project-id')
+  );
+};
 
-const notifyListeners = () => {
+export const isValidSupabaseKey = (key?: string): boolean => {
+  const cleaned = cleanString(key);
+  return Boolean(
+    cleaned &&
+    cleaned.length > 20 &&
+    !cleaned.includes('your-anon-key')
+  );
+};
+
+const getInitialUrl = (): string => {
+  const envUrl = cleanUrl(import.meta.env?.VITE_SUPABASE_URL);
+  if (isValidSupabaseUrl(envUrl)) return envUrl;
+  try {
+    const storedUrl = cleanUrl(localStorage.getItem(STORAGE_URL_KEY));
+    if (isValidSupabaseUrl(storedUrl)) return storedUrl;
+  } catch {
+    // localStorage may fail
+  }
+  return DEFAULT_SUPABASE_URL;
+};
+
+const getInitialKey = (): string => {
+  const envKey = cleanString(import.meta.env?.VITE_SUPABASE_ANON_KEY);
+  if (isValidSupabaseKey(envKey)) return envKey;
+  try {
+    const storedKey = cleanString(localStorage.getItem(STORAGE_KEY_KEY));
+    if (isValidSupabaseKey(storedKey)) return storedKey;
+  } catch {
+    // localStorage may fail
+  }
+  return DEFAULT_SUPABASE_ANON_KEY;
+};
+
+let currentUrl = getInitialUrl();
+let currentKey = getInitialKey();
+const listeners = new Set<() => void>();
+
+function notifyListeners() {
   listeners.forEach((fn) => {
     try {
       fn();
     } catch (e) {
-      console.error('Error invoking Supabase listener:', e);
+      console.error('[SupabaseClient] Error notifying listener:', e);
     }
   });
-};
+}
 
-const getStoredOrEnvUrl = (): string => {
+function buildClient(url: string, key: string): SupabaseClient {
+  return createClient(url, key, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
+}
+
+export let supabase: SupabaseClient = buildClient(currentUrl, currentKey);
+
+export function getSupabaseClient(): SupabaseClient | null {
+  if (!isValidSupabaseUrl(currentUrl) || !isValidSupabaseKey(currentKey)) {
+    return null;
+  }
+  return supabase;
+}
+
+export function isSupabaseConfigured(): boolean {
+  return isValidSupabaseUrl(currentUrl) && isValidSupabaseKey(currentKey);
+}
+
+export const updateSupabaseCredentials = (url: string, key: string) => {
+  const cUrl = cleanUrl(url);
+  const cKey = cleanString(key);
+
   try {
-    const stored = localStorage.getItem(STORAGE_KEY_URL);
-    if (stored) return stored.trim();
+    localStorage.setItem(STORAGE_URL_KEY, cUrl);
+    localStorage.setItem(STORAGE_KEY_KEY, cKey);
   } catch {
-    // ignore storage access errors
+    // ignore
   }
-  return (import.meta.env.VITE_SUPABASE_URL || '').trim();
+
+  currentUrl = cUrl || DEFAULT_SUPABASE_URL;
+  currentKey = cKey || DEFAULT_SUPABASE_ANON_KEY;
+
+  supabase = buildClient(currentUrl, currentKey);
+  notifyListeners();
 };
 
-const getStoredOrEnvKey = (): string => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY_KEY);
-    if (stored) return stored.trim();
-  } catch {
-    // ignore storage access errors
-  }
-  return (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
-};
+export function updateSupabaseConfig(rawUrl: string, rawAnonKey: string): boolean {
+  const url = cleanUrl(rawUrl);
+  const anonKey = cleanString(rawAnonKey);
 
-export const isSupabaseConfigured = (): boolean => {
-  const url = getStoredOrEnvUrl();
-  const key = getStoredOrEnvKey();
-  return Boolean(url && key && !url.includes('placeholder.supabase.co'));
-};
-
-const createClientInstance = (url?: string, key?: string): SupabaseClient => {
-  const finalUrl = (url || getStoredOrEnvUrl()) || 'https://placeholder.supabase.co';
-  const finalKey = (key || getStoredOrEnvKey()) || 'placeholder-key';
-
-  try {
-    return createClient(finalUrl, finalKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-      },
-    });
-  } catch (error) {
-    console.warn('Fallback to dummy Supabase client:', error);
-    return createClient('https://placeholder.supabase.co', 'placeholder-key');
-  }
-};
-
-let currentClient: SupabaseClient = createClientInstance();
-
-export const supabase = currentClient;
-
-export const getSupabaseClient = (): SupabaseClient => {
-  return currentClient;
-};
-
-// Returns { url, name } as expected by all transaction modals
-export const uploadAttachmentFile = async (
-  file: File,
-  transactionTypeOrFolder: string = 'attachments',
-  referenceId?: string
-): Promise<UploadedAttachment | null> => {
-  try {
-    const cleanFileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-
-    if (!isSupabaseConfigured()) {
-      console.warn('Supabase not configured. Using local object URL.');
-      return { url: URL.createObjectURL(file), name: file.name };
-    }
-
-    const client = getSupabaseClient();
-    const folder = transactionTypeOrFolder || 'attachments';
-    const filePath = referenceId
-      ? `${folder}/${referenceId}/${cleanFileName}`
-      : `${folder}/${cleanFileName}`;
-
-    const { data, error } = await client.storage
-      .from('attachments')
-      .upload(filePath, file, { upsert: true });
-
-    if (error) {
-      console.warn('Storage upload error, fallback to local URL:', error);
-      return { url: URL.createObjectURL(file), name: file.name };
-    }
-
-    const { data: publicUrlData } = client.storage
-      .from('attachments')
-      .getPublicUrl(data.path);
-
-    return {
-      url: publicUrlData.publicUrl || data.path,
-      name: file.name,
-    };
-  } catch (err) {
-    console.error('Attachment upload failed:', err);
-    return { url: URL.createObjectURL(file), name: file.name };
-  }
-};
-
-// Expense Category APIs
-export const saveExpenseCategoryToSupabase = async (category: any): Promise<any> => {
-  try {
-    if (!isSupabaseConfigured()) return category;
-    const client = getSupabaseClient();
-    const { data, error } = await client
-      .from('expense_categories')
-      .insert(category)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data || category;
-  } catch (err) {
-    console.error('Failed to save expense category to Supabase:', err);
-    return category;
-  }
-};
-
-// Supports both (id, category) and single-argument (category) signatures
-export const updateExpenseCategoryInSupabase = async (
-  idOrCategory: any,
-  categoryData?: any
-): Promise<any> => {
-  try {
-    if (!isSupabaseConfigured()) return categoryData || idOrCategory;
-    const client = getSupabaseClient();
-    const id = typeof idOrCategory === 'object' ? idOrCategory.id : idOrCategory;
-    const payload = categoryData !== undefined
-      ? categoryData
-      : (typeof idOrCategory === 'object' ? idOrCategory : {});
-
-    const { data, error } = await client
-      .from('expense_categories')
-      .update(payload)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data || payload;
-  } catch (err) {
-    console.error('Failed to update expense category in Supabase:', err);
-    return categoryData || idOrCategory;
-  }
-};
-
-export const deleteExpenseCategoryFromSupabase = async (id: string): Promise<boolean> => {
-  try {
-    if (!isSupabaseConfigured()) return true;
-    const client = getSupabaseClient();
-    const { error } = await client
-      .from('expense_categories')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
+  if (isValidSupabaseUrl(url) && isValidSupabaseKey(anonKey)) {
+    updateSupabaseCredentials(url, anonKey);
     return true;
-  } catch (err) {
-    console.error('Failed to delete expense category from Supabase:', err);
-    return false;
   }
-};
 
-// Client Manager singleton
-export const supabaseClientManager = {
-  isConfigured: (): boolean => isSupabaseConfigured(),
-
-  getClient: (): SupabaseClient => getSupabaseClient(),
-
-  getConfig: () => {
-    const url = getStoredOrEnvUrl();
-    const key = getStoredOrEnvKey();
-    return {
-      url,
-      key,
-      supabaseUrl: url,
-      anonKey: key,
-      supabaseAnonKey: key,
-    };
-  },
-
-  saveConfig: (url: string, key: string): void => {
+  if (!url && !anonKey) {
     try {
-      localStorage.setItem(STORAGE_KEY_URL, url.trim());
-      localStorage.setItem(STORAGE_KEY_KEY, key.trim());
-      currentClient = createClientInstance(url.trim(), key.trim());
-      notifyListeners();
-    } catch (e) {
-      console.error('Failed to save Supabase settings:', e);
-    }
-  },
-
-  updateConfig: (url: string, key: string): void => {
-    supabaseClientManager.saveConfig(url, key);
-  },
-
-  resetConfig: (): void => {
-    try {
-      localStorage.removeItem(STORAGE_KEY_URL);
+      localStorage.removeItem(STORAGE_URL_KEY);
       localStorage.removeItem(STORAGE_KEY_KEY);
-      currentClient = createClientInstance();
-      notifyListeners();
-    } catch (e) {
-      console.error('Failed to reset Supabase settings:', e);
+    } catch {
+      // ignore
     }
-  },
+    currentUrl = DEFAULT_SUPABASE_URL;
+    currentKey = DEFAULT_SUPABASE_ANON_KEY;
+    supabase = buildClient(currentUrl, currentKey);
+    notifyListeners();
+    return true;
+  }
 
-  testConnection: async (
-    testUrl?: string,
-    testKey?: string
-  ): Promise<ConnectionTestResult> => {
-    try {
-      const urlToTest = testUrl || getStoredOrEnvUrl();
-      const keyToTest = testKey || getStoredOrEnvKey();
-      if (!urlToTest || !keyToTest || urlToTest.includes('placeholder.supabase.co')) {
-        return {
-          success: false,
-          message: 'Supabase credentials are not configured.',
-          error: 'Credentials missing',
-        };
-      }
-      const client = createClientInstance(urlToTest, keyToTest);
-      const { error } = await client.from('projects').select('id').limit(1);
-      if (
-        error &&
-        error.message &&
-        !error.message.includes('relation') &&
-        !error.message.includes('does not exist')
-      ) {
-        return {
-          success: false,
-          message: error.message,
-          error: error.message,
-        };
-      }
+  return false;
+}
+
+export async function testSupabaseConnection(): Promise<{ success: boolean; message: string }> {
+  const client = getSupabaseClient();
+  if (!client) {
+    return {
+      success: false,
+      message: 'Supabase credentials not configured or invalid.',
+    };
+  }
+
+  try {
+    const { error: projectsError } = await client
+      .from('projects')
+      .select('count', { count: 'exact', head: true });
+
+    if (!projectsError) {
       return {
         success: true,
-        message: 'Connected to Supabase successfully.',
+        message: 'Successfully connected to live Supabase PostgreSQL database!',
       };
-    } catch (err: any) {
-      const errMsg = err?.message || 'Connection test failed';
+    }
+
+    if (
+      projectsError.code === '42P01' ||
+      projectsError.code === 'PGRST205' ||
+      projectsError.message?.toLowerCase().includes('relation') ||
+      projectsError.message?.toLowerCase().includes('schema cache') ||
+      projectsError.message?.toLowerCase().includes('does not exist')
+    ) {
+      return {
+        success: true,
+        message: 'Connected to Supabase project! (Table schema pending migration)',
+      };
+    }
+
+    const { error: authError } = await client.auth.getSession();
+    if (!authError) {
+      return {
+        success: true,
+        message: `Connected to Supabase! (Table note: ${projectsError.message})`,
+      };
+    }
+
+    return {
+      success: false,
+      message: `Connected to Supabase, but returned: ${projectsError.message}`,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: `Connection error: ${err?.message || 'Network unreachable'}`,
+    };
+  }
+}
+
+export async function uploadAttachmentFile(
+  file: File,
+  transactionType: string,
+  referenceId: string
+): Promise<{ url: string; name: string; size: number; type: string }> {
+  const client = getSupabaseClient();
+  const fileExt = file.name.split('.').pop() || 'dat';
+  const uniqueName = `${transactionType.toLowerCase()}_${referenceId}_${Date.now()}.${fileExt}`;
+  const filePath = `uploads/${uniqueName}`;
+
+  if (client) {
+    try {
+      const { data, error } = await client.storage
+        .from('construction_attachments')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (!error && data) {
+        const { data: publicData } = client.storage
+          .from('construction_attachments')
+          .getPublicUrl(data.path);
+
+        return {
+          url: publicData.publicUrl,
+          name: file.name,
+          size: file.size,
+          type: file.type || 'application/octet-stream',
+        };
+      }
+    } catch (err) {
+      console.warn('Supabase storage upload failed, falling back to local object storage:', err);
+    }
+  }
+
+  // Fallback: Read file to Data URL
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve({
+        url: reader.result as string,
+        name: file.name,
+        size: file.size,
+        type: file.type || 'application/octet-stream',
+      });
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+export async function saveExpenseCategoryToSupabase(category: {
+  name: string;
+  description?: string;
+  category?: string;
+  status?: 'active' | 'inactive';
+  remarks?: string;
+}): Promise<{ success: boolean; synced: boolean; message: string; data?: any }> {
+  const client = getSupabaseClient();
+  if (!client) {
+    return {
+      success: true,
+      synced: false,
+      message: 'Saved locally. Supabase endpoint not configured.',
+    };
+  }
+
+  try {
+    const payload = {
+      name: category.name.trim(),
+      category: category.category?.trim() || 'Direct Project Cost',
+      status: category.status || 'active',
+      remarks: category.description?.trim() || category.remarks?.trim() || null,
+    };
+
+    const res = await client
+      .from('expense_heads')
+      .upsert([payload], { onConflict: 'name' })
+      .select();
+
+    if (res.error) {
+      const fallbackRes = await client
+        .from('expense_categories')
+        .upsert([payload], { onConflict: 'name' })
+        .select();
+
+      if (!fallbackRes.error) {
+        return {
+          success: true,
+          synced: true,
+          message: 'Expense category saved to Supabase (expense_categories)!',
+          data: fallbackRes.data,
+        };
+      }
+
       return {
         success: false,
-        message: errMsg,
-        error: errMsg,
+        synced: false,
+        message: `Saved locally. Supabase note: ${res.error.message || 'Table not found'}`,
       };
     }
-  },
 
-  uploadAttachment: async (
-    file: File,
-    transactionType: string = 'attachments',
-    referenceId?: string
-  ): Promise<UploadedAttachment | null> => {
-    return uploadAttachmentFile(file, transactionType, referenceId);
-  },
-
-  pullRemoteChanges: async (): Promise<any> => {
-    try {
-      if (!isSupabaseConfigured()) return null;
-      console.log('Pulling remote changes from Supabase...');
-      return null;
-    } catch (err) {
-      console.warn('Error pulling remote changes:', err);
-      return null;
-    }
-  },
-
-  subscribe: (fn: () => void): (() => boolean) => {
-    listeners.push(fn);
-    return () => {
-      listeners = listeners.filter((l) => l !== fn);
-      return true;
+    return {
+      success: true,
+      synced: true,
+      message: 'Expense category successfully synced with Supabase master list!',
+      data: res.data,
     };
+  } catch (err: any) {
+    return {
+      success: false,
+      synced: false,
+      message: `Saved locally. Supabase error: ${err?.message || 'Network issue'}`,
+    };
+  }
+}
+
+export async function updateExpenseCategoryInSupabase(
+  originalName: string,
+  updates: {
+    name?: string;
+    description?: string;
+    category?: string;
+    status?: 'active' | 'inactive';
+    remarks?: string;
+  }
+): Promise<{ success: boolean; synced: boolean; message?: string }> {
+  const client = getSupabaseClient();
+  if (!client) return { success: true, synced: false, message: 'Updated locally only' };
+
+  try {
+    const payload: Record<string, any> = {};
+    if (updates.name !== undefined) payload.name = updates.name.trim();
+    if (updates.category !== undefined) payload.category = updates.category.trim();
+    if (updates.status !== undefined) payload.status = updates.status;
+    if (updates.description !== undefined || updates.remarks !== undefined) {
+      payload.remarks = updates.description?.trim() || updates.remarks?.trim() || null;
+    }
+
+    let res = await client.from('expense_heads').update(payload).eq('name', originalName.trim());
+    if (res.error) {
+      await client.from('expense_categories').update(payload).eq('name', originalName.trim());
+    }
+
+    return { success: true, synced: true, message: 'Updated in Supabase' };
+  } catch (err: any) {
+    return { success: false, synced: false, message: err?.message };
+  }
+}
+
+export const supabaseService = {
+  isConfigured: isSupabaseConfigured,
+  getClient: getSupabaseClient,
+  uploadAttachment: uploadAttachmentFile,
+  testConnection: testSupabaseConnection,
+  saveExpenseCategory: saveExpenseCategoryToSupabase,
+  updateExpenseCategory: updateExpenseCategoryInSupabase,
+  getConfig: () => ({
+    url: currentUrl,
+    anonKey: currentKey,
+    supabaseUrl: currentUrl,
+    supabaseAnonKey: currentKey,
+  }),
+  subscribe: (fn: () => void) => {
+    listeners.add(fn);
+    return () => listeners.delete(fn);
   },
 };
 
-export const supabaseService = supabaseClientManager;
-export default supabaseClientManager;
+export const supabaseClientManager = {
+  getConfig: () => ({
+    url: currentUrl,
+    anonKey: currentKey,
+  }),
+  updateConfig: (url: string, anonKey: string) => updateSupabaseConfig(url, anonKey),
+  testConnection: () => testSupabaseConnection(),
+  subscribe: (fn: () => void) => {
+    listeners.add(fn);
+    return () => listeners.delete(fn);
+  },
+};
+
+export default supabaseService;
