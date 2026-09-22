@@ -451,18 +451,18 @@ export const Header: React.FC<HeaderProps> = ({
     canCreateTransfer;
 
   return (
-    <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 sm:gap-4 transition-colors duration-200 print:hidden">
+    <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between gap-2 sm:gap-4 transition-colors duration-200 print:hidden min-h-[56px] w-full max-w-full">
       {/* Title and Sidebar toggle */}
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0 max-w-[55%] sm:max-w-none">
         <button
           onClick={onToggleSidebar}
-          className="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+          className="lg:hidden p-2 -ml-1 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 cursor-pointer touch-target-min"
           aria-label="Toggle sidebar"
         >
           <Menu className="w-5 h-5 text-slate-700 dark:text-slate-200" />
         </button>
-        <div>
-          <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight">
+        <div className="min-w-0">
+          <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
             {getTitle()}
           </h1>
           <div className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:flex items-center gap-2">
@@ -475,8 +475,8 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Center: Global Search Bar */}
-      <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-1 sm:mx-3 relative" ref={searchContainerRef}>
+      {/* Center: Global Search Bar (Hidden on Mobile screens, visible on md+) */}
+      <div className="hidden md:flex flex-1 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-1 sm:mx-3 relative" ref={searchContainerRef}>
         <div
           className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all ${
             isSearchOpen
@@ -649,13 +649,24 @@ export const Header: React.FC<HeaderProps> = ({
         )}
       </div>
 
-      {/* Right controls: Theme Toggle, Export Data, Quick Transaction, User Switcher */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+      {/* Right controls: Mobile Search, Theme Toggle, Export Data, Quick Transaction, User Switcher */}
+      <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
+        {/* Mobile Search Button (Tap opens Search overlay) */}
+        <button
+          type="button"
+          onClick={() => setIsSearchOpen(true)}
+          className="md:hidden p-2 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 cursor-pointer touch-target-min"
+          aria-label="Search"
+          title="Search projects, vendors, customers"
+        >
+          <Search className="w-5 h-5 text-slate-700 dark:text-slate-200" />
+        </button>
+
         {/* Global Dark / Light Theme Toggle */}
         <ThemeToggle variant="simple" />
 
-        {/* Export Data Button with CSV / Excel / PDF Options for Active View Table */}
-        <div className="relative" ref={exportMenuRef}>
+        {/* Export Data Button with CSV / Excel / PDF Options for Active View Table (Hidden on small mobile) */}
+        <div className="relative hidden sm:block" ref={exportMenuRef}>
           <button
             type="button"
             id="header-export-data-btn"
@@ -761,15 +772,15 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Quick Transaction Action Dropdown (Hides if user cannot create anything, e.g. Viewer) */}
+        {/* Quick Transaction Action Dropdown (Hidden on mobile; on mobile the FAB + bottom sheet handles this) */}
         {canCreateAny && (
-          <div className="relative" ref={quickMenuRef}>
+          <div className="relative hidden md:block" ref={quickMenuRef}>
             <button
               onClick={() => setIsQuickOpen(!isQuickOpen)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors cursor-pointer shadow-xs"
             >
               <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">New Transaction</span>
+              <span>New Transaction</span>
               <ChevronDown className="w-3.5 h-3.5 ml-0.5" />
             </button>
 
@@ -854,9 +865,11 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
-        {/* In-App Notifications Bell */}
+        {/* In-App Notifications Bell (Hidden on tiny screens to avoid overflow) */}
         {onNavigateView && (
-          <HeaderNotifications onNavigateView={onNavigateView} />
+          <div className="hidden sm:block">
+            <HeaderNotifications onNavigateView={onNavigateView} />
+          </div>
         )}
 
         {/* User Account Switcher Dropdown (Allows reviewers to effortlessly test roles) */}
@@ -864,9 +877,10 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className="flex items-center gap-2 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 p-1 sm:p-1.5 rounded-full sm:rounded-xl border border-transparent sm:border-slate-200 dark:sm:border-slate-700 bg-transparent sm:bg-slate-50 dark:sm:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-95 transition-all cursor-pointer touch-target-min"
+            aria-label="User Account Profile"
           >
-            <div className="text-right hidden md:block">
+            <div className="text-right hidden md:block pl-1">
               <div className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[140px]">
                 {currentUser?.fullName}
               </div>
@@ -874,10 +888,10 @@ export const Header: React.FC<HeaderProps> = ({
                 {currentUser?.roleName}
               </div>
             </div>
-            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold">
-              <User className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-full bg-blue-600 dark:bg-blue-500 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+              {currentUser?.fullName ? currentUser.fullName.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
             </div>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block mr-0.5" />
           </button>
 
           {isUserMenuOpen && (
@@ -1008,6 +1022,120 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
       </div>
+
+      {/* Android Mobile Full-Screen Search Overlay */}
+      {isSearchOpen && (
+        <div className="md:hidden fixed inset-0 z-50 bg-white dark:bg-slate-900 flex flex-col animate-in fade-in duration-150">
+          {/* Top Search App Bar */}
+          <div className="flex items-center gap-2 p-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <button
+              type="button"
+              onClick={() => {
+                setIsSearchOpen(false);
+                setSearchQuery('');
+              }}
+              className="p-2 -ml-1 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 touch-target-min cursor-pointer"
+              aria-label="Back"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+
+            <div className="flex-1 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-full px-3.5 py-1.5 border border-slate-200/80 dark:border-slate-700/80">
+              <Search className="w-4 h-4 text-slate-400 shrink-0" />
+              <input
+                autoFocus
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search projects, vendors, clients..."
+                className="w-full bg-transparent text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Filter Chips Bar */}
+          <div className="flex items-center gap-2 p-3 overflow-x-auto border-b border-slate-100 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-900/50">
+            {[
+              { id: 'all', label: 'All', count: categoryCounts.all },
+              { id: 'projects', label: 'Projects', count: categoryCounts.projects },
+              { id: 'vendors', label: 'Vendors', count: categoryCounts.vendors },
+              { id: 'customers', label: 'Customers', count: categoryCounts.customers },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setSearchCategory(tab.id as any)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 touch-target-min ${
+                  searchCategory === tab.id
+                    ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                    searchCategory === tab.id
+                      ? 'bg-white/20 text-white'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Search Results List */}
+          <div className="flex-1 overflow-y-auto p-2 divide-y divide-slate-100 dark:divide-slate-800/60 pb-20">
+            {filteredResults.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 dark:text-slate-500">
+                <Search className="w-10 h-10 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  No matches for &ldquo;{searchQuery}&rdquo;
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Try searching with code, title, or contact person
+                </p>
+              </div>
+            ) : (
+              filteredResults.map((item) => (
+                <div
+                  key={`${item.type}-${item.id}`}
+                  onClick={() => handleSelectItem(item)}
+                  className="p-3 rounded-xl flex items-center justify-between gap-3 active:bg-blue-50 dark:active:bg-blue-950/40 cursor-pointer"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-slate-700/60">
+                      {getTypeIcon(item.type)}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm text-slate-900 dark:text-white truncate">
+                        {item.title}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                        {item.code} &bull; {item.subtitle}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="shrink-0 flex items-center gap-1.5">
+                    {getTypeBadge(item.type)}
+                    <ArrowRight className="w-4 h-4 text-slate-400" />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 };

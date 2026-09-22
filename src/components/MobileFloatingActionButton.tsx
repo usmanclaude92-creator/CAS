@@ -109,8 +109,8 @@ export const MobileFloatingActionButton: React.FC<MobileFloatingActionButtonProp
         />
       )}
 
-      {/* Floating Action Speed-Dial Container */}
-      <div className="fixed bottom-20 right-4 z-40 lg:hidden print:hidden flex flex-col items-end">
+      {/* Floating Action Speed-Dial Container (Positioned above M3 bottom nav bar with safe-area spacing) */}
+      <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] right-4 z-40 lg:hidden print:hidden flex flex-col items-end">
         {/* Speed Dial Menu Items */}
         {isOpen && (
           <div className="flex flex-col items-end gap-2.5 mb-3 w-[88vw] max-w-[340px] animate-in slide-in-from-bottom-5 fade-in duration-200">

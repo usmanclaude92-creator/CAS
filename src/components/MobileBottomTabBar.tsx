@@ -291,20 +291,32 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
             </button>
           </div>
 
-          {/* Tab Navigation Items (48px touch targets) */}
-          <nav className="grid grid-cols-5 items-center px-1 pt-1">
+          {/* Tab Navigation Items (48px min touch targets, Material 3 Pill Design) */}
+          <nav className="grid grid-cols-5 items-center px-2 py-1 gap-1">
             {/* Tab 1: Dashboard */}
             <button
               type="button"
               onClick={() => handleTabClick('dashboard')}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
-                isDashboardActive
-                  ? 'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50/80 dark:bg-indigo-950/40'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 font-medium'
-              }`}
+              className="flex flex-col items-center justify-center py-1 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer group active:scale-95"
             >
-              <LayoutDashboard className={`w-5 h-5 ${isDashboardActive ? 'scale-105' : ''}`} />
-              <span className="text-[10px] mt-1 tracking-tight leading-none">Dashboard</span>
+              <div
+                className={`w-12 h-7 rounded-full flex items-center justify-center transition-all ${
+                  isDashboardActive
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 group-hover:bg-slate-100 dark:group-hover:bg-slate-800'
+                }`}
+              >
+                <LayoutDashboard className="w-4 h-4" />
+              </div>
+              <span
+                className={`text-[10px] mt-1 tracking-tight leading-none ${
+                  isDashboardActive
+                    ? 'font-bold text-indigo-600 dark:text-indigo-400'
+                    : 'font-medium text-slate-500 dark:text-slate-400'
+                }`}
+              >
+                Dashboard
+              </span>
             </button>
 
             {/* Tab 2: Approvals (with badge) */}
@@ -312,23 +324,35 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
               type="button"
               onClick={() => handleTabClick('approvals')}
               disabled={!hasApprovalsAccess}
-              className={`relative flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
-                !hasApprovalsAccess
-                  ? 'opacity-40 cursor-not-allowed text-slate-400'
-                  : isApprovalsActive
-                  ? 'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50/80 dark:bg-indigo-950/40'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 font-medium'
+              className={`flex flex-col items-center justify-center py-1 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer group active:scale-95 ${
+                !hasApprovalsAccess ? 'opacity-40 cursor-not-allowed text-slate-400' : ''
               }`}
             >
               <div className="relative">
-                <Clock className={`w-5 h-5 ${isApprovalsActive ? 'scale-105' : ''}`} />
+                <div
+                  className={`w-12 h-7 rounded-full flex items-center justify-center transition-all ${
+                    isApprovalsActive
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 group-hover:bg-slate-100 dark:group-hover:bg-slate-800'
+                  }`}
+                >
+                  <Clock className="w-4 h-4" />
+                </div>
                 {pendingApprovalsCount > 0 && (
-                  <span className="absolute -top-1.5 -right-2.5 bg-rose-600 text-white text-[9px] font-extrabold px-1.5 py-0.2 rounded-full min-w-[16px] text-center leading-tight shadow-xs">
+                  <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-extrabold px-1.5 py-0.2 rounded-full min-w-[16px] text-center leading-tight shadow-xs">
                     {pendingApprovalsCount > 99 ? '99+' : pendingApprovalsCount}
                   </span>
                 )}
               </div>
-              <span className="text-[10px] mt-1 tracking-tight leading-none">Approvals</span>
+              <span
+                className={`text-[10px] mt-1 tracking-tight leading-none ${
+                  isApprovalsActive
+                    ? 'font-bold text-indigo-600 dark:text-indigo-400'
+                    : 'font-medium text-slate-500 dark:text-slate-400'
+                }`}
+              >
+                Approvals
+              </span>
             </button>
 
             {/* Tab 3: Projects */}
@@ -336,16 +360,28 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
               type="button"
               onClick={() => handleTabClick('projects')}
               disabled={!hasProjectsAccess}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
-                !hasProjectsAccess
-                  ? 'opacity-40 cursor-not-allowed text-slate-400'
-                  : isProjectsActive
-                  ? 'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50/80 dark:bg-indigo-950/40'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 font-medium'
+              className={`flex flex-col items-center justify-center py-1 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer group active:scale-95 ${
+                !hasProjectsAccess ? 'opacity-40 cursor-not-allowed text-slate-400' : ''
               }`}
             >
-              <Building2 className={`w-5 h-5 ${isProjectsActive ? 'scale-105' : ''}`} />
-              <span className="text-[10px] mt-1 tracking-tight leading-none">Projects</span>
+              <div
+                className={`w-12 h-7 rounded-full flex items-center justify-center transition-all ${
+                  isProjectsActive
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 group-hover:bg-slate-100 dark:group-hover:bg-slate-800'
+                }`}
+              >
+                <Building2 className="w-4 h-4" />
+              </div>
+              <span
+                className={`text-[10px] mt-1 tracking-tight leading-none ${
+                  isProjectsActive
+                    ? 'font-bold text-indigo-600 dark:text-indigo-400'
+                    : 'font-medium text-slate-500 dark:text-slate-400'
+                }`}
+              >
+                Projects
+              </span>
             </button>
 
             {/* Tab 4: Banking / Treasury */}
@@ -353,31 +389,53 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
               type="button"
               onClick={() => handleTabClick('banking')}
               disabled={!hasBankingAccess}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
-                !hasBankingAccess
-                  ? 'opacity-40 cursor-not-allowed text-slate-400'
-                  : isBankingActive
-                  ? 'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50/80 dark:bg-indigo-950/40'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 font-medium'
+              className={`flex flex-col items-center justify-center py-1 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer group active:scale-95 ${
+                !hasBankingAccess ? 'opacity-40 cursor-not-allowed text-slate-400' : ''
               }`}
             >
-              <Landmark className={`w-5 h-5 ${isBankingActive ? 'scale-105' : ''}`} />
-              <span className="text-[10px] mt-1 tracking-tight leading-none">Banking</span>
+              <div
+                className={`w-12 h-7 rounded-full flex items-center justify-center transition-all ${
+                  isBankingActive
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 group-hover:bg-slate-100 dark:group-hover:bg-slate-800'
+                }`}
+              >
+                <Landmark className="w-4 h-4" />
+              </div>
+              <span
+                className={`text-[10px] mt-1 tracking-tight leading-none ${
+                  isBankingActive
+                    ? 'font-bold text-indigo-600 dark:text-indigo-400'
+                    : 'font-medium text-slate-500 dark:text-slate-400'
+                }`}
+              >
+                Banking
+              </span>
             </button>
 
             {/* Tab 5: More Modules */}
             <button
               type="button"
               onClick={() => setIsMoreSheetOpen(true)}
-              className={`flex flex-col items-center justify-center py-1.5 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer ${
-                isMoreActive || isMoreSheetOpen
-                  ? 'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50/80 dark:bg-indigo-950/40'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 font-medium'
-              }`}
+              className="flex flex-col items-center justify-center py-1 px-1 min-h-[48px] rounded-xl transition-all cursor-pointer group active:scale-95"
               aria-label="Open more modules and quick actions"
             >
-              <MoreHorizontal className="w-5 h-5" />
-              <span className="text-[10px] mt-1 tracking-tight leading-none">
+              <div
+                className={`w-12 h-7 rounded-full flex items-center justify-center transition-all ${
+                  isMoreActive || isMoreSheetOpen
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 group-hover:bg-slate-100 dark:group-hover:bg-slate-800'
+                }`}
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </div>
+              <span
+                className={`text-[10px] mt-1 tracking-tight leading-none ${
+                  isMoreActive || isMoreSheetOpen
+                    ? 'font-bold text-indigo-600 dark:text-indigo-400'
+                    : 'font-medium text-slate-500 dark:text-slate-400'
+                }`}
+              >
                 {isMoreActive ? getActiveTabLabel(activeView) : 'More'}
               </span>
             </button>

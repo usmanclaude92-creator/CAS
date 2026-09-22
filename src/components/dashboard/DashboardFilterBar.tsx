@@ -158,8 +158,8 @@ export const DashboardFilterBar: React.FC<DashboardFilterBarProps> = ({
             <span>Export Analytics</span>
           </button>
 
-          {/* Quick Transaction Action Dropdown / Buttons */}
-          <div className="flex flex-wrap items-center gap-1.5">
+          {/* Quick Transaction Action Dropdown / Buttons (Hidden on mobile as they are in the FAB & More Sheet) */}
+          <div className="hidden sm:flex flex-wrap items-center gap-1.5">
             <button
               type="button"
               onClick={() => onOpenClientInvoice(selectedProjectId || undefined)}
