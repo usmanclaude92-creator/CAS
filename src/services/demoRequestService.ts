@@ -205,6 +205,36 @@ const STORAGE_KEY_REQUESTS = 'artify_demo_access_requests_v1';
 const ADMIN_NOTIFICATION_DESTINATION = 'usmanclaude92@gmail.com';
 
 class DemoRequestService {
+  constructor() {
+    this.syncRequestsWithServer().catch(() => {});
+  }
+
+  /**
+   * Synchronizes demo requests with the central server
+   * allowing cross-device admin review and link generation.
+   */
+  public async syncRequestsWithServer(): Promise<DemoRequest[]> {
+    try {
+      const res = await fetch('/api/demo-requests');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.requests)) {
+          const serverList: DemoRequest[] = data.requests;
+          const localList = this.getStoredRequests();
+          const map = new Map<string, DemoRequest>();
+          localList.forEach((r) => map.set(r.id, r));
+          serverList.forEach((r) => map.set(r.id, { ...(map.get(r.id) || {}), ...r }));
+          const merged = Array.from(map.values());
+          this.saveRequests(merged);
+          return merged;
+        }
+      }
+    } catch (e) {
+      console.warn('[DemoRequestService] Sync note:', e);
+    }
+    return this.getStoredRequests();
+  }
+
   private getStoredRequests(): DemoRequest[] {
     try {
       const data = localStorage.getItem(STORAGE_KEY_REQUESTS);
@@ -284,6 +314,17 @@ class DemoRequestService {
     const existing = this.getStoredRequests();
     existing.unshift(newRequest);
     this.saveRequests(existing);
+
+    // Save to central server so requests are accessible from any system
+    try {
+      fetch('/api/demo-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newRequest),
+      }).catch((e) => console.warn('[DemoRequestService] Central server request save note:', e));
+    } catch {
+      // ignore
+    }
 
     // Dispatch approval email to administrator
     try {
@@ -450,6 +491,17 @@ class DemoRequestService {
     list[index] = target;
     this.saveRequests(list);
 
+    // Persist approval and generated one-time link state to central server
+    try {
+      fetch(`/api/demo-requests/${encodeURIComponent(requestId)}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customExpiryHours, roleCodeOverride }),
+      }).catch((e) => console.warn('[DemoRequestService] Server approval sync note:', e));
+    } catch {
+      // ignore
+    }
+
     // Dispatch email to the requested visitor's email address
     await this.dispatchUserOneTimeLinkNotification(target, secureLink, expiresAt);
 
@@ -505,6 +557,47 @@ class DemoRequestService {
     token: string,
     requestId?: string
   ): Promise<{ success: boolean; request?: DemoRequest; error?: string }> {
+    // 1. First validate with central server so links work across any device / browser
+    try {
+      const serverRes = await fetch('/api/demo-requests/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, requestId }),
+      });
+      if (serverRes.ok) {
+        const serverData = await serverRes.json();
+        if (!serverData.success) {
+          return { success: false, error: serverData.error };
+        }
+        const req: DemoRequest = serverData.request;
+        const list = this.getStoredRequests();
+        const idx = list.findIndex((r) => r.id === req.id);
+        if (idx !== -1) {
+          list[idx] = req;
+        } else {
+          list.unshift(req);
+        }
+        this.saveRequests(list);
+
+        // Auto-login the guest with approved role permissions
+        authService.loginAsAuthorizedDemoGuest({
+          fullName: req.fullName,
+          email: req.email,
+          roleCode: req.roleCode,
+          roleName: req.roleName,
+          companyName: req.companyName,
+        });
+
+        return {
+          success: true,
+          request: req,
+        };
+      }
+    } catch (netErr) {
+      console.warn('[DemoRequestService] Central server redeem fallback to local cache:', netErr);
+    }
+
+    // 2. Fallback to local storage validation if server is offline
     const list = this.getStoredRequests();
     
     // Find matching request by token or requestId
@@ -580,6 +673,11 @@ class DemoRequestService {
     const filtered = list.filter((r) => r.id !== requestId);
     if (filtered.length !== list.length) {
       this.saveRequests(filtered);
+      try {
+        fetch(`/api/demo-requests/${encodeURIComponent(requestId)}`, { method: 'DELETE' }).catch(() => {});
+      } catch {
+        // ignore
+      }
       return true;
     }
     return false;

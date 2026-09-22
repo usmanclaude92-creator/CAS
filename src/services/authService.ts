@@ -209,6 +209,52 @@ class AuthService {
   constructor() {
     this.loadData();
     this.initSession();
+    this.syncUsersWithServer().catch((e) =>
+      console.warn('[AuthService] Initial server sync background note:', e)
+    );
+  }
+
+  /**
+   * Synchronizes user directory with the central backend server.
+   * This guarantees that users created or edited on any computer/device
+   * are immediately synchronized and accessible everywhere.
+   */
+  public async syncUsersWithServer(): Promise<UserProfile[]> {
+    try {
+      const res = await fetch('/api/auth/users');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.users)) {
+          const serverUsers: UserProfile[] = data.users;
+          const userMap = new Map<string, UserProfile>();
+
+          // Seed with current local users
+          this.users.forEach((u) => userMap.set(u.id, u));
+
+          // Merge server users (server is authoritative for cross-device shared accounts)
+          serverUsers.forEach((su) => {
+            const existing =
+              userMap.get(su.id) ||
+              Array.from(userMap.values()).find(
+                (x) => x.email.toLowerCase() === su.email.toLowerCase()
+              );
+            if (existing) {
+              userMap.set(existing.id, { ...existing, ...su });
+            } else {
+              userMap.set(su.id, su);
+            }
+          });
+
+          this.users = Array.from(userMap.values());
+          this.enforceSuperAdminInvariant();
+          this.saveData();
+          return this.users;
+        }
+      }
+    } catch (err) {
+      console.warn('[AuthService] Central server not reachable, using local storage cache:', err);
+    }
+    return this.users;
   }
 
   private loadData() {
@@ -408,11 +454,48 @@ class AuthService {
     }
 
     // 2. Validate against system user directory (by email OR username)
-    const user = this.users.find(
+    let user = this.users.find(
       (u) =>
         u.email.toLowerCase() === normalizedEmail ||
         (u.username && u.username.toLowerCase() === normalizedEmail)
     );
+
+    // If user is not yet present in local memory, sync from central server immediately!
+    // (This enables users created on Device A to log in instantly on Device B)
+    if (!user) {
+      await this.syncUsersWithServer();
+      user = this.users.find(
+        (u) =>
+          u.email.toLowerCase() === normalizedEmail ||
+          (u.username && u.username.toLowerCase() === normalizedEmail)
+      );
+    }
+
+    // Try central server direct authentication if still not matched
+    if (!user) {
+      try {
+        const loginRes = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: normalizedEmail, password }),
+        });
+        if (loginRes.ok) {
+          const loginData = await loginRes.json();
+          if (loginData.success && loginData.user) {
+            user = loginData.user;
+            const existingIdx = this.users.findIndex((u) => u.id === user!.id);
+            if (existingIdx !== -1) {
+              this.users[existingIdx] = user!;
+            } else {
+              this.users.push(user!);
+            }
+          }
+        }
+      } catch {
+        // server request failed, fall through to error message below
+      }
+    }
+
     if (!user) {
       return { success: false, error: 'Invalid credentials or user not registered in system.' };
     }
@@ -421,8 +504,12 @@ class AuthService {
       return { success: false, error: `Account is ${user.status}. Access denied. Please contact your system administrator.` };
     }
 
-    // Passwords in production are never verified client-side in plaintext;
-    // For demo/offline accounts, standard dummy password validation:
+    // Verify custom password if configured
+    if (user.password && password && user.password !== password) {
+      return { success: false, error: 'Incorrect password entered.' };
+    }
+
+    // For demo/offline accounts without custom password, enforce standard format:
     if (password && password.length < 3) {
       return { success: false, error: 'Password must be at least 6 characters.' };
     }
@@ -553,6 +640,14 @@ class AuthService {
       // ignore
     }
     this.saveData();
+
+    // Sync demo guest to central server asynchronously so other devices recognize this user
+    fetch('/api/auth/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(user),
+    }).catch((err) => console.warn('[AuthService] Server demo guest sync note:', err));
+
     return { success: true, user };
   }
 
@@ -870,6 +965,41 @@ class AuthService {
 
     this.users.push(newUser);
     this.saveData();
+
+    // Persist to central server so ALL devices/browsers immediately see the new user!
+    try {
+      await fetch('/api/auth/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUser),
+      });
+    } catch (e) {
+      console.warn('[AuthService] Central server user persist notice:', e);
+    }
+
+    // Also persist to Supabase if configured
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        await client.from('users').upsert([
+          {
+            id: newUser.id,
+            email: newUser.email,
+            username: newUser.username,
+            full_name: newUser.fullName,
+            role_code: newUser.roleCode,
+            role_name: newUser.roleName,
+            status: newUser.status,
+            department: newUser.department,
+            employee_id: newUser.employeeId,
+            created_at: newUser.createdAt,
+          },
+        ], { onConflict: 'email' });
+      } catch (err) {
+        console.warn('[AuthService] Supabase user upsert notice:', err);
+      }
+    }
+
     return { success: true, user: newUser };
   }
 
@@ -947,6 +1077,18 @@ class AuthService {
 
     this.enforceSuperAdminInvariant();
     this.saveData();
+
+    // Persist update to central server
+    try {
+      fetch(`/api/auth/users/${encodeURIComponent(userId)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(user),
+      }).catch((e) => console.warn('[AuthService] Central server user update note:', e));
+    } catch {
+      // ignore
+    }
+
     return { success: true, user };
   }
 
@@ -982,6 +1124,15 @@ class AuthService {
     user.status = 'inactive';
     user.updatedAt = new Date().toISOString();
     this.saveData();
+
+    try {
+      fetch(`/api/auth/users/${encodeURIComponent(userId)}/deactivate`, {
+        method: 'POST',
+      }).catch((e) => console.warn('[AuthService] Central server deactivate note:', e));
+    } catch {
+      // ignore
+    }
+
     return { success: true };
   }
 
@@ -1011,6 +1162,17 @@ class AuthService {
     }
     user.updatedAt = new Date().toISOString();
     this.saveData();
+
+    try {
+      fetch(`/api/auth/users/${encodeURIComponent(userId)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(user),
+      }).catch((e) => console.warn('[AuthService] Central server suspend note:', e));
+    } catch {
+      // ignore
+    }
+
     return { success: true };
   }
 
@@ -1027,6 +1189,17 @@ class AuthService {
     user.status = 'active';
     user.updatedAt = new Date().toISOString();
     this.saveData();
+
+    try {
+      fetch(`/api/auth/users/${encodeURIComponent(userId)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(user),
+      }).catch((e) => console.warn('[AuthService] Central server activate note:', e));
+    } catch {
+      // ignore
+    }
+
     return { success: true };
   }
 
