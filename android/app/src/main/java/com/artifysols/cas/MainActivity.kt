@@ -23,6 +23,7 @@ import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -35,6 +36,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.webkit.WebViewAssetLoader
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
@@ -42,6 +44,7 @@ import java.io.FileOutputStream
 class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
+    private lateinit var assetLoader: WebViewAssetLoader
     private var pendingFileChooserCallback: ValueCallback<Array<Uri>>? = null
     private var isDebugBuild = false
     private var hasShownJsErrorDialog = false
@@ -85,6 +88,17 @@ class MainActivity : ComponentActivity() {
         isDebugBuild = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         WebView.setWebContentsDebuggingEnabled(isDebugBuild)
 
+        // Serves the bundled web app over a virtual https:// origin instead of
+        // file:///android_asset/. Vite's build unconditionally marks <script
+        // type="module"> and its stylesheet <link> as crossorigin, which forces
+        // a CORS-mode fetch — and Chromium's CORS fetch only allows the chrome,
+        // chrome-untrusted, data, http and https schemes, so those requests are
+        // blocked outright under file://, leaving a blank page. appassets is
+        // Google's documented fix for this exact class of WebView issue.
+        assetLoader = WebViewAssetLoader.Builder()
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .build()
+
         webView = WebView(this).apply {
             settings.apply {
                 javaScriptEnabled = true
@@ -93,17 +107,24 @@ class MainActivity : ComponentActivity() {
                 allowFileAccess = true
                 allowContentAccess = true
                 // Deliberately NOT enabled: allowFileAccessFromFileURLs /
-                // allowUniversalAccessFromFileURLs. With the app bundle loaded
-                // from file:///android_asset/, those flags let any script
-                // running in that origin read arbitrary local files and make
-                // cross-origin requests with no same-origin restriction —
-                // a severe local-file-exfiltration vector for a financial app.
+                // allowUniversalAccessFromFileURLs. The app bundle loads over
+                // the virtual https://appassets.androidplatform.net origin
+                // (see assetLoader below), not file://, so these aren't needed
+                // — leaving them off keeps any script from reading arbitrary
+                // local files or making cross-origin requests with no
+                // same-origin restriction, a severe exfiltration vector for a
+                // financial app.
                 loadWithOverviewMode = true
                 useWideViewPort = true
                 mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             }
 
             webViewClient = object : WebViewClient() {
+                override fun shouldInterceptRequest(
+                    view: WebView,
+                    request: WebResourceRequest
+                ): WebResourceResponse? = assetLoader.shouldInterceptRequest(request.url)
+
                 override fun onPageFinished(view: WebView, url: String?) {
                     super.onPageFinished(view, url)
                     backCallback.isEnabled = view.canGoBack()
@@ -165,8 +186,9 @@ class MainActivity : ComponentActivity() {
             // responses, never arbitrary/untrusted pages.
             addJavascriptInterface(DownloadBridge(), "AndroidDownloadBridge")
 
-            // Load bundled offline assets
-            loadUrl("file:///android_asset/www/index.html")
+            // Load bundled assets over the virtual appassets origin (see
+            // assetLoader above) rather than file:///android_asset/.
+            loadUrl(APP_URL)
         }
 
         ViewCompat.setOnApplyWindowInsetsListener(webView) { view, insets ->
@@ -192,9 +214,9 @@ class MainActivity : ComponentActivity() {
                 if (result?.toIntOrNull() == 0) {
                     showDiagnosticDialog(
                         "Blank page detected",
-                        "file:///android_asset/www/index.html finished loading but nothing rendered " +
-                            "into #root after 2.5s. This usually means a JS error occurred with no " +
-                            "console.error logged, or a required asset (JS/CSS bundle) failed to load."
+                        "$APP_URL finished loading but nothing rendered into #root after 2.5s. " +
+                            "This usually means a JS error occurred with no console.error logged, " +
+                            "or a required asset (JS/CSS bundle) failed to load."
                     )
                 }
             }
@@ -329,6 +351,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private companion object {
+        // Served by WebViewAssetLoader (registered in onCreate), which maps
+        // /assets/ under this virtual https origin back to the app's real
+        // assets/ folder — i.e. this resolves to android_asset/www/index.html.
+        const val APP_URL = "https://appassets.androidplatform.net/assets/www/index.html"
+
         val OFFLINE_HTML = """
             <html>
             <head>
@@ -346,7 +373,7 @@ class MainActivity : ComponentActivity() {
             <body>
               <h1>You're offline</h1>
               <p>Check your internet connection and try again.</p>
-              <a href="file:///android_asset/www/index.html">Retry</a>
+              <a href="$APP_URL">Retry</a>
             </body>
             </html>
         """.trimIndent()
