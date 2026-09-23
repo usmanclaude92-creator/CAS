@@ -21,10 +21,12 @@ import {
   FileText,
   FolderDown,
   Eye,
+  Receipt,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { formatOMR, formatPercent, addMoney } from '../../utils/formatters';
 import { exportToExcel, exportToCsv, exportMultiSheetExcel } from '../../utils/exportToExcel';
+import { generateVatReturnPdf } from '../../services/exportService';
 import { toast } from '../../context/ToastContext';
 import { ArtifyLogo } from '../ArtifyLogo';
 import { TableExportButtons } from './TableExportButtons';
@@ -47,7 +49,8 @@ type ReportType =
   | 'cash_flow'
   | 'ar_aging'
   | 'ap_aging'
-  | 'general_journal';
+  | 'general_journal'
+  | 'vat_return';
 
 export const ReportsView: React.FC = () => {
   const [selectedReport, setSelectedReport] = useState<ReportType>('profitability');
@@ -307,6 +310,79 @@ export const ReportsView: React.FC = () => {
       invoiceCount: relevantInvoices.length,
       purchaseCount: relevantPurchases.length,
       expenseCount: relevantExpenses.length,
+    };
+  }, [state, filterProjectId, dateRange]);
+
+  // 2b. VAT Return (Oman, OTA-style boxes) — Output VAT from sales, Input VAT
+  // from purchases/expenses (incl. reverse charge), for the filtered period.
+  // Credit/Debit notes are listed for disclosure only, not summed again here:
+  // create_credit_debit_note() already amends the source document's own
+  // net/vat in place, so that effect is already inside the box totals below
+  // (attributed to the source document's own date, not the note's date).
+  const vatReturnData = useMemo(() => {
+    const inRange = (date: string) => isDateInRange(date, dateRange.startDate, dateRange.endDate);
+    const projectMatch = (projectId?: string) => filterProjectId === 'all' || projectId === filterProjectId;
+    const sumNet = (list: { netAmount: number }[]) => list.reduce((s, x) => addMoney(s, x.netAmount), 0);
+    const sumVat = (list: { vatAmount: number }[]) => list.reduce((s, x) => addMoney(s, x.vatAmount), 0);
+
+    const relevantInvoices = state.clientInvoices.filter(
+      (inv) => inv.status !== 'reversed' && projectMatch(inv.projectId) && inRange(inv.date)
+    );
+    const outputStandard = relevantInvoices.filter((i) => i.vatTreatment === 'standard');
+    const outputZeroRated = relevantInvoices.filter((i) => i.vatTreatment === 'zero_rated');
+    const outputExempt = relevantInvoices.filter((i) => i.vatTreatment === 'exempt');
+    const outputOutOfScope = relevantInvoices.filter((i) => i.vatTreatment === 'out_of_scope');
+
+    const relevantPurchases = state.purchases.filter(
+      (p) => p.status !== 'reversed' && projectMatch(p.projectId) && inRange(p.date)
+    );
+    const relevantExpenses = state.directExpenses.filter(
+      (e) => e.status !== 'reversed' && projectMatch(e.projectId) && inRange(e.expenseDate)
+    );
+
+    const inputStandardPurchases = relevantPurchases.filter((p) => p.vatTreatment === 'standard');
+    const inputStandardExpenses = relevantExpenses.filter((e) => e.vatTreatment === 'standard');
+    const rcPurchases = relevantPurchases.filter((p) => p.vatTreatment === 'reverse_charge');
+    const rcExpenses = relevantExpenses.filter((e) => e.vatTreatment === 'reverse_charge');
+
+    const box1Value = sumNet(outputStandard);
+    const box1Vat = sumVat(outputStandard);
+    const box2Value = sumNet(outputZeroRated);
+    const box3Value = sumNet(outputExempt);
+    const outOfScopeValue = sumNet(outputOutOfScope);
+    const box4Value = addMoney(sumNet(inputStandardPurchases), sumNet(inputStandardExpenses));
+    const box4Vat = addMoney(sumVat(inputStandardPurchases), sumVat(inputStandardExpenses));
+    const rcValue = addMoney(sumNet(rcPurchases), sumNet(rcExpenses));
+    const rcVat = addMoney(sumVat(rcPurchases), sumVat(rcExpenses));
+
+    const totalOutputVat = addMoney(box1Vat, rcVat);
+    const totalInputVat = addMoney(box4Vat, rcVat);
+    const netVatDue = totalOutputVat - totalInputVat;
+
+    const reverseChargeItems = [
+      ...rcPurchases.map((p) => ({
+        date: p.date,
+        documentNumber: p.purchaseInvoiceNumber,
+        partyName: p.vendorName,
+        netAmount: p.netAmount,
+        vatAmount: p.vatAmount,
+      })),
+      ...rcExpenses.map((e) => ({
+        date: e.expenseDate,
+        documentNumber: e.documentRef,
+        partyName: e.expenseHeadName,
+        netAmount: e.netAmount,
+        vatAmount: e.vatAmount,
+      })),
+    ];
+
+    const relevantNotes = state.creditDebitNotes.filter((n) => projectMatch(n.projectId) && inRange(n.date));
+
+    return {
+      boxes: { box1Value, box1Vat, box2Value, box3Value, outOfScopeValue, box4Value, box4Vat, rcValue, rcVat, totalOutputVat, totalInputVat, netVatDue },
+      reverseChargeItems,
+      notes: relevantNotes,
+      invoiceCount: relevantInvoices.length,
     };
   }, [state, filterProjectId, dateRange]);
 
@@ -1307,6 +1383,7 @@ export const ReportsView: React.FC = () => {
           { id: 'ar_aging', label: 'Receivables Aging (AR)', icon: Clock, badge: state.clientInvoices.filter(i => i.outstandingAmount > 0).length },
           { id: 'ap_aging', label: 'Payables Aging (AP)', icon: Clock, badge: state.purchases.filter(p => p.outstandingAmount > 0).length },
           { id: 'general_journal', label: 'General Journal (Audit)', icon: CheckCircle2 },
+          { id: 'vat_return', label: 'VAT Return', icon: Receipt },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = selectedReport === tab.id;
@@ -2861,6 +2938,207 @@ export const ReportsView: React.FC = () => {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {selectedReport === 'vat_return' && (
+          <div className="space-y-4">
+            <div className="border-b border-slate-200 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">VAT Return (Oman)</h3>
+                <p className="text-xs text-slate-500">
+                  Output VAT from sales, Input VAT from purchases &amp; expenses (incl. reverse charge), for the
+                  selected period
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const periodLabel =
+                    datePreset !== 'all'
+                      ? `${dateRange.startDate || '—'} to ${dateRange.endDate || '—'}`
+                      : 'Fiscal Year to Date';
+                  generateVatReturnPdf(
+                    periodLabel,
+                    vatReturnData.boxes,
+                    vatReturnData.reverseChargeItems,
+                    vatReturnData.notes.map((n) => ({
+                      date: n.date,
+                      noteNumber: n.noteNumber,
+                      noteType: n.noteType === 'credit' ? 'Credit Note' : 'Debit Note',
+                      sourceDocumentNumber: n.sourceDocumentNumber,
+                      partyName: n.customerName || n.vendorName || '',
+                      netAmount: n.netAmount,
+                      vatAmount: n.vatAmount,
+                      grossAmount: n.grossAmount,
+                    }))
+                  );
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg text-white bg-slate-900 hover:bg-slate-800 transition-colors cursor-pointer shadow"
+              >
+                <FolderDown className="w-4 h-4 text-emerald-400" />
+                Export VAT Return (PDF Audit Pack)
+              </button>
+            </div>
+
+            {/* Boxes */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                    <th className="py-3 px-4">Box</th>
+                    <th className="py-3 px-4">Description</th>
+                    <th className="py-3 px-4 text-right">Net Value (OMR)</th>
+                    <th className="py-3 px-4 text-right">VAT Amount (OMR)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  <tr className="hover:bg-slate-50/70">
+                    <td className="py-3 px-4 font-mono font-semibold text-slate-900">1</td>
+                    <td className="py-3 px-4 text-slate-700">Standard-Rated Supplies (Sales)</td>
+                    <td className="py-3 px-4 text-right font-mono text-slate-800">{formatOMR(vatReturnData.boxes.box1Value)}</td>
+                    <td className="py-3 px-4 text-right font-mono font-semibold text-blue-700">{formatOMR(vatReturnData.boxes.box1Vat)}</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/70">
+                    <td className="py-3 px-4 font-mono font-semibold text-slate-900">2</td>
+                    <td className="py-3 px-4 text-slate-700">Zero-Rated Supplies (Sales)</td>
+                    <td className="py-3 px-4 text-right font-mono text-slate-800">{formatOMR(vatReturnData.boxes.box2Value)}</td>
+                    <td className="py-3 px-4 text-right font-mono text-slate-400">—</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/70">
+                    <td className="py-3 px-4 font-mono font-semibold text-slate-900">3</td>
+                    <td className="py-3 px-4 text-slate-700">Exempt Supplies (Sales)</td>
+                    <td className="py-3 px-4 text-right font-mono text-slate-800">{formatOMR(vatReturnData.boxes.box3Value)}</td>
+                    <td className="py-3 px-4 text-right font-mono text-slate-400">—</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/70">
+                    <td className="py-3 px-4 font-mono text-slate-400">—</td>
+                    <td className="py-3 px-4 text-slate-500">Out-of-Scope Supplies (informational)</td>
+                    <td className="py-3 px-4 text-right font-mono text-slate-500">{formatOMR(vatReturnData.boxes.outOfScopeValue)}</td>
+                    <td className="py-3 px-4 text-right font-mono text-slate-400">—</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/70">
+                    <td className="py-3 px-4 font-mono font-semibold text-slate-900">4</td>
+                    <td className="py-3 px-4 text-slate-700">Standard-Rated Purchases / Expenses (Input)</td>
+                    <td className="py-3 px-4 text-right font-mono text-slate-800">{formatOMR(vatReturnData.boxes.box4Value)}</td>
+                    <td className="py-3 px-4 text-right font-mono font-semibold text-emerald-700">{formatOMR(vatReturnData.boxes.box4Vat)}</td>
+                  </tr>
+                  <tr className="hover:bg-slate-50/70">
+                    <td className="py-3 px-4 font-mono font-semibold text-slate-900">RC</td>
+                    <td className="py-3 px-4 text-slate-700">Reverse Charge — Imported Services (self-charged)</td>
+                    <td className="py-3 px-4 text-right font-mono text-slate-800">{formatOMR(vatReturnData.boxes.rcValue)}</td>
+                    <td className="py-3 px-4 text-right font-mono font-semibold text-amber-700">{formatOMR(vatReturnData.boxes.rcVat)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Net VAT Position */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <p className="text-[11px] font-semibold text-blue-700 uppercase tracking-wide">Total Output VAT</p>
+                <p className="text-lg font-bold text-blue-900 font-mono mt-1">{formatOMR(vatReturnData.boxes.totalOutputVat)}</p>
+                <p className="text-[10px] text-blue-600 mt-0.5">Box 1 + Reverse Charge self-charge</p>
+              </div>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wide">Total Input VAT</p>
+                <p className="text-lg font-bold text-emerald-900 font-mono mt-1">{formatOMR(vatReturnData.boxes.totalInputVat)}</p>
+                <p className="text-[10px] text-emerald-600 mt-0.5">Box 4 + Reverse Charge recoverable</p>
+              </div>
+              <div className={`rounded-xl p-4 border ${vatReturnData.boxes.netVatDue >= 0 ? 'bg-rose-50 border-rose-200' : 'bg-slate-50 border-slate-200'}`}>
+                <p className={`text-[11px] font-semibold uppercase tracking-wide ${vatReturnData.boxes.netVatDue >= 0 ? 'text-rose-700' : 'text-slate-700'}`}>
+                  {vatReturnData.boxes.netVatDue >= 0 ? 'Net VAT Payable' : 'Net VAT Refundable'}
+                </p>
+                <p className={`text-lg font-bold font-mono mt-1 ${vatReturnData.boxes.netVatDue >= 0 ? 'text-rose-900' : 'text-slate-900'}`}>
+                  {formatOMR(Math.abs(vatReturnData.boxes.netVatDue))}
+                </p>
+              </div>
+            </div>
+
+            {/* Reverse Charge Working Paper */}
+            {vatReturnData.reverseChargeItems.length > 0 && (
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 mb-2">Reverse Charge Working Paper</h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                        <th className="py-2.5 px-4">Date</th>
+                        <th className="py-2.5 px-4">Document #</th>
+                        <th className="py-2.5 px-4">Vendor</th>
+                        <th className="py-2.5 px-4 text-right">Net (OMR)</th>
+                        <th className="py-2.5 px-4 text-right">Self-Charged VAT (OMR)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {vatReturnData.reverseChargeItems.map((r, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/70">
+                          <td className="py-2.5 px-4 font-mono text-slate-600">{r.date}</td>
+                          <td className="py-2.5 px-4 font-mono text-slate-800">{r.documentNumber}</td>
+                          <td className="py-2.5 px-4 text-slate-700">{r.partyName}</td>
+                          <td className="py-2.5 px-4 text-right font-mono text-slate-800">{formatOMR(r.netAmount)}</td>
+                          <td className="py-2.5 px-4 text-right font-mono font-semibold text-amber-700">{formatOMR(r.vatAmount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Credit / Debit Notes — disclosure only */}
+            {vatReturnData.notes.length > 0 && (
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 mb-1">Credit / Debit Notes Issued This Period</h4>
+                <p className="text-[11px] text-slate-500 mb-2">
+                  Disclosure only — already reflected in the source document's current totals above, not summed again here.
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                        <th className="py-2.5 px-4">Date</th>
+                        <th className="py-2.5 px-4">Note #</th>
+                        <th className="py-2.5 px-4">Type</th>
+                        <th className="py-2.5 px-4">Against</th>
+                        <th className="py-2.5 px-4">Party</th>
+                        <th className="py-2.5 px-4 text-right">Net (OMR)</th>
+                        <th className="py-2.5 px-4 text-right">VAT (OMR)</th>
+                        <th className="py-2.5 px-4 text-right">Gross (OMR)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {vatReturnData.notes.map((n) => (
+                        <tr key={n.id} className="hover:bg-slate-50/70">
+                          <td className="py-2.5 px-4 font-mono text-slate-600">{n.date}</td>
+                          <td className="py-2.5 px-4 font-mono text-slate-900">{n.noteNumber}</td>
+                          <td className="py-2.5 px-4">
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                n.noteType === 'credit' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'
+                              }`}
+                            >
+                              {n.noteType === 'credit' ? 'Credit' : 'Debit'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-4 font-mono text-slate-600">{n.sourceDocumentNumber}</td>
+                          <td className="py-2.5 px-4 text-slate-700">{n.customerName || n.vendorName}</td>
+                          <td className="py-2.5 px-4 text-right font-mono text-slate-800">{formatOMR(n.netAmount)}</td>
+                          <td className="py-2.5 px-4 text-right font-mono text-slate-600">{formatOMR(n.vatAmount)}</td>
+                          <td className="py-2.5 px-4 text-right font-mono font-semibold text-slate-900">{formatOMR(n.grossAmount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {vatReturnData.invoiceCount === 0 && vatReturnData.reverseChargeItems.length === 0 && (
+              <div className="text-center py-8 text-slate-400 text-xs">
+                No VAT-relevant transactions recorded for the selected period / project.
+              </div>
+            )}
           </div>
         )}
 
