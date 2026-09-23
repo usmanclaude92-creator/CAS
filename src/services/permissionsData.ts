@@ -129,6 +129,12 @@ export const ALL_PERMISSIONS: Permission[] = [
     name: 'Import Master Data',
     description: 'Bulk import Customers, Vendors, Projects, Bank Accounts and Expense Heads (Super Administrator only)',
   },
+
+  // Business Partners
+  { id: 'p88', code: 'business_partners.view', module: 'Business Partners', name: 'View Business Partners', description: 'View directors, related companies, JV partners and intercompany accounts' },
+  { id: 'p89', code: 'business_partners.create', module: 'Business Partners', name: 'Create Business Partners', description: 'Register new business partner records' },
+  { id: 'p90', code: 'business_partners.edit', module: 'Business Partners', name: 'Edit Business Partners', description: 'Update business partner details' },
+  { id: 'p91', code: 'business_partners.export', module: 'Business Partners', name: 'Export Business Partners', description: 'Export business partner records and balances' },
 ];
 
 // Grouped permissions for UI display
@@ -188,6 +194,7 @@ export const DEFAULT_ROLES: Role[] = [
       'money_out.view', 'money_out.create', 'money_out.edit', 'money_out.submit', 'money_out.approve', 'money_out.post', 'money_out.reverse', 'money_out.export',
       'expenses.view', 'expenses.create', 'expenses.edit', 'expenses.submit', 'expenses.approve', 'expenses.post', 'expenses.reverse', 'expenses.export',
       'treasury.view', 'bank_accounts.view', 'cash.view', 'petty_cash.view', 'transfers.create', 'transfers.approve',
+      'business_partners.view', 'business_partners.create', 'business_partners.edit', 'business_partners.export',
       'reports.view', 'reports.export',
       'documents.view', 'documents.upload', 'documents.download',
       'approvals.view', 'approvals.approve', 'approvals.reject',
@@ -213,6 +220,7 @@ export const DEFAULT_ROLES: Role[] = [
       'money_out.view', 'money_out.create', 'money_out.edit', 'money_out.submit', 'money_out.export',
       'expenses.view', 'expenses.create', 'expenses.edit', 'expenses.submit', 'expenses.export',
       'treasury.view', 'bank_accounts.view', 'cash.view', 'petty_cash.view', 'transfers.create',
+      'business_partners.view', 'business_partners.create', 'business_partners.edit',
       'reports.view', 'reports.export',
       'documents.view', 'documents.upload', 'documents.download',
       'approvals.view',
@@ -264,6 +272,7 @@ export const DEFAULT_ROLES: Role[] = [
       'money_in.view', 'money_in.create',
       'money_out.view', 'money_out.create',
       'transfers.create',
+      'business_partners.view', 'business_partners.create', 'business_partners.edit',
       'reports.view',
       'documents.view', 'documents.upload', 'documents.download',
     ],
@@ -303,6 +312,7 @@ export const DEFAULT_ROLES: Role[] = [
       'money_out.view',
       'expenses.view',
       'treasury.view',
+      'business_partners.view',
       'reports.view',
       'documents.view',
     ],

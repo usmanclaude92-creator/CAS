@@ -38,6 +38,7 @@ import { ReverseTransactionModal } from './components/modals/ReverseTransactionM
 import { NewProjectModal } from './components/modals/NewProjectModal';
 import { NewCustomerModal } from './components/modals/NewCustomerModal';
 import { NewVendorModal } from './components/modals/NewVendorModal';
+import { NewBusinessPartnerModal } from './components/modals/NewBusinessPartnerModal';
 import { NewBankAccountModal } from './components/modals/NewBankAccountModal';
 import { SupabaseSettingsModal } from './components/modals/SupabaseSettingsModal';
 import { SessionWarningModal } from './components/modals/SessionWarningModal';
@@ -106,6 +107,7 @@ function AppContent() {
   const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
   const [isNewCustomerOpen, setIsNewCustomerOpen] = useState(false);
   const [isNewVendorOpen, setIsNewVendorOpen] = useState(false);
+  const [isNewBusinessPartnerOpen, setIsNewBusinessPartnerOpen] = useState(false);
   const [isNewBankAccountOpen, setIsNewBankAccountOpen] = useState(false);
 
   // Hidden Administrative Approval Route & One-Time Token State
@@ -535,6 +537,7 @@ function AppContent() {
                   onOpenNewCustomer={() => setIsNewCustomerOpen(true)}
                   onOpenNewVendor={() => setIsNewVendorOpen(true)}
                   onOpenNewBankAccount={() => setIsNewBankAccountOpen(true)}
+                  onOpenNewBusinessPartner={() => setIsNewBusinessPartnerOpen(true)}
                   onOpenSupabaseSettings={() => setIsSupabaseSettingsOpen(true)}
                 />
               )}
@@ -655,6 +658,11 @@ function AppContent() {
       <NewBankAccountModal
         isOpen={isNewBankAccountOpen}
         onClose={() => setIsNewBankAccountOpen(false)}
+      />
+
+      <NewBusinessPartnerModal
+        isOpen={isNewBusinessPartnerOpen}
+        onClose={() => setIsNewBusinessPartnerOpen(false)}
       />
 
       <SupabaseSettingsModal

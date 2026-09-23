@@ -5,6 +5,7 @@ import {
   BankAccount,
   CashAccount,
   PettyCashAccount,
+  BusinessPartner,
   ExpenseHead,
   ClientInvoice,
   Purchase,
@@ -48,6 +49,7 @@ export interface AppDatabaseState {
   bankAccounts: BankAccount[];
   cashAccounts: CashAccount[];
   pettyCashAccounts: PettyCashAccount[];
+  businessPartners: BusinessPartner[];
   expenseHeads: ExpenseHead[];
   clientInvoices: ClientInvoice[];
   purchases: Purchase[];
@@ -68,6 +70,7 @@ function emptyState(): AppDatabaseState {
     bankAccounts: [],
     cashAccounts: [],
     pettyCashAccounts: [],
+    businessPartners: [],
     expenseHeads: [],
     clientInvoices: [],
     purchases: [],
@@ -151,7 +154,7 @@ class AccountingService {
     try {
       const [
         projects, customers, vendors, bankAccounts, cashAccounts, pettyCashAccounts,
-        expenseHeads, clientInvoices, purchases, moneyIn, moneyOut, directExpenses,
+        businessPartners, expenseHeads, clientInvoices, purchases, moneyIn, moneyOut, directExpenses,
         transfers, openingBalances, journalEntries, auditLogs,
       ] = await Promise.all([
         client.from('projects').select('*').order('created_at', { ascending: true }),
@@ -160,6 +163,7 @@ class AccountingService {
         client.from('bank_accounts').select('*').order('created_at', { ascending: true }),
         client.from('cash_accounts').select('*').order('created_at', { ascending: true }),
         client.from('petty_cash_accounts').select('*').order('created_at', { ascending: true }),
+        client.from('business_partners').select('*').order('created_at', { ascending: true }),
         client.from('expense_heads').select('*').order('created_at', { ascending: true }),
         client.from('client_invoices').select('*').order('created_at', { ascending: true }),
         client.from('purchases').select('*').order('created_at', { ascending: true }),
@@ -173,8 +177,8 @@ class AccountingService {
       ]);
 
       const firstError = [
-        projects, customers, vendors, bankAccounts, cashAccounts, pettyCashAccounts, expenseHeads,
-        clientInvoices, purchases, moneyIn, moneyOut, directExpenses, transfers, openingBalances,
+        projects, customers, vendors, bankAccounts, cashAccounts, pettyCashAccounts, businessPartners,
+        expenseHeads, clientInvoices, purchases, moneyIn, moneyOut, directExpenses, transfers, openingBalances,
         journalEntries, auditLogs,
       ].find((r) => r.error)?.error;
       if (firstError) throw firstError;
@@ -186,6 +190,7 @@ class AccountingService {
         bankAccounts: (bankAccounts.data ?? []).map(this.mapBankAccount),
         cashAccounts: (cashAccounts.data ?? []).map(this.mapCashAccount),
         pettyCashAccounts: (pettyCashAccounts.data ?? []).map(this.mapPettyCashAccount),
+        businessPartners: (businessPartners.data ?? []).map(this.mapBusinessPartner),
         expenseHeads: (expenseHeads.data ?? []).map(this.mapExpenseHead),
         clientInvoices: [],
         purchases: [],
@@ -225,7 +230,7 @@ class AccountingService {
     if (!client || this.realtimeChannel) return;
     const tables = [
       'projects', 'customers', 'vendors', 'bank_accounts', 'cash_accounts', 'petty_cash_accounts',
-      'expense_heads', 'client_invoices', 'purchases', 'money_in', 'money_out', 'direct_expenses',
+      'business_partners', 'expense_heads', 'client_invoices', 'purchases', 'money_in', 'money_out', 'direct_expenses',
       'transfers', 'opening_balances', 'journal_entries',
     ];
     let channel = client.channel('accounting-data-sync');
@@ -329,6 +334,22 @@ class AccountingService {
     openingBalance: Number(row.opening_balance) || 0,
     currentBalance: Number(row.current_balance) || 0,
     openingDate: row.opening_date ?? undefined,
+    status: row.status,
+    remarks: row.remarks ?? undefined,
+    createdAt: row.created_at,
+  });
+
+  private mapBusinessPartner = (row: any): BusinessPartner => ({
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    partnerType: row.partner_type,
+    contactPerson: row.contact_person ?? undefined,
+    phone: row.phone ?? undefined,
+    email: row.email ?? undefined,
+    address: row.address ?? undefined,
+    openingBalance: Number(row.opening_balance) || 0,
+    currentBalance: Number(row.current_balance) || 0,
     status: row.status,
     remarks: row.remarks ?? undefined,
     createdAt: row.created_at,
@@ -598,6 +619,9 @@ class AccountingService {
     }
     if (type === 'petty_cash') {
       return this.state.pettyCashAccounts.find((p) => p.id === id)?.accountName || 'Petty Cash';
+    }
+    if (type === 'partner') {
+      return this.state.businessPartners.find((p) => p.id === id)?.name || 'Business Partner';
     }
     return 'Unknown Account';
   }
@@ -1134,6 +1158,37 @@ class AccountingService {
     await this.persistAuditLog('CREATE_BANK_ACCOUNT', 'Banking & Treasury', `Created bank account "${row.account_name}" at ${row.bank_name}`, row.account_number, row.id);
     await this.loadAll();
     return this.state.bankAccounts.find((b) => b.id === row.id) || this.mapBankAccount(row);
+  }
+
+  public async createBusinessPartner(data: Omit<BusinessPartner, 'id' | 'currentBalance' | 'createdAt'>): Promise<BusinessPartner> {
+    if (!data.code?.trim()) throw new Error('Business Partner Code is required.');
+    if (!data.name?.trim()) throw new Error('Business Partner Name is required.');
+
+    const client = this.requireClient();
+    const opening = Number(data.openingBalance) || 0;
+    const { data: row, error } = await client
+      .from('business_partners')
+      .insert({
+        code: data.code.trim().toUpperCase(),
+        name: data.name.trim(),
+        partner_type: data.partnerType,
+        contact_person: data.contactPerson || null,
+        phone: data.phone || null,
+        email: data.email || null,
+        address: data.address || null,
+        opening_balance: opening,
+        current_balance: opening,
+        status: data.status,
+        remarks: data.remarks || null,
+        created_by: authService.getCurrentUser()?.id,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.code === '23505' ? `Business Partner Code "${data.code}" already exists.` : error.message);
+
+    await this.persistAuditLog('CREATE_BUSINESS_PARTNER', 'Business Partners', `Created business partner "${row.name}" (${row.code})`, row.code, row.id);
+    await this.loadAll();
+    return this.state.businessPartners.find((p) => p.id === row.id) || this.mapBusinessPartner(row);
   }
 
   public async createCashAccount(data: Omit<CashAccount, 'id' | 'currentBalance' | 'createdAt'>): Promise<CashAccount> {
@@ -1701,7 +1756,7 @@ class AccountingService {
       effectiveType = accountTypeOrId as TreasuryAccountType;
       effectiveAccountId = accountIdParam;
     } else if (accountTypeOrId && accountTypeOrId !== 'all') {
-      if (accountTypeOrId === 'bank' || accountTypeOrId === 'cash' || accountTypeOrId === 'petty_cash') {
+      if (accountTypeOrId === 'bank' || accountTypeOrId === 'cash' || accountTypeOrId === 'petty_cash' || accountTypeOrId === 'partner') {
         effectiveType = accountTypeOrId as TreasuryAccountType;
       } else if (accountTypeOrId.startsWith('group:')) {
         effectiveType = accountTypeOrId.replace('group:', '') as TreasuryAccountType;
@@ -1714,14 +1769,21 @@ class AccountingService {
           effectiveType = 'cash';
         } else if (this.state.pettyCashAccounts.some((p) => p.id === effectiveAccountId)) {
           effectiveType = 'petty_cash';
+        } else if (this.state.businessPartners.some((p) => p.id === effectiveAccountId)) {
+          effectiveType = 'partner';
         }
       }
     }
 
+    const targetPartner = effectiveAccountId
+      ? this.state.businessPartners.find((p) => p.id === effectiveAccountId)
+      : undefined;
+
     const targetAccountObj = effectiveAccountId
       ? this.state.bankAccounts.find((b) => b.id === effectiveAccountId) ||
         this.state.cashAccounts.find((c) => c.id === effectiveAccountId) ||
-        this.state.pettyCashAccounts.find((p) => p.id === effectiveAccountId)
+        this.state.pettyCashAccounts.find((p) => p.id === effectiveAccountId) ||
+        (targetPartner ? { ...targetPartner, accountName: targetPartner.name } : undefined)
       : undefined;
 
     const matchesAccount = (txType: TreasuryAccountType, txAccountId?: string, txAccountName?: string): boolean => {
@@ -1770,6 +1832,7 @@ class AccountingService {
         ...this.state.bankAccounts.map((b) => ({ ...b, type: 'bank' as TreasuryAccountType })),
         ...this.state.cashAccounts.map((c) => ({ ...c, type: 'cash' as TreasuryAccountType })),
         ...this.state.pettyCashAccounts.map((p) => ({ ...p, type: 'petty_cash' as TreasuryAccountType })),
+        ...this.state.businessPartners.map((p) => ({ ...p, accountName: p.name, type: 'partner' as TreasuryAccountType })),
       ];
 
       allAccountsList.forEach((acc) => {

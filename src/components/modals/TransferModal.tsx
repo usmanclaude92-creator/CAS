@@ -31,13 +31,15 @@ export const TransferModal: React.FC<TransferModalProps> = ({ isOpen, onClose })
     if (transferFromType === 'bank') setTransferFromId(state.bankAccounts[0]?.id || '');
     if (transferFromType === 'cash') setTransferFromId(state.cashAccounts[0]?.id || '');
     if (transferFromType === 'petty_cash') setTransferFromId(state.pettyCashAccounts[0]?.id || '');
-  }, [transferFromType, state.bankAccounts, state.cashAccounts, state.pettyCashAccounts]);
+    if (transferFromType === 'partner') setTransferFromId(state.businessPartners[0]?.id || '');
+  }, [transferFromType, state.bankAccounts, state.cashAccounts, state.pettyCashAccounts, state.businessPartners]);
 
   useEffect(() => {
     if (transferToType === 'bank') setTransferToId(state.bankAccounts[0]?.id || '');
     if (transferToType === 'cash') setTransferToId(state.cashAccounts[0]?.id || '');
     if (transferToType === 'petty_cash') setTransferToId(state.pettyCashAccounts[0]?.id || '');
-  }, [transferToType, state.bankAccounts, state.cashAccounts, state.pettyCashAccounts]);
+    if (transferToType === 'partner') setTransferToId(state.businessPartners[0]?.id || '');
+  }, [transferToType, state.bankAccounts, state.cashAccounts, state.pettyCashAccounts, state.businessPartners]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,7 +109,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({ isOpen, onClose })
           <div>
             <h2 className="text-base font-semibold tracking-wide">Treasury Internal Transfer</h2>
             <p className="text-xs text-indigo-100 mt-0.5">
-              Move funds between Bank, Cash in Hand &amp; Petty Cash. Does NOT affect project revenue or expenses.
+              Move funds between Bank, Cash in Hand, Petty Cash &amp; Business Partners. Does NOT affect project revenue or expenses.
             </p>
           </div>
           <button
@@ -156,6 +158,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({ isOpen, onClose })
                   <option value="bank">Bank Account</option>
                   <option value="cash">Cash in Hand</option>
                   <option value="petty_cash">Petty Cash</option>
+                  <option value="partner">Business Partner</option>
                 </select>
 
                 <select
@@ -182,6 +185,12 @@ export const TransferModal: React.FC<TransferModalProps> = ({ isOpen, onClose })
                         {p.accountName} ({formatOMR(p.currentBalance)})
                       </option>
                     ))}
+                  {transferFromType === 'partner' &&
+                    state.businessPartners.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({formatOMR(p.currentBalance)})
+                      </option>
+                    ))}
                 </select>
               </div>
             </div>
@@ -200,6 +209,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({ isOpen, onClose })
                   <option value="petty_cash">Petty Cash</option>
                   <option value="cash">Cash in Hand</option>
                   <option value="bank">Bank Account</option>
+                  <option value="partner">Business Partner</option>
                 </select>
 
                 <select
@@ -224,6 +234,12 @@ export const TransferModal: React.FC<TransferModalProps> = ({ isOpen, onClose })
                     state.pettyCashAccounts.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.accountName} ({formatOMR(p.currentBalance)})
+                      </option>
+                    ))}
+                  {transferToType === 'partner' &&
+                    state.businessPartners.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({formatOMR(p.currentBalance)})
                       </option>
                     ))}
                 </select>
