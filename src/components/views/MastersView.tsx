@@ -19,6 +19,8 @@ import { AddExpenseCategoryModal } from '../modals/AddExpenseCategoryModal';
 import { ManageExpenseCategoriesModal } from '../modals/ManageExpenseCategoriesModal';
 import { ExpenseHead } from '../../types';
 import { NewCashAccountModal, CashAccountType } from '../modals/NewCashAccountModal';
+import { exportToExcel } from '../../utils/exportToExcel';
+import { buildVendorExportRows } from '../../utils/vendorImportTemplate';
 
 interface MastersViewProps {
   onOpenNewProject: () => void;
@@ -296,7 +298,7 @@ export const MastersView: React.FC<MastersViewProps> = ({
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Vendor &amp; Subcontractor Master</h3>
               <div className="flex items-center gap-2">
-                {/* STRICT CHECK: Super Admin only bulk import buttons */}
+                {/* Permission-gated: only rendered for users whose role holds 'master_data.import' */}
                 {canImportMasterData && (
                   <>
                     <button
@@ -315,6 +317,20 @@ export const MastersView: React.FC<MastersViewProps> = ({
                     </button>
                   </>
                 )}
+                <button
+                  onClick={() => exportToExcel({
+                    filename: `Vendors_Master_Data_${new Date().toISOString().split('T')[0]}`,
+                    sheetName: 'Vendors',
+                    title: 'VENDOR & SUBCONTRACTOR MASTER DATA',
+                    companyName: 'Al Tasneem & Partners Construction LLC - Muscat, Oman',
+                    currency: 'OMR',
+                    data: buildVendorExportRows(state.vendors),
+                  })}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                  Export Vendors
+                </button>
                 <button
                   onClick={onOpenNewVendor}
                   className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-amber-600 hover:bg-amber-700 cursor-pointer"

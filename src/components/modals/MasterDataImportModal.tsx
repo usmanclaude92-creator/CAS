@@ -13,6 +13,7 @@ import { authService } from '../../services/authService';
 import { accountingService } from '../../services/accountingService';
 import { downloadProjectImportTemplate } from '../../utils/projectImportTemplate';
 import { downloadCustomerImportTemplate } from '../../utils/customerImportTemplate';
+import { downloadVendorImportTemplate } from '../../utils/vendorImportTemplate';
 
 export type MasterImportType = 'customers' | 'vendors' | 'projects' | 'banks' | 'expense_heads';
 
@@ -213,10 +214,14 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
         const codeIdx = findCol(header, 'code');
         const nameIdx = findCol(header, 'name');
         const categoryIdx = findCol(header, 'category');
+        const contactIdx = findCol(header, 'contact');
         const phoneIdx = findCol(header, 'phone', 'mobile');
         const emailIdx = findCol(header, 'email');
         const addressIdx = findCol(header, 'address');
         const balanceIdx = findCol(header, 'balance');
+        const statusIdx = findCol(header, 'status');
+        const remarksIdx = findCol(header, 'remarks', 'notes');
+        const validStatuses = new Set(['active', 'inactive']);
         const existingCodes = new Set(state.vendors.map((v) => v.code.toLowerCase()));
 
         for (const cols of dataLines) {
@@ -224,16 +229,21 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
           const name = (nameIdx >= 0 ? cols[nameIdx] : cols[1] || '').trim();
           if (!code || !name) { invalidRecords++; continue; }
           if (existingCodes.has(code.toLowerCase())) { duplicateRecords++; existingRecords++; continue; }
+
+          const statusRaw = (statusIdx >= 0 ? cols[statusIdx] : '').trim().toLowerCase();
+          const remarks = (remarksIdx >= 0 ? cols[remarksIdx] : '').trim();
+
           await accountingService.createVendor({
             code,
             name,
             category: categoryIdx >= 0 ? cols[categoryIdx] : undefined,
+            contactPerson: contactIdx >= 0 ? cols[contactIdx] : undefined,
             phone: phoneIdx >= 0 ? cols[phoneIdx] : undefined,
             email: emailIdx >= 0 ? cols[emailIdx] : undefined,
             address: addressIdx >= 0 ? cols[addressIdx] : undefined,
             openingBalance: balanceIdx >= 0 ? parseFloat(cols[balanceIdx]) || 0 : 0,
-            status: 'active',
-            remarks: 'Imported via Super Admin bulk master import',
+            status: validStatuses.has(statusRaw) ? (statusRaw as 'active' | 'inactive') : 'active',
+            remarks: remarks || 'Imported via bulk master data import',
           });
           existingCodes.add(code.toLowerCase());
           newRecords++;
@@ -487,6 +497,10 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
                 downloadCustomerImportTemplate();
                 return;
               }
+              if (importType === 'vendors') {
+                downloadVendorImportTemplate();
+                return;
+              }
               // Quick download sample template
               const csvContent =
                 'Code,Name,Category,OpeningBalance\nVND-005,Muscat Cement Products,Building Materials,3500';
@@ -500,7 +514,7 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
             className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
-            {importType === 'projects' || importType === 'customers'
+            {importType === 'projects' || importType === 'customers' || importType === 'vendors'
               ? 'Download Excel Import Template'
               : 'Download Sample CSV Template'}
           </button>
