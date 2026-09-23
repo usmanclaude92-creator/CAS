@@ -270,6 +270,7 @@ class AccountingService {
     id: row.id,
     code: row.code,
     name: row.name,
+    vatin: row.vatin ?? undefined,
     contactPerson: row.contact_person ?? undefined,
     phone: row.phone ?? undefined,
     email: row.email ?? undefined,
@@ -1056,6 +1057,7 @@ class AccountingService {
       .insert({
         code: data.code.trim().toUpperCase(),
         name: data.name.trim(),
+        vatin: data.vatin || null,
         contact_person: data.contactPerson || null,
         phone: data.phone || null,
         email: data.email || null,

@@ -38,6 +38,7 @@ export interface Customer {
   id: string;
   code: string; // Unique
   name: string;
+  vatin?: string; // VAT Identification Number
   contactPerson?: string;
   phone?: string;
   email?: string;
