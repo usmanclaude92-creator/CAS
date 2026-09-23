@@ -451,18 +451,18 @@ export const Header: React.FC<HeaderProps> = ({
     canCreateTransfer;
 
   return (
-    <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 sm:gap-4 transition-colors duration-200 print:hidden">
+    <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 py-2 sm:py-2.5 flex flex-wrap items-center justify-between gap-2 sm:gap-4 transition-colors duration-200 print:hidden">
       {/* Title and Sidebar toggle */}
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-3 shrink-0 min-w-0">
         <button
           onClick={onToggleSidebar}
-          className="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+          className="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer shrink-0"
           aria-label="Toggle sidebar"
         >
           <Menu className="w-5 h-5 text-slate-700 dark:text-slate-200" />
         </button>
-        <div>
-          <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight">
+        <div className="min-w-0">
+          <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight truncate max-w-[150px] sm:max-w-none">
             {getTitle()}
           </h1>
           <div className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:flex items-center gap-2">
@@ -476,7 +476,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Center: Global Search Bar */}
-      <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-1 sm:mx-3 relative" ref={searchContainerRef}>
+      <div className="order-3 w-full sm:order-none sm:w-auto flex-1 min-w-0 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-0 sm:mx-3 relative" ref={searchContainerRef}>
         <div
           className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all ${
             isSearchOpen
@@ -650,7 +650,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Right controls: Density Toggle, Theme Toggle, Export Data, Quick Transaction, User Switcher */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         {/* Table Row Spacing Density Toggle (Comfortable vs Compact) */}
         <TableDensityToggle variant="header" />
 
