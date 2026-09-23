@@ -2,13 +2,17 @@ import React, { useState } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { notificationCenter } from '../../services/notificationCenter';
+import { Project } from '../../types';
+import { MasterDataSelect } from '../common/MasterDataSelect';
+import { NewCustomerModal } from './NewCustomerModal';
 
 interface NewProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreated?: (project: Project) => void;
 }
 
-export const NewProjectModal: React.FC<NewProjectModalProps> = ({ isOpen, onClose }) => {
+export const NewProjectModal: React.FC<NewProjectModalProps> = ({ isOpen, onClose, onCreated }) => {
   const state = accountingService.getState();
 
   const [code, setCode] = useState(`PRJ-${Date.now().toString().slice(-4)}`);
@@ -21,6 +25,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({ isOpen, onClos
   const [status, setStatus] = useState<'active' | 'completed' | 'on_hold'>('active');
   const [remarks, setRemarks] = useState('');
   const [error, setError] = useState('');
+  const [isNewCustomerOpen, setIsNewCustomerOpen] = useState(false);
 
   if (!isOpen) return null;
 
@@ -45,7 +50,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({ isOpen, onClos
     }
 
     try {
-      await accountingService.createProject({
+      const created = await accountingService.createProject({
         code: code.trim(),
         name: name.trim(),
         customerId,
@@ -63,6 +68,7 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({ isOpen, onClos
         `Project code ${code.trim()} registered with contract value OMR ${contractVal.toFixed(3)}.`
       );
 
+      onCreated?.(created);
       onClose();
     } catch (err: any) {
       setError(err?.message || 'Failed to create project.');
@@ -138,19 +144,16 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({ isOpen, onClos
             <label className="block text-xs font-medium text-slate-700 mb-1">
               Client / Customer <span className="text-rose-600">*</span>
             </label>
-            <select
+            <MasterDataSelect
               required
               value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
+              onChange={setCustomerId}
+              onAddNew={() => setIsNewCustomerOpen(true)}
+              addNewLabel="+ Add New Customer"
+              placeholder="-- Select Customer --"
+              options={state.customers.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }))}
               className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500"
-            >
-              <option value="">-- Select Customer --</option>
-              {state.customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.code})
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -240,6 +243,15 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({ isOpen, onClos
           </div>
         </form>
       </div>
+
+      <NewCustomerModal
+        isOpen={isNewCustomerOpen}
+        onClose={() => setIsNewCustomerOpen(false)}
+        onCreated={(customer) => {
+          setCustomerId(customer.id);
+          setIsNewCustomerOpen(false);
+        }}
+      />
     </div>
   );
 };

@@ -4,6 +4,9 @@ import { accountingService } from '../../services/accountingService';
 import { uploadAttachmentFile } from '../../services/supabaseClient';
 import { notificationCenter } from '../../services/notificationCenter';
 import { formatOMR } from '../../utils/formatters';
+import { MasterDataSelect } from '../common/MasterDataSelect';
+import { NewProjectModal } from './NewProjectModal';
+import { NewCustomerModal } from './NewCustomerModal';
 
 interface ClientInvoiceModalProps {
   isOpen: boolean;
@@ -30,6 +33,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [addNewOpen, setAddNewOpen] = useState<'project' | 'customer' | null>(null);
 
   // Auto-set customer when project changes
   const handleProjectChange = (pId: string) => {
@@ -217,38 +221,32 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
               <label className="block text-xs font-medium text-slate-700 mb-1">
                 Project <span className="text-rose-600">*</span>
               </label>
-              <select
+              <MasterDataSelect
                 required
                 value={projectId}
-                onChange={(e) => handleProjectChange(e.target.value)}
+                onChange={handleProjectChange}
+                onAddNew={() => setAddNewOpen('project')}
+                addNewLabel="+ Add New Project"
+                placeholder="-- Select Project --"
+                options={state.projects.map((p) => ({ value: p.id, label: `${p.name} (${p.code})` }))}
                 className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">-- Select Project --</option>
-                {state.projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.code})
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
                 Customer <span className="text-rose-600">*</span>
               </label>
-              <select
+              <MasterDataSelect
                 required
                 value={customerId}
-                onChange={(e) => setCustomerId(e.target.value)}
+                onChange={setCustomerId}
+                onAddNew={() => setAddNewOpen('customer')}
+                addNewLabel="+ Add New Customer"
+                placeholder="-- Select Customer --"
+                options={state.customers.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }))}
                 className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">-- Select Customer --</option>
-                {state.customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.code})
-                  </option>
-                ))}
-              </select>
+              />
             </div>
           </div>
 
@@ -333,6 +331,23 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
           </div>
         </form>
       </div>
+
+      <NewProjectModal
+        isOpen={addNewOpen === 'project'}
+        onClose={() => setAddNewOpen(null)}
+        onCreated={(project) => {
+          handleProjectChange(project.id);
+          setAddNewOpen(null);
+        }}
+      />
+      <NewCustomerModal
+        isOpen={addNewOpen === 'customer'}
+        onClose={() => setAddNewOpen(null)}
+        onCreated={(customer) => {
+          setCustomerId(customer.id);
+          setAddNewOpen(null);
+        }}
+      />
     </div>
   );
 };

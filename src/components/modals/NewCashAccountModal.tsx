@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, AlertCircle, Wallet, Coins } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { notificationCenter } from '../../services/notificationCenter';
+import { CashAccount, PettyCashAccount } from '../../types';
 
 export type CashAccountType = 'cash' | 'petty_cash';
 
@@ -9,12 +10,14 @@ interface NewCashAccountModalProps {
   isOpen: boolean;
   onClose: () => void;
   defaultType?: CashAccountType;
+  onCreated?: (account: CashAccount | PettyCashAccount) => void;
 }
 
 export const NewCashAccountModal: React.FC<NewCashAccountModalProps> = ({
   isOpen,
   onClose,
   defaultType = 'cash',
+  onCreated,
 }) => {
   const [accountType, setAccountType] = useState<CashAccountType>(defaultType);
   const [accountName, setAccountName] = useState('');
@@ -63,7 +66,7 @@ export const NewCashAccountModal: React.FC<NewCashAccountModalProps> = ({
 
     try {
       if (accountType === 'cash') {
-        await accountingService.createCashAccount({
+        const created = await accountingService.createCashAccount({
           accountName: accountName.trim(),
           openingBalance: numBalance,
           openingDate,
@@ -76,8 +79,10 @@ export const NewCashAccountModal: React.FC<NewCashAccountModalProps> = ({
           accountName.trim(),
           `Registered with opening balance OMR ${numBalance.toFixed(3)}.`
         );
+
+        onCreated?.(created);
       } else {
-        await accountingService.createPettyCashAccount({
+        const created = await accountingService.createPettyCashAccount({
           accountName: accountName.trim(),
           openingBalance: numBalance,
           openingDate,
@@ -90,6 +95,8 @@ export const NewCashAccountModal: React.FC<NewCashAccountModalProps> = ({
           accountName.trim(),
           `Registered with opening balance OMR ${numBalance.toFixed(3)}.`
         );
+
+        onCreated?.(created);
       }
 
       onClose();

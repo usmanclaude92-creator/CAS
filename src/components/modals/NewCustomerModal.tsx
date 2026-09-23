@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { notificationCenter } from '../../services/notificationCenter';
+import { Customer } from '../../types';
 
 interface NewCustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreated?: (customer: Customer) => void;
 }
 
-export const NewCustomerModal: React.FC<NewCustomerModalProps> = ({ isOpen, onClose }) => {
+export const NewCustomerModal: React.FC<NewCustomerModalProps> = ({ isOpen, onClose, onCreated }) => {
   const [code, setCode] = useState(`CUST-${Date.now().toString().slice(-4)}`);
   const [name, setName] = useState('');
   const [contactPerson, setContactPerson] = useState('');
@@ -29,7 +31,7 @@ export const NewCustomerModal: React.FC<NewCustomerModalProps> = ({ isOpen, onCl
     }
 
     try {
-      await accountingService.createCustomer({
+      const created = await accountingService.createCustomer({
         code: code.trim(),
         name: name.trim(),
         contactPerson: contactPerson.trim() || undefined,
@@ -47,6 +49,7 @@ export const NewCustomerModal: React.FC<NewCustomerModalProps> = ({ isOpen, onCl
         `Customer code ${code.trim()} registered with opening balance OMR ${(parseFloat(openingBalance) || 0).toFixed(3)}.`
       );
 
+      onCreated?.(created);
       onClose();
     } catch (err: any) {
       setError(err?.message || 'Failed to save customer.');

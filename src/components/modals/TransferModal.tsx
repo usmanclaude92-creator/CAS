@@ -1,15 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Upload, AlertCircle } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { uploadAttachmentFile } from '../../services/supabaseClient';
 import { TreasuryAccountType } from '../../types';
 import { formatOMR } from '../../utils/formatters';
 import { notificationCenter } from '../../services/notificationCenter';
+import { MasterDataSelect, MasterDataSelectOption } from '../common/MasterDataSelect';
+import { NewBankAccountModal } from './NewBankAccountModal';
+import { NewCashAccountModal } from './NewCashAccountModal';
+import { NewBusinessPartnerModal } from './NewBusinessPartnerModal';
 
 interface TransferModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+type AddNewTarget = 'from-bank' | 'from-cash' | 'from-petty_cash' | 'from-partner'
+  | 'to-bank' | 'to-cash' | 'to-petty_cash' | 'to-partner';
 
 export const TransferModal: React.FC<TransferModalProps> = ({ isOpen, onClose }) => {
   const state = accountingService.getState();
@@ -25,21 +32,45 @@ export const TransferModal: React.FC<TransferModalProps> = ({ isOpen, onClose })
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [addNewOpen, setAddNewOpen] = useState<AddNewTarget | null>(null);
 
-  // Sync account selection
+  // Reset the account selection to the first available one only when the
+  // account TYPE itself changes — not every time the underlying accounts
+  // array re-renders (e.g. right after creating a new account inline via
+  // "+ Add New ..."), which would otherwise stomp on that fresh selection.
+  const prevTransferFromType = useRef(transferFromType);
   useEffect(() => {
+    if (prevTransferFromType.current === transferFromType) return;
+    prevTransferFromType.current = transferFromType;
     if (transferFromType === 'bank') setTransferFromId(state.bankAccounts[0]?.id || '');
     if (transferFromType === 'cash') setTransferFromId(state.cashAccounts[0]?.id || '');
     if (transferFromType === 'petty_cash') setTransferFromId(state.pettyCashAccounts[0]?.id || '');
     if (transferFromType === 'partner') setTransferFromId(state.businessPartners[0]?.id || '');
   }, [transferFromType, state.bankAccounts, state.cashAccounts, state.pettyCashAccounts, state.businessPartners]);
 
+  const prevTransferToType = useRef(transferToType);
   useEffect(() => {
+    if (prevTransferToType.current === transferToType) return;
+    prevTransferToType.current = transferToType;
     if (transferToType === 'bank') setTransferToId(state.bankAccounts[0]?.id || '');
     if (transferToType === 'cash') setTransferToId(state.cashAccounts[0]?.id || '');
     if (transferToType === 'petty_cash') setTransferToId(state.pettyCashAccounts[0]?.id || '');
     if (transferToType === 'partner') setTransferToId(state.businessPartners[0]?.id || '');
   }, [transferToType, state.bankAccounts, state.cashAccounts, state.pettyCashAccounts, state.businessPartners]);
+
+  const accountOptionsFor = (type: TreasuryAccountType): MasterDataSelectOption[] => {
+    if (type === 'bank') return state.bankAccounts.map((b) => ({ value: b.id, label: `${b.bankName} (${formatOMR(b.currentBalance)})` }));
+    if (type === 'cash') return state.cashAccounts.map((c) => ({ value: c.id, label: `${c.accountName} (${formatOMR(c.currentBalance)})` }));
+    if (type === 'petty_cash') return state.pettyCashAccounts.map((p) => ({ value: p.id, label: `${p.accountName} (${formatOMR(p.currentBalance)})` }));
+    return state.businessPartners.map((p) => ({ value: p.id, label: `${p.name} (${formatOMR(p.currentBalance)})` }));
+  };
+
+  const addNewLabelFor = (type: TreasuryAccountType): string => {
+    if (type === 'bank') return '+ Add New Bank Account';
+    if (type === 'cash') return '+ Add New Cash in Hand Account';
+    if (type === 'petty_cash') return '+ Add New Petty Cash Account';
+    return '+ Add New Business Partner';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,37 +192,15 @@ export const TransferModal: React.FC<TransferModalProps> = ({ isOpen, onClose })
                   <option value="partner">Business Partner</option>
                 </select>
 
-                <select
+                <MasterDataSelect
                   required
                   value={transferFromId}
-                  onChange={(e) => setTransferFromId(e.target.value)}
+                  onChange={setTransferFromId}
+                  onAddNew={() => setAddNewOpen(`from-${transferFromType}` as AddNewTarget)}
+                  addNewLabel={addNewLabelFor(transferFromType)}
+                  options={accountOptionsFor(transferFromType)}
                   className="text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500"
-                >
-                  {transferFromType === 'bank' &&
-                    state.bankAccounts.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.bankName} ({formatOMR(b.currentBalance)})
-                      </option>
-                    ))}
-                  {transferFromType === 'cash' &&
-                    state.cashAccounts.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.accountName} ({formatOMR(c.currentBalance)})
-                      </option>
-                    ))}
-                  {transferFromType === 'petty_cash' &&
-                    state.pettyCashAccounts.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.accountName} ({formatOMR(p.currentBalance)})
-                      </option>
-                    ))}
-                  {transferFromType === 'partner' &&
-                    state.businessPartners.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({formatOMR(p.currentBalance)})
-                      </option>
-                    ))}
-                </select>
+                />
               </div>
             </div>
 
@@ -212,37 +221,15 @@ export const TransferModal: React.FC<TransferModalProps> = ({ isOpen, onClose })
                   <option value="partner">Business Partner</option>
                 </select>
 
-                <select
+                <MasterDataSelect
                   required
                   value={transferToId}
-                  onChange={(e) => setTransferToId(e.target.value)}
+                  onChange={setTransferToId}
+                  onAddNew={() => setAddNewOpen(`to-${transferToType}` as AddNewTarget)}
+                  addNewLabel={addNewLabelFor(transferToType)}
+                  options={accountOptionsFor(transferToType)}
                   className="text-xs px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500"
-                >
-                  {transferToType === 'bank' &&
-                    state.bankAccounts.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.bankName} ({formatOMR(b.currentBalance)})
-                      </option>
-                    ))}
-                  {transferToType === 'cash' &&
-                    state.cashAccounts.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.accountName} ({formatOMR(c.currentBalance)})
-                      </option>
-                    ))}
-                  {transferToType === 'petty_cash' &&
-                    state.pettyCashAccounts.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.accountName} ({formatOMR(p.currentBalance)})
-                      </option>
-                    ))}
-                  {transferToType === 'partner' &&
-                    state.businessPartners.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({formatOMR(p.currentBalance)})
-                      </option>
-                    ))}
-                </select>
+                />
               </div>
             </div>
           </div>
@@ -330,6 +317,38 @@ export const TransferModal: React.FC<TransferModalProps> = ({ isOpen, onClose })
           </div>
         </form>
       </div>
+
+      <NewBankAccountModal
+        isOpen={addNewOpen === 'from-bank' || addNewOpen === 'to-bank'}
+        onClose={() => setAddNewOpen(null)}
+        onCreated={(account) => {
+          if (addNewOpen === 'from-bank') setTransferFromId(account.id);
+          else setTransferToId(account.id);
+          setAddNewOpen(null);
+        }}
+      />
+      <NewCashAccountModal
+        isOpen={
+          addNewOpen === 'from-cash' || addNewOpen === 'from-petty_cash' ||
+          addNewOpen === 'to-cash' || addNewOpen === 'to-petty_cash'
+        }
+        defaultType={addNewOpen === 'from-petty_cash' || addNewOpen === 'to-petty_cash' ? 'petty_cash' : 'cash'}
+        onClose={() => setAddNewOpen(null)}
+        onCreated={(account) => {
+          if (addNewOpen?.startsWith('from-')) setTransferFromId(account.id);
+          else setTransferToId(account.id);
+          setAddNewOpen(null);
+        }}
+      />
+      <NewBusinessPartnerModal
+        isOpen={addNewOpen === 'from-partner' || addNewOpen === 'to-partner'}
+        onClose={() => setAddNewOpen(null)}
+        onCreated={(partner) => {
+          if (addNewOpen === 'from-partner') setTransferFromId(partner.id);
+          else setTransferToId(partner.id);
+          setAddNewOpen(null);
+        }}
+      />
     </div>
   );
 };
