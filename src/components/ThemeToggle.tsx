@@ -147,12 +147,12 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'simple', cl
       {effectiveTheme === 'dark' ? (
         <>
           <Sun className="w-4 h-4 text-amber-400 animate-in spin-in-180 duration-200" />
-          <span className="font-semibold text-[11px] text-amber-400">Light</span>
+          <span className="font-semibold text-[11px] text-amber-400 hidden sm:inline">Light</span>
         </>
       ) : (
         <>
           <Moon className="w-4 h-4 text-slate-600 dark:text-blue-400 animate-in spin-in-180 duration-200" />
-          <span className="font-semibold text-[11px] text-slate-700">Dark</span>
+          <span className="font-semibold text-[11px] text-slate-700 hidden sm:inline">Dark</span>
         </>
       )}
     </button>
