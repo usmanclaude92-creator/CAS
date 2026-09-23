@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Upload, AlertCircle } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { uploadAttachmentFile } from '../../services/supabaseClient';
 import { TreasuryAccountType } from '../../types';
 import { formatOMR } from '../../utils/formatters';
 import { notificationCenter } from '../../services/notificationCenter';
+import { MasterDataSelect } from '../common/MasterDataSelect';
+import { NewProjectModal } from './NewProjectModal';
+import { NewCustomerModal } from './NewCustomerModal';
+import { NewBankAccountModal } from './NewBankAccountModal';
+import { NewCashAccountModal } from './NewCashAccountModal';
 
 interface MoneyInModalProps {
   isOpen: boolean;
@@ -29,9 +34,16 @@ export const MoneyInModal: React.FC<MoneyInModalProps> = ({ isOpen, onClose, pre
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [addNewOpen, setAddNewOpen] = useState<'project' | 'customer' | 'bank' | 'cash' | 'petty_cash' | null>(null);
 
-  // Update default account when receivedInto changes
+  // Reset the account selection to the first available one only when the
+  // account TYPE itself changes — not every time the underlying accounts
+  // array re-renders (e.g. right after creating a new account inline via
+  // "+ Add New ..."), which would otherwise stomp on that fresh selection.
+  const prevReceivedInto = useRef(receivedInto);
   useEffect(() => {
+    if (prevReceivedInto.current === receivedInto) return;
+    prevReceivedInto.current = receivedInto;
     if (receivedInto === 'bank') {
       setAccountId(state.bankAccounts[0]?.id || '');
     } else if (receivedInto === 'cash') {
@@ -201,44 +213,38 @@ export const MoneyInModal: React.FC<MoneyInModalProps> = ({ isOpen, onClose, pre
               <label className="block text-xs font-medium text-slate-700 mb-1">
                 Project <span className="text-rose-600">*</span>
               </label>
-              <select
+              <MasterDataSelect
                 required
                 value={projectId}
-                onChange={(e) => {
-                  setProjectId(e.target.value);
+                onChange={(v) => {
+                  setProjectId(v);
                   setInvoiceId('');
                 }}
+                onAddNew={() => setAddNewOpen('project')}
+                addNewLabel="+ Add New Project"
+                placeholder="-- Select Project --"
+                options={state.projects.map((p) => ({ value: p.id, label: `${p.name} (${p.code})` }))}
                 className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              >
-                <option value="">-- Select Project --</option>
-                {state.projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.code})
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
                 Customer {against === 'invoice' && <span className="text-rose-600">*</span>}
               </label>
-              <select
+              <MasterDataSelect
                 value={customerId}
-                onChange={(e) => {
-                  setCustomerId(e.target.value);
-                  const cust = state.customers.find((c) => c.id === e.target.value);
+                onChange={(v) => {
+                  setCustomerId(v);
+                  const cust = state.customers.find((c) => c.id === v);
                   if (cust) setReceivedFrom(cust.name);
                 }}
+                onAddNew={() => setAddNewOpen('customer')}
+                addNewLabel="+ Add New Customer"
+                placeholder="-- Select Customer --"
+                options={state.customers.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }))}
                 className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              >
-                <option value="">-- Select Customer --</option>
-                {state.customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.code})
-                  </option>
-                ))}
-              </select>
+              />
             </div>
           </div>
 
@@ -326,31 +332,27 @@ export const MoneyInModal: React.FC<MoneyInModalProps> = ({ isOpen, onClose, pre
                 ? 'Select Cash Account *'
                 : 'Select Petty Cash Account *'}
             </label>
-            <select
+            <MasterDataSelect
               required
               value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
+              onChange={setAccountId}
+              onAddNew={() => setAddNewOpen(receivedInto === 'bank' ? 'bank' : receivedInto === 'cash' ? 'cash' : 'petty_cash')}
+              addNewLabel={
+                receivedInto === 'bank'
+                  ? '+ Add New Bank Account'
+                  : receivedInto === 'cash'
+                  ? '+ Add New Cash in Hand Account'
+                  : '+ Add New Petty Cash Account'
+              }
+              options={
+                receivedInto === 'bank'
+                  ? state.bankAccounts.map((b) => ({ value: b.id, label: `${b.bankName} — ${b.accountName} (Balance: ${formatOMR(b.currentBalance)})` }))
+                  : receivedInto === 'cash'
+                  ? state.cashAccounts.map((c) => ({ value: c.id, label: `${c.accountName} (Balance: ${formatOMR(c.currentBalance)})` }))
+                  : state.pettyCashAccounts.map((p) => ({ value: p.id, label: `${p.accountName} (Balance: ${formatOMR(p.currentBalance)})` }))
+              }
               className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-            >
-              {receivedInto === 'bank' &&
-                state.bankAccounts.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.bankName} — {b.accountName} (Balance: {formatOMR(b.currentBalance)})
-                  </option>
-                ))}
-              {receivedInto === 'cash' &&
-                state.cashAccounts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.accountName} (Balance: {formatOMR(c.currentBalance)})
-                  </option>
-                ))}
-              {receivedInto === 'petty_cash' &&
-                state.pettyCashAccounts.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.accountName} (Balance: {formatOMR(p.currentBalance)})
-                  </option>
-                ))}
-            </select>
+            />
           </div>
 
           {/* Document Reference & Attachment */}
@@ -421,6 +423,42 @@ export const MoneyInModal: React.FC<MoneyInModalProps> = ({ isOpen, onClose, pre
           </div>
         </form>
       </div>
+
+      <NewProjectModal
+        isOpen={addNewOpen === 'project'}
+        onClose={() => setAddNewOpen(null)}
+        onCreated={(project) => {
+          setProjectId(project.id);
+          setInvoiceId('');
+          setAddNewOpen(null);
+        }}
+      />
+      <NewCustomerModal
+        isOpen={addNewOpen === 'customer'}
+        onClose={() => setAddNewOpen(null)}
+        onCreated={(customer) => {
+          setCustomerId(customer.id);
+          setReceivedFrom(customer.name);
+          setAddNewOpen(null);
+        }}
+      />
+      <NewBankAccountModal
+        isOpen={addNewOpen === 'bank'}
+        onClose={() => setAddNewOpen(null)}
+        onCreated={(account) => {
+          setAccountId(account.id);
+          setAddNewOpen(null);
+        }}
+      />
+      <NewCashAccountModal
+        isOpen={addNewOpen === 'cash' || addNewOpen === 'petty_cash'}
+        defaultType={addNewOpen === 'petty_cash' ? 'petty_cash' : 'cash'}
+        onClose={() => setAddNewOpen(null)}
+        onCreated={(account) => {
+          setAccountId(account.id);
+          setAddNewOpen(null);
+        }}
+      />
     </div>
   );
 };

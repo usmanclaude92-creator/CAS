@@ -4,6 +4,9 @@ import { accountingService } from '../../services/accountingService';
 import { uploadAttachmentFile } from '../../services/supabaseClient';
 import { notificationCenter } from '../../services/notificationCenter';
 import { formatOMR } from '../../utils/formatters';
+import { MasterDataSelect } from '../common/MasterDataSelect';
+import { NewVendorModal } from './NewVendorModal';
+import { NewProjectModal } from './NewProjectModal';
 
 interface PurchaseModalProps {
   isOpen: boolean;
@@ -30,6 +33,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [addNewOpen, setAddNewOpen] = useState<'vendor' | 'project' | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,38 +172,32 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
               <label className="block text-xs font-medium text-slate-700 mb-1">
                 Vendor <span className="text-rose-600">*</span>
               </label>
-              <select
+              <MasterDataSelect
                 required
                 value={vendorId}
-                onChange={(e) => setVendorId(e.target.value)}
+                onChange={setVendorId}
+                onAddNew={() => setAddNewOpen('vendor')}
+                addNewLabel="+ Add New Vendor"
+                placeholder="-- Select Vendor --"
+                options={state.vendors.map((v) => ({ value: v.id, label: `${v.name} (${v.code})` }))}
                 className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-              >
-                <option value="">-- Select Vendor --</option>
-                {state.vendors.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name} ({v.code})
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
                 Project <span className="text-rose-600">*</span>
               </label>
-              <select
+              <MasterDataSelect
                 required
                 value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
+                onChange={setProjectId}
+                onAddNew={() => setAddNewOpen('project')}
+                addNewLabel="+ Add New Project"
+                placeholder="-- Select Project --"
+                options={state.projects.map((p) => ({ value: p.id, label: `${p.name} (${p.code})` }))}
                 className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-              >
-                <option value="">-- Select Project --</option>
-                {state.projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.code})
-                  </option>
-                ))}
-              </select>
+              />
             </div>
           </div>
 
@@ -319,6 +317,23 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
           </div>
         </form>
       </div>
+
+      <NewVendorModal
+        isOpen={addNewOpen === 'vendor'}
+        onClose={() => setAddNewOpen(null)}
+        onCreated={(vendor) => {
+          setVendorId(vendor.id);
+          setAddNewOpen(null);
+        }}
+      />
+      <NewProjectModal
+        isOpen={addNewOpen === 'project'}
+        onClose={() => setAddNewOpen(null)}
+        onCreated={(project) => {
+          setProjectId(project.id);
+          setAddNewOpen(null);
+        }}
+      />
     </div>
   );
 };

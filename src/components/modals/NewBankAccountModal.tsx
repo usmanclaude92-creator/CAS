@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { notificationCenter } from '../../services/notificationCenter';
+import { BankAccount } from '../../types';
 
 interface NewBankAccountModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreated?: (account: BankAccount) => void;
 }
 
-export const NewBankAccountModal: React.FC<NewBankAccountModalProps> = ({ isOpen, onClose }) => {
+export const NewBankAccountModal: React.FC<NewBankAccountModalProps> = ({ isOpen, onClose, onCreated }) => {
   const [bankName, setBankName] = useState('');
   const [accountName, setAccountName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
@@ -27,7 +29,7 @@ export const NewBankAccountModal: React.FC<NewBankAccountModalProps> = ({ isOpen
     }
 
     try {
-      await accountingService.createBankAccount({
+      const created = await accountingService.createBankAccount({
         bankName: bankName.trim(),
         accountName: accountName.trim(),
         accountNumber: accountNumber.trim(),
@@ -44,6 +46,7 @@ export const NewBankAccountModal: React.FC<NewBankAccountModalProps> = ({ isOpen
         `Account added with opening balance OMR ${(parseFloat(openingBalance) || 0).toFixed(3)}.`
       );
 
+      onCreated?.(created);
       onClose();
     } catch (err: any) {
       setError(err?.message || 'Failed to save bank account.');

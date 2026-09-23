@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { notificationCenter } from '../../services/notificationCenter';
+import { Vendor } from '../../types';
 
 interface NewVendorModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreated?: (vendor: Vendor) => void;
 }
 
-export const NewVendorModal: React.FC<NewVendorModalProps> = ({ isOpen, onClose }) => {
+export const NewVendorModal: React.FC<NewVendorModalProps> = ({ isOpen, onClose, onCreated }) => {
   const [code, setCode] = useState(`VEND-${Date.now().toString().slice(-4)}`);
   const [name, setName] = useState('');
   const [category, setCategory] = useState('Materials');
@@ -30,7 +32,7 @@ export const NewVendorModal: React.FC<NewVendorModalProps> = ({ isOpen, onClose 
     }
 
     try {
-      await accountingService.createVendor({
+      const created = await accountingService.createVendor({
         code: code.trim(),
         name: name.trim(),
         category,
@@ -49,6 +51,7 @@ export const NewVendorModal: React.FC<NewVendorModalProps> = ({ isOpen, onClose 
         `Vendor code ${code.trim()} registered with opening balance OMR ${(parseFloat(openingBalance) || 0).toFixed(3)}.`
       );
 
+      onCreated?.(created);
       onClose();
     } catch (err: any) {
       setError(err?.message || 'Failed to save vendor.');
