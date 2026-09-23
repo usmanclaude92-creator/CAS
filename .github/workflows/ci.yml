@@ -63,12 +63,21 @@ jobs:
         run: npm ci
 
       - name: Build web bundle with relative base paths
+        env:
+          # Vite bakes these into the client bundle at build time. Same
+          # values as the Vercel web deployment's project env vars — the
+          # anon key is safe to embed client-side (gated by Supabase RLS),
+          # which is also why .env.example documents it as public. Set both
+          # as repo Actions secrets (Settings > Secrets and variables >
+          # Actions): VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: npx vite build --base=./
 
       - name: Copy web build into Android assets
         run: |
-          mkdir -p android/app/src/main/assets/www
-          cp -r dist/. android/app/src/main/assets/www/
+          mkdir -p android/app/src/main/assets
+          cp -r dist/. android/app/src/main/assets/
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4

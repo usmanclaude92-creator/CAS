@@ -95,8 +95,12 @@ class MainActivity : ComponentActivity() {
         // chrome-untrusted, data, http and https schemes, so those requests are
         // blocked outright under file://, leaving a blank page. appassets is
         // Google's documented fix for this exact class of WebView issue.
+        // Root-mapped (not under /assets/) so the app's own root-absolute
+        // references (e.g. <img src="/logo.png">) resolve the same way they
+        // do on the real https://cas.artifysols.com deployment, instead of
+        // escaping the mapped prefix and hitting the real network.
         assetLoader = WebViewAssetLoader.Builder()
-            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .addPathHandler("/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()
 
         webView = WebView(this).apply {
@@ -352,9 +356,9 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         // Served by WebViewAssetLoader (registered in onCreate), which maps
-        // /assets/ under this virtual https origin back to the app's real
-        // assets/ folder — i.e. this resolves to android_asset/www/index.html.
-        const val APP_URL = "https://appassets.androidplatform.net/assets/www/index.html"
+        // this virtual https origin's root back to the app's real assets/
+        // folder — i.e. this resolves to android_asset/index.html.
+        const val APP_URL = "https://appassets.androidplatform.net/index.html"
 
         val OFFLINE_HTML = """
             <html>
