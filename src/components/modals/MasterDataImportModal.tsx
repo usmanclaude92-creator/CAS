@@ -8,8 +8,10 @@ import {
   ShieldCheck,
   Download,
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { authService } from '../../services/authService';
 import { accountingService } from '../../services/accountingService';
+import { downloadProjectImportTemplate } from '../../utils/projectImportTemplate';
 
 export type MasterImportType = 'customers' | 'vendors' | 'projects' | 'banks' | 'expense_heads';
 
@@ -54,7 +56,7 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
           </div>
           <h3 className="text-base font-bold text-slate-900 dark:text-white">403 Forbidden</h3>
           <p className="text-xs text-slate-600 dark:text-slate-300">
-            {authCheck.error || 'Master data bulk import is restricted exclusively to active Super Administrators.'}
+            {authCheck.error || 'Master data bulk import requires the "master_data.import" permission, grantable to a role under Roles & Permissions.'}
           </p>
           <button
             onClick={onClose}
@@ -89,32 +91,26 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
     }
   };
 
-  // Simple CSV line parser supporting quoted cells (shared pattern with BatchEntityImportModal)
-  const parseCSVLine = (line: string): string[] => {
-    const result: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        result.push(current.trim().replace(/^["']|["']$/g, ''));
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    result.push(current.trim().replace(/^["']|["']$/g, ''));
-    return result;
-  };
-
-  const readFileAsText = (file: File): Promise<string> =>
+  // Parses both real Excel (.xlsx/.xls) and .csv files into a plain grid via
+  // SheetJS, which auto-detects the format from the file content regardless
+  // of the `type` hint — a naive text/CSV-only reader would mangle a binary
+  // .xlsx upload (e.g. the template this modal itself generates for projects).
+  const parseSpreadsheetFile = (file: File): Promise<string[][]> =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = (e) => resolve((e.target?.result as string) || '');
+      reader.onload = (e) => {
+        try {
+          const data = e.target?.result;
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: false, defval: '' });
+          resolve(rows.map((row) => row.map((cell) => String(cell ?? '').trim())));
+        } catch {
+          reject(new Error('Failed to parse the selected file. Please use a valid .xlsx or .csv file.'));
+        }
+      };
       reader.onerror = () => reject(new Error('Failed to read the selected file.'));
-      reader.readAsText(file);
+      reader.readAsArrayBuffer(file);
     });
 
   const findCol = (header: string[], ...keywords: string[]) =>
@@ -157,14 +153,13 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
 
     try {
       const fileName = selectedFile.name;
-      const csvContent = await readFileAsText(selectedFile);
-      const lines = csvContent.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
-      if (lines.length <= 1) {
+      const rows = await parseSpreadsheetFile(selectedFile);
+      if (rows.length <= 1) {
         throw new Error('The selected file contains no data rows.');
       }
 
-      const header = parseCSVLine(lines[0]).map((h) => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
-      const dataLines = lines.slice(1).map(parseCSVLine).filter((c) => c.length > 0 && c.some((v) => v));
+      const header = (rows[0] || []).map((h) => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+      const dataLines = rows.slice(1).filter((cols) => cols.some((v) => v));
 
       let totalRows = dataLines.length;
       let newRecords = 0;
@@ -236,26 +231,50 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
       } else if (importType === 'projects') {
         const codeIdx = findCol(header, 'code');
         const nameIdx = findCol(header, 'name');
-        const customerCodeIdx = findCol(header, 'customercode', 'customer');
+        const customerCodeIdx = findCol(header, 'customercode');
+        const customerNameIdx = findCol(header, 'customername');
         const contractIdx = findCol(header, 'contractvalue', 'contract', 'value');
+        const budgetIdx = findCol(header, 'budgetcost', 'budget');
         const startIdx = findCol(header, 'startdate', 'start');
+        const endIdx = findCol(header, 'enddate', 'end');
+        const statusIdx = findCol(header, 'status');
+        const remarksIdx = findCol(header, 'remarks', 'notes');
+        const validStatuses = new Set(['active', 'completed', 'inactive']);
         const existingCodes = new Set(state.projects.map((p) => p.code.toLowerCase()));
 
         for (const cols of dataLines) {
           const code = (codeIdx >= 0 ? cols[codeIdx] : cols[0] || '').trim();
           const name = (nameIdx >= 0 ? cols[nameIdx] : cols[1] || '').trim();
-          const customerCode = customerCodeIdx >= 0 ? (cols[customerCodeIdx] || '').trim() : '';
-          const customer = state.customers.find((c) => c.code.toLowerCase() === customerCode.toLowerCase());
+          const customerCode = (customerCodeIdx >= 0 ? cols[customerCodeIdx] : '').trim();
+          const customerNameInput = (customerNameIdx >= 0 ? cols[customerNameIdx] : '').trim();
+          // Match by Customer Code first, falling back to an exact Customer
+          // Name match — both columns are provided in the template so either
+          // one alone is enough to resolve the customer.
+          const customer =
+            (customerCode &&
+              state.customers.find((c) => c.code.toLowerCase() === customerCode.toLowerCase())) ||
+            (customerNameInput &&
+              state.customers.find((c) => c.name.toLowerCase() === customerNameInput.toLowerCase())) ||
+            undefined;
           if (!code || !name || !customer) { invalidRecords++; continue; }
           if (existingCodes.has(code.toLowerCase())) { duplicateRecords++; existingRecords++; continue; }
+
+          const statusRaw = (statusIdx >= 0 ? cols[statusIdx] : '').trim().toLowerCase();
+          const budgetRaw = budgetIdx >= 0 ? parseFloat(cols[budgetIdx]) : NaN;
+          const endDate = endIdx >= 0 ? (cols[endIdx] || '').trim() : '';
+          const remarks = (remarksIdx >= 0 ? cols[remarksIdx] : '').trim();
+
           await accountingService.createProject({
             code,
             name,
             customerId: customer.id,
+            customerName: customer.name,
             contractValue: contractIdx >= 0 ? parseFloat(cols[contractIdx]) || 0 : 0,
+            budgetCost: Number.isFinite(budgetRaw) ? budgetRaw : undefined,
             startDate: startIdx >= 0 ? cols[startIdx] || new Date().toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-            status: 'active',
-            remarks: 'Imported via Super Admin bulk master import',
+            endDate: endDate || undefined,
+            status: validStatuses.has(statusRaw) ? (statusRaw as 'active' | 'completed' | 'inactive') : 'active',
+            remarks: remarks || 'Imported via bulk master data import',
           });
           existingCodes.add(code.toLowerCase());
           newRecords++;
@@ -360,7 +379,7 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
             <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            <span>Super Admin Master Import: {getTypeName()}</span>
+            <span>Authorized Master Import: {getTypeName()}</span>
           </div>
           <button
             type="button"
@@ -375,9 +394,9 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
         <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-lg border border-amber-200 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
           <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <div>
-            <strong className="font-semibold">Super Administrator Privilege Enforced</strong>
+            <strong className="font-semibold">Permission-Gated Access Enforced</strong>
             <p className="mt-0.5 text-[11px] text-amber-800 dark:text-amber-300">
-              Only Super Administrators hold authorization to import master records. Every import is verified at API level and immutably logged with row counts.
+              Only users whose role holds the "master_data.import" permission may import master records. Every import is verified at API level and immutably logged with row counts.
             </p>
           </div>
         </div>
@@ -450,6 +469,10 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
           <button
             type="button"
             onClick={() => {
+              if (importType === 'projects') {
+                downloadProjectImportTemplate();
+                return;
+              }
               // Quick download sample template
               const csvContent =
                 importType === 'customers'
@@ -465,7 +488,7 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
             className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
-            Download Sample CSV Template
+            {importType === 'projects' ? 'Download Excel Import Template' : 'Download Sample CSV Template'}
           </button>
 
           <div className="flex items-center gap-2">
