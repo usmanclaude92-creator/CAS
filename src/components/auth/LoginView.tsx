@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  HardHat,
   Lock,
   Mail,
   Eye,
@@ -9,10 +8,8 @@ import {
   ShieldCheck,
   AlertCircle,
   CheckCircle2,
-  HelpCircle,
   RefreshCw,
   Users,
-  Sparkles,
 } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { ThemeToggle } from '../ThemeToggle';

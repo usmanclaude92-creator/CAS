@@ -6,9 +6,6 @@ import {
   ArrowRightLeft,
   Plus,
   FileSpreadsheet,
-  ArrowUpRight,
-  ArrowDownRight,
-  CheckCircle2,
   FileText,
   Filter,
   Search,
@@ -28,7 +25,6 @@ import {
 } from '../../utils/reportFilters';
 import { TreasuryAccountType } from '../../types';
 import { TableDensityToggle } from '../TableDensityToggle';
-import { useTableDensity } from '../../context/TableDensityContext';
 
 interface BankingViewProps {
   onOpenTransfer: () => void;
@@ -64,8 +60,6 @@ export const BankingView: React.FC<BankingViewProps> = ({
   const [activeTab, setActiveTab] = useState<'treasury_ledger' | 'transfers'>('treasury_ledger');
   const [isExportMenuOpen, setIsExportMenuOpen] = useState<boolean>(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
-
-  const { isCompact, cellPadding, headerPadding, fontSize } = useTableDensity();
 
   // Close export dropdown when clicking outside
   useEffect(() => {
@@ -592,6 +586,7 @@ export const BankingView: React.FC<BankingViewProps> = ({
                   { id: 'this_month', label: 'This Month' },
                   { id: 'this_quarter', label: 'This Quarter' },
                   { id: 'this_year', label: 'This Year' },
+                  { id: 'custom', label: 'Custom Range' },
                 ].map((btn) => (
                   <button
                     key={btn.id}
@@ -606,6 +601,25 @@ export const BankingView: React.FC<BankingViewProps> = ({
                   </button>
                 ))}
               </div>
+
+              {datePreset === 'custom' && (
+                <div className="flex flex-wrap items-center gap-1.5 border-l border-slate-200 pl-3">
+                  <span className="text-slate-600 font-medium">From:</span>
+                  <input
+                    type="date"
+                    value={customStart}
+                    onChange={(e) => setCustomStart(e.target.value)}
+                    className="px-2 py-0.5 text-[11px] border border-slate-200 rounded bg-white text-slate-800 focus:outline-none"
+                  />
+                  <span className="text-slate-600 font-medium">To:</span>
+                  <input
+                    type="date"
+                    value={customEnd}
+                    onChange={(e) => setCustomEnd(e.target.value)}
+                    className="px-2 py-0.5 text-[11px] border border-slate-200 rounded bg-white text-slate-800 focus:outline-none"
+                  />
+                </div>
+              )}
 
               <div className="flex flex-wrap items-center gap-1.5 border-l border-slate-200 pl-3">
                 <span className="font-semibold text-slate-700 mr-1 flex items-center gap-1">
@@ -657,6 +671,8 @@ export const BankingView: React.FC<BankingViewProps> = ({
                 <button
                   onClick={() => {
                     setDatePreset('all');
+                    setCustomStart('');
+                    setCustomEnd('');
                     setTypeFilter('all');
                     setSearchQuery('');
                     handleSelectAccount('all');

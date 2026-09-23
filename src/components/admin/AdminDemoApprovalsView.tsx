@@ -3,22 +3,17 @@ import {
   demoRequestService,
   DemoRequest,
   VISITOR_SYSTEM_ROLES,
-  SystemRoleInfo,
 } from '../../services/demoRequestService';
 import { authService } from '../../services/authService';
 import { ThemeToggle } from '../ThemeToggle';
 import {
-  ShieldCheck,
-  ShieldAlert,
   Clock,
   CheckCircle2,
   XCircle,
   Copy,
   Check,
-  ExternalLink,
   Send,
   Search,
-  Filter,
   RefreshCw,
   ArrowLeft,
   KeyRound,
@@ -29,8 +24,6 @@ import {
   AlertTriangle,
   Lock,
   Sparkles,
-  ChevronRight,
-  Eye,
   Trash2,
 } from 'lucide-react';
 
@@ -43,40 +36,28 @@ interface AdminDemoApprovalsViewProps {
 export const AdminDemoApprovalsView: React.FC<AdminDemoApprovalsViewProps> = ({
   onBackToApp,
   initialRequestId,
-  initialToken,
+  initialToken: _initialToken,
 }) => {
   const [requests, setRequests] = useState<DemoRequest[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [selectedRequest, setSelectedRequest] = useState<DemoRequest | null>(null);
 
-  // Security gate: superadmin or token or passkey
-  const isSuperAdmin = authService.isSuperAdmin();
-  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
-    if (isSuperAdmin) return true;
-    if (initialToken && initialRequestId) return true;
-    try {
-      return sessionStorage.getItem('artify_admin_unlocked') === 'true';
-    } catch {
-      return false;
-    }
-  });
-
-  const [passkeyInput, setPasskeyInput] = useState('');
-  const [passkeyError, setPasskeyError] = useState('');
+  // Security gate: real server-verified permission only. There is no client-side
+  // passkey bypass — approval actions are re-authorized by server.ts regardless.
+  const isAuthorized = authService.hasPermission('users.create');
 
   // Approval modal state
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [targetRoleCode, setTargetRoleCode] = useState('');
-  const [expiryHours, setExpiryHours] = useState(48);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Load requests
-  const loadRequests = () => {
-    const list = demoRequestService.getAllRequests();
+  const loadRequests = async () => {
+    const list = await demoRequestService.getAllRequests();
     setRequests(list);
 
     if (initialRequestId) {
@@ -90,24 +71,8 @@ export const AdminDemoApprovalsView: React.FC<AdminDemoApprovalsViewProps> = ({
   };
 
   useEffect(() => {
-    loadRequests();
-  }, [initialRequestId]);
-
-  // Handle passkey submit
-  const handlePasskeySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (passkeyInput.trim() === 'ArtifyAdmin@2026' || passkeyInput.trim() === 'admin' || passkeyInput.trim() === 'Construction@2026') {
-      setIsUnlocked(true);
-      setPasskeyError('');
-      try {
-        sessionStorage.setItem('artify_admin_unlocked', 'true');
-      } catch {
-        // ignore
-      }
-    } else {
-      setPasskeyError('Invalid administrative passkey. Please enter the authorized administrator key.');
-    }
-  };
+    if (isAuthorized) loadRequests();
+  }, [initialRequestId, isAuthorized]);
 
   // Filtered requests
   const filteredRequests = useMemo(() => {
@@ -151,19 +116,17 @@ export const AdminDemoApprovalsView: React.FC<AdminDemoApprovalsViewProps> = ({
     setActionNotice(null);
 
     try {
-      const res = await demoRequestService.generateAndSendOneTimeSecureLink(
-        selectedRequest.id,
-        expiryHours,
-        targetRoleCode
-      );
+      if (targetRoleCode && targetRoleCode !== selectedRequest.roleCode) {
+        await demoRequestService.updateRequestRole(selectedRequest.id, targetRoleCode);
+      }
+      const res = await demoRequestService.approveRequest(selectedRequest.id);
 
-      if (res.success && res.link && res.request) {
+      if (res.success && res.link) {
         setGeneratedLink(res.link);
-        setSelectedRequest(res.request);
-        loadRequests();
+        await loadRequests();
         setActionNotice({
           type: 'success',
-          message: `One-time secure link generated and dispatched to ${res.request.email}!`,
+          message: `One-time secure sign-in link generated for ${selectedRequest.email}!`,
         });
       } else {
         setActionNotice({
@@ -189,105 +152,49 @@ export const AdminDemoApprovalsView: React.FC<AdminDemoApprovalsViewProps> = ({
     }
   };
 
-  const handleReject = async (requestId: string, token: string) => {
+  const handleReject = async (requestId: string) => {
     if (!confirm('Are you sure you want to decline this demo access request?')) return;
-    const res = await demoRequestService.rejectRequest(requestId, token);
+    const res = await demoRequestService.rejectRequest(requestId);
     if (res.success) {
-      loadRequests();
+      await loadRequests();
       setIsApprovalModalOpen(false);
     }
   };
 
-  const handleDelete = (requestId: string) => {
+  const handleDelete = async (requestId: string) => {
     if (!confirm('Remove this request record from the administrative log?')) return;
-    demoRequestService.deleteRequest(requestId);
-    loadRequests();
+    await demoRequestService.deleteRequest(requestId);
+    await loadRequests();
     if (selectedRequest?.id === requestId) {
       setSelectedRequest(null);
       setIsApprovalModalOpen(false);
     }
   };
 
-  // Passkey screen if not unlocked
-  if (!isUnlocked) {
+  // Access gate: server-verified permission only (no client-side bypass —
+  // every approval action is independently re-authorized by server.ts).
+  if (!isAuthorized) {
     return (
       <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-center items-center p-4">
-        <div className="w-full max-w-md bg-slate-800/90 border border-slate-700/80 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-sm space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-xl bg-purple-600/20 text-purple-400 flex items-center justify-center border border-purple-500/30">
-                <Lock className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-xs font-mono uppercase tracking-wider text-purple-400 font-semibold">
-                  Restricted Route
-                </span>
-                <h1 className="text-base font-bold text-white">Administrative Portal</h1>
-              </div>
-            </div>
-            <button
-              onClick={onBackToApp}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 text-xs flex items-center gap-1 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Exit</span>
-            </button>
+        <div className="w-full max-w-md bg-slate-800/90 border border-slate-700/80 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-sm space-y-6 text-center">
+          <div className="w-12 h-12 rounded-xl bg-rose-600/20 text-rose-400 flex items-center justify-center border border-rose-500/30 mx-auto">
+            <Lock className="w-6 h-6" />
           </div>
-
-          <div className="text-xs text-slate-300 leading-relaxed bg-slate-900/60 p-3.5 rounded-xl border border-slate-700/60">
-            <p className="font-medium text-slate-200 mb-1">Demo Access Management &amp; One-Time Link Dispatch</p>
-            <p className="text-slate-400">
-              This route is restricted to authorized Artify system administrators for managing visitor demo access and generating single-use authorization links.
+          <div>
+            <h1 className="text-base font-bold text-white mb-1">Administrative Access Required</h1>
+            <p className="text-xs text-slate-400">
+              This route is restricted to authorized system administrators. Please sign in with an account
+              that holds the "users.create" permission to manage demo access requests.
             </p>
           </div>
-
-          <form onSubmit={handlePasskeySubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Administrator Passkey
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                  <KeyRound className="w-4 h-4" />
-                </div>
-                <input
-                  type="password"
-                  value={passkeyInput}
-                  onChange={(e) => {
-                    setPasskeyInput(e.target.value);
-                    setPasskeyError('');
-                  }}
-                  placeholder="Enter administrator passkey"
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  autoFocus
-                />
-              </div>
-              {passkeyError && (
-                <p className="text-xs text-rose-400 mt-1.5 flex items-center gap-1">
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  {passkeyError}
-                </p>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-2.5 px-4 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-purple-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <ShieldCheck className="w-4 h-4" />
-              <span>Authorize &amp; Access Approvals Portal</span>
-            </button>
-          </form>
-
-          <div className="pt-2 text-center">
-            <button
-              type="button"
-              onClick={onBackToApp}
-              className="text-xs text-slate-400 hover:text-slate-200 underline"
-            >
-              Return to Standard Login
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onBackToApp}
+            className="w-full py-2.5 px-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Return to Application</span>
+          </button>
         </div>
       </div>
     );
@@ -675,33 +582,6 @@ export const AdminDemoApprovalsView: React.FC<AdminDemoApprovalsViewProps> = ({
                 </p>
               </div>
 
-              {/* Link Expiry Selector */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  One-Time Link Expiry Policy
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { hours: 24, label: '24 Hours' },
-                    { hours: 48, label: '48 Hours (Recommended)' },
-                    { hours: 168, label: '7 Days' },
-                  ].map((opt) => (
-                    <button
-                      key={opt.hours}
-                      type="button"
-                      onClick={() => setExpiryHours(opt.hours)}
-                      className={`p-2.5 rounded-xl border text-xs font-semibold text-center transition-all cursor-pointer ${
-                        expiryHours === opt.hours
-                          ? 'border-purple-600 bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 shadow-xs'
-                          : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Action Notice */}
               {actionNotice && (
                 <div
@@ -729,7 +609,7 @@ export const AdminDemoApprovalsView: React.FC<AdminDemoApprovalsViewProps> = ({
                       Single-Use Access Link Ready
                     </span>
                     <span className="text-[10px] font-mono bg-purple-200 dark:bg-purple-900/80 text-purple-800 dark:text-purple-200 px-2 py-0.5 rounded-md">
-                      Valid for {expiryHours} hours
+                      Valid for 24 hours
                     </span>
                   </div>
 
@@ -778,7 +658,7 @@ export const AdminDemoApprovalsView: React.FC<AdminDemoApprovalsViewProps> = ({
                 {selectedRequest.status !== 'rejected' && (
                   <button
                     type="button"
-                    onClick={() => handleReject(selectedRequest.id, selectedRequest.approvalToken)}
+                    onClick={() => handleReject(selectedRequest.id)}
                     className="px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                   >
                     Decline Request

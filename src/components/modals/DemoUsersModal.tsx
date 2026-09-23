@@ -12,21 +12,16 @@ import {
   Wallet,
   Eye,
   Building2,
-  Lock,
-  Sparkles,
   User,
   Mail,
   Phone,
   Send,
-  FileText,
   BadgeCheck,
-  Check,
   Layers,
 } from 'lucide-react';
 import {
   demoRequestService,
   VISITOR_SYSTEM_ROLES,
-  SystemRoleInfo,
   DemoRequest,
 } from '../../services/demoRequestService';
 

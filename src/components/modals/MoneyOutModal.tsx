@@ -103,7 +103,7 @@ export const MoneyOutModal: React.FC<MoneyOutModalProps> = ({ isOpen, onClose, p
         attachmentName = uploadRes.name;
       }
 
-      accountingService.recordMoneyOut({
+      await accountingService.recordMoneyOut({
         transactionDate: date,
         paidTo,
         vendorId: vendorId || undefined,

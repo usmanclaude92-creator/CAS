@@ -14,20 +14,12 @@ import {
   Lock,
   CheckCircle2,
   XCircle,
-  AlertTriangle,
   Download,
-  Upload,
   Settings,
   Edit2,
-  Trash2,
-  RotateCcw,
-  Sparkles,
-  ExternalLink,
   Search,
-  Check,
   Ban,
   Activity,
-  UserCheck,
   ShieldCheck,
 } from 'lucide-react';
 import { authService } from '../../services/authService';
@@ -45,7 +37,7 @@ import { BackupSettingsModal } from '../modals/BackupSettingsModal';
 import { RolesView } from './RolesView';
 import { WorkflowSettingsView } from './WorkflowSettingsView';
 import { AuditLogView } from './AuditLogView';
-import { MasterImportAuditView } from './MasterImportAuditView';
+import {} from './MasterImportAuditView';
 
 export type SystemConfigTab =
   | 'credentials'
@@ -1087,23 +1079,6 @@ export const SystemConfigurationView: React.FC<SystemConfigurationViewProps> = (
                 </div>
               </div>
 
-              {isSuperAdmin && (
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (window.confirm('Reset all demo entities to official standard seed data?')) {
-                        accountingService.resetToSeedData();
-                        toast.success('Seed Data Reloaded', 'Default construction entities and ledger restored.');
-                      }
-                    }}
-                    className="px-3.5 py-2 text-xs font-semibold rounded-xl text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 hover:bg-rose-100 cursor-pointer flex items-center gap-1.5"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    Reload Standard Seed Data
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         </div>

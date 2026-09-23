@@ -1,16 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import {
-  Building2,
   Plus,
   FileSpreadsheet,
   ArrowLeft,
-  DollarSign,
-  TrendingUp,
-  Receipt,
-  FileText,
   CheckCircle2,
-  AlertCircle,
-  ExternalLink,
   Filter,
   Search,
   X,
@@ -438,6 +431,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 { id: 'this_month', label: 'This Month' },
                 { id: 'this_quarter', label: 'This Quarter' },
                 { id: 'this_year', label: 'This Year' },
+                { id: 'custom', label: 'Custom Range' },
               ].map((btn) => (
                 <button
                   key={btn.id}
@@ -452,6 +446,25 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 </button>
               ))}
             </div>
+
+            {detailDatePreset === 'custom' && (
+              <div className="flex flex-wrap items-center gap-1.5 border-l border-slate-200 pl-3">
+                <span className="text-slate-600 font-medium">From:</span>
+                <input
+                  type="date"
+                  value={detailCustomStart}
+                  onChange={(e) => setDetailCustomStart(e.target.value)}
+                  className="px-2 py-0.5 text-[11px] border border-slate-200 rounded bg-white text-slate-800 focus:outline-none"
+                />
+                <span className="text-slate-600 font-medium">To:</span>
+                <input
+                  type="date"
+                  value={detailCustomEnd}
+                  onChange={(e) => setDetailCustomEnd(e.target.value)}
+                  className="px-2 py-0.5 text-[11px] border border-slate-200 rounded bg-white text-slate-800 focus:outline-none"
+                />
+              </div>
+            )}
 
             <div className="flex items-center gap-2">
               <div className="relative">
@@ -477,6 +490,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 <button
                   onClick={() => {
                     setDetailDatePreset('all');
+                    setDetailCustomStart('');
+                    setDetailCustomEnd('');
                     setDetailSearch('');
                   }}
                   className="text-[11px] text-slate-500 hover:text-rose-600 flex items-center gap-0.5 cursor-pointer"
@@ -824,6 +839,28 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           )}
         </div>
       </div>
+
+      {/* Portfolio Totals for the currently filtered project set */}
+      {masterTotals.count > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-white rounded-xl border border-slate-200 p-4 text-xs">
+          <div>
+            <span className="text-[10px] text-slate-400">Portfolio Contract Value ({masterTotals.count})</span>
+            <div className="font-mono font-semibold text-slate-800">{formatOMR(masterTotals.totalContract)}</div>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400">Portfolio Revenue Invoiced</span>
+            <div className="font-mono font-semibold text-blue-700">{formatOMR(masterTotals.totalInvoiced)}</div>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400">Portfolio Total Cost</span>
+            <div className="font-mono font-semibold text-rose-700">{formatOMR(masterTotals.totalCost)}</div>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400">Portfolio Gross Profit</span>
+            <div className="font-mono font-bold text-emerald-600">{formatOMR(masterTotals.totalProfit)}</div>
+          </div>
+        </div>
+      )}
 
       {/* Projects Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -8,7 +8,6 @@ import {
   Mail,
   Building2,
   Phone,
-  Briefcase,
   ArrowRight,
   X,
   Sparkles,
@@ -30,7 +29,7 @@ export const DemoApprovalModal: React.FC<DemoApprovalModalProps> = ({
   isOpen,
   onClose,
   requestId,
-  token,
+  token: _token,
   onInstantLogin,
 }) => {
   const [request, setRequest] = useState<DemoRequest | null>(null);
@@ -40,15 +39,12 @@ export const DemoApprovalModal: React.FC<DemoApprovalModalProps> = ({
 
   useEffect(() => {
     if (isOpen && requestId) {
-      const found = demoRequestService.getRequestById(requestId);
-      if (found) {
-        setRequest(found);
-      } else if (token) {
-        const byToken = demoRequestService.getRequestByToken(token);
-        if (byToken) setRequest(byToken);
-      }
+      demoRequestService.getAllRequests().then((all) => {
+        const found = all.find((r) => r.id === requestId);
+        if (found) setRequest(found);
+      });
     }
-  }, [isOpen, requestId, token]);
+  }, [isOpen, requestId]);
 
   if (!isOpen) return null;
 
@@ -58,13 +54,14 @@ export const DemoApprovalModal: React.FC<DemoApprovalModalProps> = ({
     setStatusMessage(null);
 
     try {
-      // Generate one-time secure link and dispatch notification to applicant's email
-      const res = await demoRequestService.generateAndSendOneTimeSecureLink(request.id, 48);
-      if (res.success && res.request) {
-        setRequest(res.request);
+      // Generate one-time secure sign-in link via the server admin endpoint
+      // (requires the current session to hold the users.create permission).
+      const res = await demoRequestService.approveRequest(request.id);
+      if (res.success) {
+        setRequest({ ...request, status: 'approved', oneTimeSecureLink: res.link ? { link: res.link, createdAt: new Date().toISOString(), expiresAt: '', used: false, dispatchedToEmail: request.email, dispatchedAt: new Date().toISOString() } : undefined });
         setStatusMessage({
           type: 'success',
-          text: `Demo access approved! A single-use secure activation link has been generated and dispatched to ${res.request.email}.`,
+          text: `Demo access approved! A single-use secure activation link has been generated for ${request.email}.`,
         });
       } else {
         setStatusMessage({
@@ -83,15 +80,14 @@ export const DemoApprovalModal: React.FC<DemoApprovalModalProps> = ({
   };
 
   const handleReject = async () => {
-    if (!request || !token) return;
+    if (!request) return;
     setIsProcessing(true);
     setStatusMessage(null);
 
     try {
-      const res = await demoRequestService.rejectRequest(request.id, token);
+      const res = await demoRequestService.rejectRequest(request.id);
       if (res.success) {
-        const updated = demoRequestService.getRequestById(request.id);
-        if (updated) setRequest(updated);
+        setRequest({ ...request, status: 'rejected' });
         setStatusMessage({
           type: 'success',
           text: 'The demo request has been marked as declined.',
@@ -110,13 +106,6 @@ export const DemoApprovalModal: React.FC<DemoApprovalModalProps> = ({
     } finally {
       setIsProcessing(false);
     }
-  };
-
-  const handleCopyLink = () => {
-    if (!request?.approvalLink) return;
-    navigator.clipboard.writeText(request.approvalLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   return (

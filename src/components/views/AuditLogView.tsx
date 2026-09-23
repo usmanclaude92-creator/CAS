@@ -1,15 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  ShieldAlert,
   FileSpreadsheet,
-  Clock,
-  User,
-  RotateCcw,
-  PlusCircle,
-  FileText,
   Printer,
-  CheckSquare,
-  Square,
   X,
   Eye,
 } from 'lucide-react';

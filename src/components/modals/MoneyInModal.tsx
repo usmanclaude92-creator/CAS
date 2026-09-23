@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, FileText, AlertCircle, Check } from 'lucide-react';
+import { X, Upload, AlertCircle } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { uploadAttachmentFile } from '../../services/supabaseClient';
 import { TreasuryAccountType } from '../../types';
@@ -106,7 +106,7 @@ export const MoneyInModal: React.FC<MoneyInModalProps> = ({ isOpen, onClose, pre
         attachmentName = uploadRes.name;
       }
 
-      accountingService.recordMoneyIn({
+      await accountingService.recordMoneyIn({
         transactionDate: date,
         receivedFrom,
         customerId: customerId || undefined,

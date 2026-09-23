@@ -72,7 +72,7 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
         attachmentName = uploadRes.name;
       }
 
-      accountingService.createPurchase({
+      await accountingService.createPurchase({
         purchaseInvoiceNumber: purchaseInvoiceNumber.trim(),
         date,
         vendorId,

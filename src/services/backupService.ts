@@ -59,7 +59,6 @@ class BackupService {
   constructor() {
     this.config = this.loadConfig();
     this.history = this.loadHistory();
-    this.seedInitialHistoryIfEmpty();
   }
 
   private loadConfig(): BackupConfig {
@@ -102,51 +101,6 @@ class BackupService {
       this.notifyListeners();
     } catch {
       // ignore
-    }
-  }
-
-  private seedInitialHistoryIfEmpty() {
-    if (this.history.length === 0) {
-      const state = accountingService.getState();
-      const now = new Date();
-      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-
-      this.history = [
-        {
-          id: 'bcp-seed-1',
-          date: yesterday.toISOString(),
-          status: 'Success',
-          fileSize: '168.5 KB',
-          fileSizeBytes: 172544,
-          destination: 'Google Drive',
-          filename: `CAS_Backup_${yesterday.toISOString().split('T')[0]}_Full.json`,
-          recordsSummary: {
-            projects: state.projects.length,
-            transactions: state.journalEntries.length,
-            customers: state.customers.length,
-            vendors: state.vendors.length,
-            invoices: state.clientInvoices.length,
-          },
-        },
-        {
-          id: 'bcp-seed-2',
-          date: twoDaysAgo.toISOString(),
-          status: 'Success',
-          fileSize: '164.2 KB',
-          fileSizeBytes: 168140,
-          destination: 'Google Drive',
-          filename: `CAS_Backup_${twoDaysAgo.toISOString().split('T')[0]}_Full.json`,
-          recordsSummary: {
-            projects: state.projects.length,
-            transactions: Math.max(state.journalEntries.length - 4, 1),
-            customers: state.customers.length,
-            vendors: state.vendors.length,
-            invoices: Math.max(state.clientInvoices.length - 1, 1),
-          },
-        },
-      ];
-      this.saveHistoryInternal();
     }
   }
 
@@ -302,12 +256,45 @@ class BackupService {
     }
   }
 
+  private async getOrCreateGoogleDriveFolderId(folderName: string, token: string): Promise<string> {
+    const escapedName = folderName.replace(/'/g, "\\'");
+    const query = encodeURIComponent(
+      `name='${escapedName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+    );
+    const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
+      headers: { Authorization: `Bearer ${token.trim()}` },
+    });
+    if (searchRes.ok) {
+      const data = await searchRes.json();
+      if (data.files && data.files.length > 0) {
+        return data.files[0].id;
+      }
+    }
+
+    const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token.trim()}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name: folderName, mimeType: 'application/vnd.google-apps.folder' }),
+    });
+    if (!createRes.ok) {
+      const errText = await createRes.text();
+      throw new Error(`Google Drive folder creation error: ${errText}`);
+    }
+    const created = await createRes.json();
+    return created.id;
+  }
+
   private async uploadToGoogleDrive(filename: string, content: string, token: string, folderName: string) {
     // In production web client, uses Google Drive REST v3 multipart upload
+    const folderId = await this.getOrCreateGoogleDriveFolderId(folderName, token);
     const metadata = {
       name: filename,
       mimeType: 'application/json',
       description: `Construction Accounting System automated backup (${new Date().toISOString()})`,
+      parents: [folderId],
     };
 
     const form = new FormData();
@@ -366,7 +353,12 @@ class BackupService {
   }
 
   /**
-   * Restore state from a backup JSON payload
+   * Restoring a full database snapshot means re-inserting every business
+   * record back into Supabase (respecting foreign keys, RLS, and existing
+   * data) rather than overwriting a local cache — that is a deliberate,
+   * audited administrative operation, not something this method performs
+   * silently. It intentionally reports "not supported" rather than pretend
+   * to restore data it cannot actually write back.
    */
   public restoreFromPayload(jsonString: string): { success: boolean; message: string } {
     try {
@@ -374,26 +366,12 @@ class BackupService {
       if (!parsed.businessData) {
         return { success: false, message: 'Invalid backup archive: missing businessData structure.' };
       }
-
-      // Restore business data via accountingService
-      localStorage.setItem('cas_accounting_state_v1', JSON.stringify(parsed.businessData));
-      accountingService.refreshFromStorage();
-
-      if (parsed.accessControl?.users) {
-        localStorage.setItem('cas_auth_users_v1', JSON.stringify(parsed.accessControl.users));
-      }
-
-      accountingService.addAuditLog(
-        'BACKUP_RESTORED',
-        'System Configuration',
-        'Restored entire database state from backup archive snapshot.',
-        'RESTORE',
-        'SYSTEM'
-      );
-
-      return { success: true, message: 'Database state successfully restored!' };
+      return {
+        success: false,
+        message: 'Restoring a full snapshot back into the live database is not supported from the browser. Contact your administrator to restore this backup via a database migration.',
+      };
     } catch (e: any) {
-      return { success: false, message: `Failed to restore backup: ${e?.message || 'Invalid JSON'}` };
+      return { success: false, message: `Failed to parse backup archive: ${e?.message || 'Invalid JSON'}` };
     }
   }
 }

@@ -4,19 +4,13 @@ import {
   Plus,
   FileSpreadsheet,
   ArrowRightLeft,
-  DollarSign,
-  FileText,
-  Filter,
   Layers,
   Edit2,
-  Tag,
   SlidersHorizontal,
   Search,
   X,
   Calendar,
   RotateCcw,
-  Building2,
-  Wallet,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
 import { formatOMR } from '../../utils/formatters';
@@ -50,7 +44,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
   const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
   const [isManageCategoriesModalOpen, setIsManageCategoriesModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ExpenseHead | null>(null);
-  const [version, setVersion] = useState(0);
+  const [, setVersion] = useState(0);
 
   // Subscribe to accounting engine updates (for new expenses, new categories, status changes)
   useEffect(() => {

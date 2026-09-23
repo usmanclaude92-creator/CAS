@@ -21,7 +21,7 @@ export const NewCustomerModal: React.FC<NewCustomerModalProps> = ({ isOpen, onCl
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       setError('Customer name is required.');
@@ -29,7 +29,7 @@ export const NewCustomerModal: React.FC<NewCustomerModalProps> = ({ isOpen, onCl
     }
 
     try {
-      accountingService.createCustomer({
+      await accountingService.createCustomer({
         code: code.trim(),
         name: name.trim(),
         contactPerson: contactPerson.trim() || undefined,

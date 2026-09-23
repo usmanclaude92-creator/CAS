@@ -1,9 +1,12 @@
 /**
  * Demo Account Request & Approval Service
- * Manages visitor demo access requests, role directories, and administrative approval workflows.
+ * Requests are stored in Supabase (demo_requests table). Approval provisions a
+ * real Supabase Auth account and a one-time sign-in link generated server-side
+ * (see /api/admin/demo-requests/:id/approve) — no predictable passwords, no
+ * client-side session bypass.
  */
 
-import { authService } from './authService';
+import { getSupabaseClient } from './supabaseClient';
 
 export interface SystemRoleInfo {
   code: string;
@@ -19,12 +22,10 @@ export interface SystemRoleInfo {
 }
 
 export interface OneTimeSecureLink {
-  token: string;
   link: string;
   createdAt: string;
   expiresAt: string;
   used: boolean;
-  usedAt?: string;
   dispatchedToEmail: string;
   dispatchedAt: string;
 }
@@ -39,16 +40,9 @@ export interface DemoRequest {
   roleName: string;
   purpose?: string;
   status: 'pending' | 'approved' | 'rejected';
-  approvalToken: string;
   requestedAt: string;
   approvedAt?: string;
-  approvalLink: string;
   oneTimeSecureLink?: OneTimeSecureLink;
-  assignedCredentials?: {
-    email: string;
-    temporaryPassword?: string;
-    instructions?: string;
-  };
 }
 
 export const VISITOR_SYSTEM_ROLES: SystemRoleInfo[] = [
@@ -200,85 +194,31 @@ export const VISITOR_SYSTEM_ROLES: SystemRoleInfo[] = [
   },
 ];
 
-const STORAGE_KEY_REQUESTS = 'artify_demo_access_requests_v1';
-// Destination email for administrator approval notification (DO NOT display in UI)
-const ADMIN_NOTIFICATION_DESTINATION = 'usmanclaude92@gmail.com';
+function mapRow(row: any): DemoRequest {
+  return {
+    id: row.id,
+    fullName: row.full_name,
+    email: row.email,
+    companyName: row.company_name,
+    phone: row.phone ?? undefined,
+    roleCode: row.role_code,
+    roleName: row.role_name,
+    purpose: row.purpose ?? undefined,
+    status: row.status,
+    requestedAt: row.requested_at,
+    approvedAt: row.approved_at ?? undefined,
+    oneTimeSecureLink: row.one_time_secure_link ?? undefined,
+  };
+}
 
 class DemoRequestService {
-  constructor() {
-    this.syncRequestsWithServer().catch(() => {});
+  public async getAllRequests(): Promise<DemoRequest[]> {
+    const client = getSupabaseClient();
+    if (!client) return [];
+    const { data } = await client.from('demo_requests').select('*').order('requested_at', { ascending: false });
+    return (data ?? []).map(mapRow);
   }
 
-  /**
-   * Synchronizes demo requests with the central server
-   * allowing cross-device admin review and link generation.
-   */
-  public async syncRequestsWithServer(): Promise<DemoRequest[]> {
-    try {
-      const res = await fetch('/api/demo-requests');
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.success && Array.isArray(data.requests)) {
-          const serverList: DemoRequest[] = data.requests;
-          const localList = this.getStoredRequests();
-          const map = new Map<string, DemoRequest>();
-          localList.forEach((r) => map.set(r.id, r));
-          serverList.forEach((r) => map.set(r.id, { ...(map.get(r.id) || {}), ...r }));
-          const merged = Array.from(map.values());
-          this.saveRequests(merged);
-          return merged;
-        }
-      }
-    } catch (e) {
-      console.warn('[DemoRequestService] Sync note:', e);
-    }
-    return this.getStoredRequests();
-  }
-
-  private getStoredRequests(): DemoRequest[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEY_REQUESTS);
-      if (!data) return [];
-      return JSON.parse(data);
-    } catch {
-      return [];
-    }
-  }
-
-  private saveRequests(requests: DemoRequest[]): void {
-    try {
-      localStorage.setItem(STORAGE_KEY_REQUESTS, JSON.stringify(requests));
-    } catch (err) {
-      console.error('Failed to save demo requests to localStorage', err);
-    }
-  }
-
-  /**
-   * Retrieves all visitor demo requests
-   */
-  public getAllRequests(): DemoRequest[] {
-    return this.getStoredRequests();
-  }
-
-  /**
-   * Retrieves a specific demo request by its ID
-   */
-  public getRequestById(id: string): DemoRequest | null {
-    const list = this.getStoredRequests();
-    return list.find((r) => r.id === id) || null;
-  }
-
-  /**
-   * Retrieves a demo request by its secure approval token
-   */
-  public getRequestByToken(token: string): DemoRequest | null {
-    const list = this.getStoredRequests();
-    return list.find((r) => r.approvalToken === token) || null;
-  }
-
-  /**
-   * Submits a new demo account request and dispatches an approval notification to the system administrator
-   */
   public async submitRequest(params: {
     fullName: string;
     email: string;
@@ -286,401 +226,87 @@ class DemoRequestService {
     phone?: string;
     roleCode: string;
     purpose?: string;
-  }): Promise<{ success: boolean; request: DemoRequest; error?: string }> {
+  }): Promise<{ success: boolean; request?: DemoRequest; error?: string }> {
+    const client = getSupabaseClient();
+    if (!client) return { success: false, error: 'Supabase is not configured.' };
+
     const roleInfo = VISITOR_SYSTEM_ROLES.find((r) => r.code === params.roleCode) || VISITOR_SYSTEM_ROLES[0];
-    const requestId = `DEMO-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const approvalToken = `tok_${Math.random().toString(36).substring(2)}${Math.random().toString(36).substring(2)}`;
-    
-    // Construct the direct approval link
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const approvalLink = `${origin}/?action=approve_demo&requestId=${encodeURIComponent(requestId)}&token=${encodeURIComponent(approvalToken)}&role=${encodeURIComponent(roleInfo.code)}`;
 
-    const newRequest: DemoRequest = {
-      id: requestId,
-      fullName: params.fullName.trim(),
-      email: params.email.trim(),
-      companyName: params.companyName.trim(),
-      phone: params.phone?.trim() || undefined,
-      roleCode: roleInfo.code,
-      roleName: roleInfo.name,
-      purpose: params.purpose?.trim() || 'Enterprise software evaluation',
-      status: 'pending',
-      approvalToken,
-      requestedAt: new Date().toISOString(),
-      approvalLink,
-    };
+    const { data, error } = await client
+      .from('demo_requests')
+      .insert({
+        full_name: params.fullName.trim(),
+        email: params.email.trim().toLowerCase(),
+        company_name: params.companyName.trim(),
+        phone: params.phone?.trim() || null,
+        role_code: roleInfo.code,
+        role_name: roleInfo.name,
+        purpose: params.purpose?.trim() || 'Enterprise software evaluation',
+        status: 'pending',
+      })
+      .select()
+      .single();
 
-    // Save locally
-    const existing = this.getStoredRequests();
-    existing.unshift(newRequest);
-    this.saveRequests(existing);
+    if (error) return { success: false, error: error.message };
 
-    // Save to central server so requests are accessible from any system
-    try {
-      fetch('/api/demo-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newRequest),
-      }).catch((e) => console.warn('[DemoRequestService] Central server request save note:', e));
-    } catch {
-      // ignore
-    }
+    // Best-effort admin notification; the destination address stays server-side.
+    fetch('/api/demo-requests/notify-admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestId: data.id }),
+    }).catch(() => {
+      // Non-critical: the request is safely persisted in Supabase regardless.
+    });
 
-    // Dispatch approval email to administrator
-    try {
-      await this.dispatchAdminApprovalNotification(newRequest, approvalLink);
-    } catch (err) {
-      console.warn('Admin notification dispatch encountered an issue, request is securely stored:', err);
-    }
-
-    return {
-      success: true,
-      request: newRequest,
-    };
+    return { success: true, request: mapRow(data) };
   }
 
-  /**
-   * Dispatches the approval notification to the administrator
-   * Note: The email address is kept strictly server-side/service-internal and NEVER displayed in UI.
-   */
-  private async dispatchAdminApprovalNotification(request: DemoRequest, approvalLink: string): Promise<void> {
-    const payload = {
-      _subject: `[Action Required] Demo Account Approval Request: ${request.fullName} - ${request.roleName}`,
-      applicant_name: request.fullName,
-      applicant_email: request.email,
-      company_name: request.companyName,
-      contact_phone: request.phone || 'Not provided',
-      requested_role: request.roleName,
-      evaluation_purpose: request.purpose || 'Software Evaluation',
-      submission_time: new Date(request.requestedAt).toLocaleString(),
-      request_reference: request.id,
-      one_click_approval_link: approvalLink,
-      message: `A visitor has requested demo access for the Artify Construction Accounting System.\n\nApplicant: ${request.fullName} (${request.email})\nCompany: ${request.companyName}\nRole Requested: ${request.roleName}\n\nTo review and authorize this demo account, click the approval link below:\n${approvalLink}`,
-    };
-
-    try {
-      // POST to formsubmit ajax endpoint
-      const response = await fetch(`https://formsubmit.co/ajax/${ADMIN_NOTIFICATION_DESTINATION}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        console.warn('FormSubmit endpoint response status:', response.status);
-      }
-    } catch (networkError) {
-      // Offline/sandbox fallback - request is saved in localStorage so the approval link remains fully functional
-      console.warn('Email dispatch network notice (saved locally):', networkError);
-    }
-  }
-
-  /**
-   * Approves a demo request and activates demo access credentials
-   */
-  public async approveRequest(
-    requestId: string,
-    token: string
-  ): Promise<{ success: boolean; request?: DemoRequest; error?: string }> {
-    const list = this.getStoredRequests();
-    const index = list.findIndex((r) => r.id === requestId && r.approvalToken === token);
-
-    if (index === -1) {
-      return { success: false, error: 'Invalid or expired approval token.' };
-    }
-
-    const target = list[index];
-    target.status = 'approved';
-    target.approvedAt = new Date().toISOString();
-    target.assignedCredentials = {
-      email: target.email,
-      temporaryPassword: `ArtifyDemo@${new Date().getFullYear()}`,
-      instructions: `Your demo access for role '${target.roleName}' has been authorized. You can log in using your email.`,
-    };
-
-    list[index] = target;
-    this.saveRequests(list);
-
-    return {
-      success: true,
-      request: target,
-    };
-  }
-
-  /**
-   * Rejects a demo request
-   */
-  public async rejectRequest(
-    requestId: string,
-    token: string,
-    reason?: string
-  ): Promise<{ success: boolean; error?: string }> {
-    const list = this.getStoredRequests();
-    const index = list.findIndex((r) => r.id === requestId && r.approvalToken === token);
-
-    if (index === -1) {
-      return { success: false, error: 'Invalid or expired approval token.' };
-    }
-
-    const target = list[index];
-    target.status = 'rejected';
-    list[index] = target;
-    this.saveRequests(list);
-
+  public async updateRequestRole(requestId: string, roleCode: string): Promise<{ success: boolean; error?: string }> {
+    const client = getSupabaseClient();
+    if (!client) return { success: false, error: 'Supabase is not configured.' };
+    const roleInfo = VISITOR_SYSTEM_ROLES.find((r) => r.code === roleCode);
+    if (!roleInfo) return { success: false, error: 'Unknown role.' };
+    const { error } = await client
+      .from('demo_requests')
+      .update({ role_code: roleInfo.code, role_name: roleInfo.name })
+      .eq('id', requestId);
+    if (error) return { success: false, error: error.message };
     return { success: true };
   }
 
   /**
-   * Generates a one-time secure access link for an approved demo request,
-   * updates the request state, and dispatches the link to the requested user's email.
+   * Approves a pending request. Provisions/links a real Supabase Auth account
+   * and generates a one-time sign-in link server-side (service_role only).
    */
-  public async generateAndSendOneTimeSecureLink(
-    requestId: string,
-    customExpiryHours: number = 48,
-    roleCodeOverride?: string
-  ): Promise<{ success: boolean; request?: DemoRequest; link?: string; error?: string }> {
-    const list = this.getStoredRequests();
-    const index = list.findIndex((r) => r.id === requestId);
+  public async approveRequest(requestId: string): Promise<{ success: boolean; link?: string; error?: string }> {
+    const client = getSupabaseClient();
+    if (!client) return { success: false, error: 'Supabase is not configured.' };
+    const { data: sessionData } = await client.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) return { success: false, error: 'No active session.' };
 
-    if (index === -1) {
-      return { success: false, error: 'Demo request record not found.' };
-    }
-
-    const target = list[index];
-
-    // If role was updated by admin
-    if (roleCodeOverride) {
-      const roleInfo = VISITOR_SYSTEM_ROLES.find((r) => r.code === roleCodeOverride);
-      if (roleInfo) {
-        target.roleCode = roleInfo.code;
-        target.roleName = roleInfo.name;
-      }
-    }
-
-    // Generate unique secure one-time token
-    const uniqueHash = typeof crypto !== 'undefined' && crypto.randomUUID
-      ? crypto.randomUUID().replace(/-/g, '')
-      : Math.random().toString(36).substring(2) + Date.now().toString(36);
-    const token = `dsec_${uniqueHash}`;
-
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const secureLink = `${origin}/?demo_access_token=${token}&requestId=${encodeURIComponent(target.id)}`;
-    const expiresAt = new Date(Date.now() + customExpiryHours * 60 * 60 * 1000).toISOString();
-
-    const oneTimeSecureLink: OneTimeSecureLink = {
-      token,
-      link: secureLink,
-      createdAt: new Date().toISOString(),
-      expiresAt,
-      used: false,
-      dispatchedToEmail: target.email,
-      dispatchedAt: new Date().toISOString(),
-    };
-
-    target.status = 'approved';
-    target.approvedAt = new Date().toISOString();
-    target.oneTimeSecureLink = oneTimeSecureLink;
-    target.assignedCredentials = {
-      email: target.email,
-      instructions: `Your one-time demo access link for '${target.roleName}' has been generated and sent to ${target.email}.`,
-    };
-
-    list[index] = target;
-    this.saveRequests(list);
-
-    // Persist approval and generated one-time link state to central server
-    try {
-      fetch(`/api/demo-requests/${encodeURIComponent(requestId)}/approve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customExpiryHours, roleCodeOverride }),
-      }).catch((e) => console.warn('[DemoRequestService] Server approval sync note:', e));
-    } catch {
-      // ignore
-    }
-
-    // Dispatch email to the requested visitor's email address
-    await this.dispatchUserOneTimeLinkNotification(target, secureLink, expiresAt);
-
-    return {
-      success: true,
-      request: target,
-      link: secureLink,
-    };
-  }
-
-  /**
-   * Dispatches the single-use secure demo link directly to the requested user's email address
-   */
-  private async dispatchUserOneTimeLinkNotification(
-    request: DemoRequest,
-    secureLink: string,
-    expiresAt: string
-  ): Promise<void> {
-    const payload = {
-      _subject: `Your Artify ERP Demo Access is Approved: One-Time Secure Link (${request.roleName})`,
-      recipient_name: request.fullName,
-      recipient_email: request.email,
-      company_name: request.companyName || 'Corporate Evaluation',
-      assigned_role: request.roleName,
-      one_time_secure_link: secureLink,
-      link_valid_until: new Date(expiresAt).toLocaleString(),
-      message: `Dear ${request.fullName},\n\nYour request for demo access to Artify Construction Accounting System as "${request.roleName}" has been approved by the system administrator.\n\nUse your single-use secure activation link below to enter your authorized workspace:\n${secureLink}\n\nNotice: This is a one-time activation link valid until ${new Date(expiresAt).toLocaleString()}. Upon clicking, your temporary demo session will automatically initialize without requiring manual password entry.\n\nBest regards,\nArtify Solutions Security Team`,
-    };
-
-    try {
-      const response = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(request.email)}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        console.warn('One-time link email dispatch status:', response.status);
-      }
-    } catch (networkError) {
-      console.warn('One-time link email network dispatch note:', networkError);
-    }
-  }
-
-  /**
-   * Redeems a one-time secure link token, validates single-use & expiry,
-   * marks it as used, and logs the visitor in with their approved role.
-   */
-  public async redeemOneTimeToken(
-    token: string,
-    requestId?: string
-  ): Promise<{ success: boolean; request?: DemoRequest; error?: string }> {
-    // 1. First validate with central server so links work across any device / browser
-    try {
-      const serverRes = await fetch('/api/demo-requests/redeem', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, requestId }),
-      });
-      if (serverRes.ok) {
-        const serverData = await serverRes.json();
-        if (!serverData.success) {
-          return { success: false, error: serverData.error };
-        }
-        const req: DemoRequest = serverData.request;
-        const list = this.getStoredRequests();
-        const idx = list.findIndex((r) => r.id === req.id);
-        if (idx !== -1) {
-          list[idx] = req;
-        } else {
-          list.unshift(req);
-        }
-        this.saveRequests(list);
-
-        // Auto-login the guest with approved role permissions
-        authService.loginAsAuthorizedDemoGuest({
-          fullName: req.fullName,
-          email: req.email,
-          roleCode: req.roleCode,
-          roleName: req.roleName,
-          companyName: req.companyName,
-        });
-
-        return {
-          success: true,
-          request: req,
-        };
-      }
-    } catch (netErr) {
-      console.warn('[DemoRequestService] Central server redeem fallback to local cache:', netErr);
-    }
-
-    // 2. Fallback to local storage validation if server is offline
-    const list = this.getStoredRequests();
-    
-    // Find matching request by token or requestId
-    let index = -1;
-    if (requestId) {
-      index = list.findIndex((r) => r.id === requestId && r.oneTimeSecureLink?.token === token);
-    }
-    if (index === -1) {
-      index = list.findIndex((r) => r.oneTimeSecureLink?.token === token);
-    }
-
-    if (index === -1) {
-      return {
-        success: false,
-        error: 'Invalid or unrecognized one-time demo access token. Please verify your activation link or request a new demo account.',
-      };
-    }
-
-    const req = list[index];
-    const linkInfo = req.oneTimeSecureLink;
-
-    if (!linkInfo) {
-      return {
-        success: false,
-        error: 'No active one-time access link found for this request.',
-      };
-    }
-
-    // Check if single-use token was already consumed
-    if (linkInfo.used) {
-      const usedTime = linkInfo.usedAt ? new Date(linkInfo.usedAt).toLocaleString() : 'previously';
-      return {
-        success: false,
-        error: `This one-time demo access link was already redeemed on ${usedTime}. Single-use links cannot be re-used. Please submit a new demo access request to continue exploring.`,
-      };
-    }
-
-    // Check if token has expired
-    if (new Date() > new Date(linkInfo.expiresAt)) {
-      return {
-        success: false,
-        error: `This one-time demo access link expired on ${new Date(linkInfo.expiresAt).toLocaleString()}. Please submit a new demo access request.`,
-      };
-    }
-
-    // Mark single-use token as consumed immediately
-    linkInfo.used = true;
-    linkInfo.usedAt = new Date().toISOString();
-    req.oneTimeSecureLink = linkInfo;
-    list[index] = req;
-    this.saveRequests(list);
-
-    // Auto-login the guest with approved role permissions
-    authService.loginAsAuthorizedDemoGuest({
-      fullName: req.fullName,
-      email: req.email,
-      roleCode: req.roleCode,
-      roleName: req.roleName,
-      companyName: req.companyName,
+    const res = await fetch(`/api/admin/demo-requests/${encodeURIComponent(requestId)}/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     });
-
-    return {
-      success: true,
-      request: req,
-    };
+    const body = await res.json();
+    if (!res.ok || !body.success) return { success: false, error: body.error || 'Approval failed.' };
+    return { success: true, link: body.link };
   }
 
-  /**
-   * Deletes a request from records
-   */
-  public deleteRequest(requestId: string): boolean {
-    const list = this.getStoredRequests();
-    const filtered = list.filter((r) => r.id !== requestId);
-    if (filtered.length !== list.length) {
-      this.saveRequests(filtered);
-      try {
-        fetch(`/api/demo-requests/${encodeURIComponent(requestId)}`, { method: 'DELETE' }).catch(() => {});
-      } catch {
-        // ignore
-      }
-      return true;
-    }
-    return false;
+  public async rejectRequest(requestId: string): Promise<{ success: boolean; error?: string }> {
+    const client = getSupabaseClient();
+    if (!client) return { success: false, error: 'Supabase is not configured.' };
+    const { error } = await client.from('demo_requests').update({ status: 'rejected' }).eq('id', requestId);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  }
+
+  public async deleteRequest(requestId: string): Promise<boolean> {
+    const client = getSupabaseClient();
+    if (!client) return false;
+    const { error } = await client.from('demo_requests').delete().eq('id', requestId);
+    return !error;
   }
 }
 

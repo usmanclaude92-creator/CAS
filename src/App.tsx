@@ -21,9 +21,9 @@ import { ExpensesView } from './components/views/ExpensesView';
 import { ReportsView } from './components/views/ReportsView';
 import { MastersView } from './components/views/MastersView';
 import { SystemConfigurationView } from './components/views/SystemConfigurationView';
-import { UsersView } from './components/views/UsersView';
-import { RolesView } from './components/views/RolesView';
-import { WorkflowSettingsView } from './components/views/WorkflowSettingsView';
+import {} from './components/views/UsersView';
+import {} from './components/views/RolesView';
+import {} from './components/views/WorkflowSettingsView';
 import { MasterImportAuditView } from './components/views/MasterImportAuditView';
 import { AuditLogView } from './components/views/AuditLogView';
 
@@ -41,14 +41,13 @@ import { NewVendorModal } from './components/modals/NewVendorModal';
 import { NewBankAccountModal } from './components/modals/NewBankAccountModal';
 import { SupabaseSettingsModal } from './components/modals/SupabaseSettingsModal';
 import { SessionWarningModal } from './components/modals/SessionWarningModal';
-import { ToastProvider, toast } from './context/ToastContext';
+import { ToastProvider } from './context/ToastContext';
 import { notificationCenter } from './services/notificationCenter';
 
 import { accountingService } from './services/accountingService';
 import { authService } from './services/authService';
 import { supabaseService } from './services/supabaseClient';
 import { sessionSecurityService, SessionSecurityState } from './services/sessionSecurityService';
-import { demoRequestService } from './services/demoRequestService';
 import { AdminDemoApprovalsView } from './components/admin/AdminDemoApprovalsView';
 import { Transaction } from './types';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
@@ -123,12 +122,12 @@ function AppContent() {
       window.location.hash.includes('admin/demo-approvals')
     );
   });
-  const [approvalRequestId, setApprovalRequestId] = useState<string | null>(() => {
+  const [approvalRequestId] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
     const params = new URLSearchParams(window.location.search);
     return params.get('requestId') || params.get('id');
   });
-  const [approvalToken, setApprovalToken] = useState<string | null>(() => {
+  const [approvalToken] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
     const params = new URLSearchParams(window.location.search);
     return params.get('token');
@@ -169,39 +168,12 @@ function AppContent() {
     };
   }, []);
 
-  // Listen for one-time secure link token (?demo_access_token=...) and keyboard shortcut
+  // Demo access is now redeemed via a real Supabase Auth magic link (generated
+  // server-side on approval); Supabase's own session bootstrap in authService
+  // picks it up automatically on load, so no custom token-redemption code path
+  // is needed here anymore.
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    const demoAccessToken = params.get('demo_access_token');
-    const reqId = params.get('requestId');
-
-    if (demoAccessToken) {
-      demoRequestService.redeemOneTimeToken(demoAccessToken, reqId || undefined).then((res) => {
-        if (res.success && res.request) {
-          setIsAuthenticated(true);
-          setCurrentUser(authService.getCurrentUser());
-          toast.success(
-            'Authorized Demo Access Activated',
-            `Welcome ${res.request.fullName}! Your one-time secure session as ${res.request.roleName} is now active.`
-          );
-          if (window.history.replaceState) {
-            window.history.replaceState({}, document.title, window.location.pathname);
-          }
-        } else {
-          setSessionExpiredNotice(
-            res.error || 'This one-time demo access link is invalid or has already been redeemed.'
-          );
-          toast.error(
-            'Access Link Invalid',
-            res.error || 'This one-time demo access link could not be verified.'
-          );
-          if (window.history.replaceState) {
-            window.history.replaceState({}, document.title, window.location.pathname);
-          }
-        }
-      });
-    }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.altKey && (e.key === 'a' || e.key === 'A')) {

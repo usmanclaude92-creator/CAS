@@ -1,6 +1,6 @@
 import React from 'react';
-import { Rows3, Rows2, ArrowUpDown } from 'lucide-react';
-import { useTableDensity, TableDensity } from '../context/TableDensityContext';
+import { Rows3, Rows2 } from 'lucide-react';
+import { useTableDensity } from '../context/TableDensityContext';
 
 interface TableDensityToggleProps {
   variant?: 'segmented' | 'button' | 'header';
@@ -11,7 +11,7 @@ interface TableDensityToggleProps {
 
 export const TableDensityToggle: React.FC<TableDensityToggleProps> = ({
   variant = 'segmented',
-  size = 'xs',
+  size: _size = 'xs',
   className = '',
   showLabel = true,
 }) => {

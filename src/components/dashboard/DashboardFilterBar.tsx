@@ -5,14 +5,10 @@ import {
   Calendar,
   RotateCcw,
   FileSpreadsheet,
-  Plus,
   ChevronDown,
-  Layers,
-  Filter,
   Receipt,
   Truck,
   Coins,
-  ArrowRightLeft,
 } from 'lucide-react';
 import { Project } from '../../types';
 import { DatePreset } from '../../utils/reportFilters';
@@ -60,9 +56,9 @@ export const DashboardFilterBar: React.FC<DashboardFilterBarProps> = ({
   onOpenClientInvoice,
   onOpenPurchase,
   onOpenExpense,
-  onOpenMoneyIn,
-  onOpenMoneyOut,
-  onOpenTransfer,
+  onOpenMoneyIn: _onOpenMoneyIn,
+  onOpenMoneyOut: _onOpenMoneyOut,
+  onOpenTransfer: _onOpenTransfer,
 }) => {
   const [showCustomDates, setShowCustomDates] = useState(datePreset === 'custom');
 

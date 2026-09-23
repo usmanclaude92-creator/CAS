@@ -1,39 +1,21 @@
 import React, { useState, useMemo } from 'react';
 import {
   TrendingUp,
-  TrendingDown,
   Building2,
   DollarSign,
-  ArrowUpRight,
-  ArrowDownRight,
-  Wallet,
   Landmark,
-  Receipt,
   FileSpreadsheet,
-  AlertCircle,
   FileText,
   RotateCcw,
   ExternalLink,
-  Plus,
-  HardHat,
-  Clock,
-  ShieldCheck,
   AlertTriangle,
-  Users,
   Truck,
-  Coins,
-  ChevronRight,
-  Sparkles,
-  CheckCircle2,
   BarChart3,
-  Layers,
   Activity,
-  Calendar,
   Palette,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
-  BarChart,
   Bar,
   LineChart,
   Line,
@@ -50,7 +32,7 @@ import {
 import { accountingService } from '../../services/accountingService';
 import { formatOMR, formatPercent, addMoney, subtractMoney } from '../../utils/formatters';
 import { exportToExcel } from '../../utils/exportToExcel';
-import { Transaction, Project, ClientInvoice, Purchase, DirectExpense } from '../../types';
+import { Transaction } from '../../types';
 import { CashFlowProjectionCard } from '../dashboard/CashFlowProjectionCard';
 import { DashboardFilterBar } from '../dashboard/DashboardFilterBar';
 import {
@@ -362,10 +344,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenExpense,
   onOpenTransfer,
   onSelectProject,
-  onSelectCustomer,
-  onSelectVendor,
+  onSelectCustomer: _onSelectCustomer,
+  onSelectVendor: _onSelectVendor,
   onReverseTransaction,
-  onNavigateToProjectsList,
+  onNavigateToProjectsList: _onNavigateToProjectsList,
 }) => {
   const state = accountingService.getState();
   const projects = state.projects || [];
@@ -552,6 +534,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       periodReceived,
       periodPurchases: periodPurchasesTotal,
       periodDirectExpenses: periodDirectExpensesTotal,
+      periodVendorPaid,
       periodTotalCost,
       periodGrossProfit,
       periodMargin,
@@ -1636,21 +1619,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Empty State / Helper */}
         {trendSummary.activeMonthsCount === 0 && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-amber-50/70 dark:bg-amber-950/40 rounded-xl border border-amber-200/80 dark:border-amber-800/60 text-xs text-amber-800 dark:text-amber-300">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-              <span>No transactions recorded in this selected scope yet. Record invoices or purchases, or populate sample historical trend data.</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                accountingService.seedHistoricalMonthlyData();
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold transition-colors shrink-0 shadow-xs cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Load 6-Month Demo Trend</span>
-            </button>
+          <div className="flex items-center gap-2 p-3.5 bg-amber-50/70 dark:bg-amber-950/40 rounded-xl border border-amber-200/80 dark:border-amber-800/60 text-xs text-amber-800 dark:text-amber-300">
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>No transactions recorded in this selected scope yet. Record invoices or purchases to see trends here.</span>
           </div>
         )}
       </div>

@@ -2,22 +2,17 @@ import React, { useState, useEffect } from 'react';
 import {
   Users,
   UserPlus,
-  Shield,
   CheckCircle2,
   XCircle,
-  AlertCircle,
   Edit2,
-  Building,
   Mail,
   Phone,
   Search,
-  Filter,
   ShieldAlert,
   ShieldCheck,
-  Briefcase,
   X,
 } from 'lucide-react';
-import { UserProfile, Role, UserStatus } from '../../types/auth';
+import { UserProfile, Role } from '../../types/auth';
 import { authService } from '../../services/authService';
 import { accountingService } from '../../services/accountingService';
 
@@ -35,6 +30,7 @@ export const UsersView: React.FC = () => {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
+    password: '',
     mobile: '',
     roleId: '',
     department: '',
@@ -64,6 +60,7 @@ export const UsersView: React.FC = () => {
     setFormData({
       fullName: '',
       email: '',
+      password: '',
       mobile: '',
       roleId: defaultRole?.id || '',
       department: 'Accounting',
@@ -81,6 +78,7 @@ export const UsersView: React.FC = () => {
     setFormData({
       fullName: user.fullName,
       email: user.email,
+      password: '',
       mobile: user.mobile || '',
       roleId: user.roleId,
       department: user.department || '',
@@ -122,6 +120,7 @@ export const UsersView: React.FC = () => {
       const res = await authService.createUser({
         fullName: formData.fullName,
         email: formData.email,
+        password: formData.password,
         mobile: formData.mobile,
         roleId: formData.roleId,
         department: formData.department,
@@ -472,6 +471,25 @@ export const UsersView: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {!editingUser && (
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Initial Password *
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      minLength={8}
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      placeholder="At least 8 characters"
+                      className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
