@@ -33,6 +33,7 @@ import { MoneyInModal } from './components/modals/MoneyInModal';
 import { MoneyOutModal } from './components/modals/MoneyOutModal';
 import { ClientInvoiceModal } from './components/modals/ClientInvoiceModal';
 import { PurchaseModal } from './components/modals/PurchaseModal';
+import { CreditDebitNoteModal } from './components/modals/CreditDebitNoteModal';
 import { ExpenseModal } from './components/modals/ExpenseModal';
 import { TransferModal } from './components/modals/TransferModal';
 import { ReverseTransactionModal } from './components/modals/ReverseTransactionModal';
@@ -106,6 +107,11 @@ function AppContent() {
   const [isTransferOpen, setIsTransferOpen] = useState(false);
   const [isReverseOpen, setIsReverseOpen] = useState(false);
   const [reverseTarget, setReverseTarget] = useState<Transaction | null>(null);
+  const [creditDebitNoteTarget, setCreditDebitNoteTarget] = useState<{
+    partyType: 'customer' | 'vendor';
+    sourceType: 'client_invoice' | 'purchase';
+    sourceId: string;
+  } | null>(null);
 
   // Master Modals
   const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
@@ -496,6 +502,9 @@ function AppContent() {
                   onOpenPurchase={handleOpenProjectPurchase}
                   onOpenExpense={handleOpenProjectExpense}
                   onOpenMoneyIn={handleOpenProjectMoneyIn}
+                  onOpenCreditDebitNote={(partyType, sourceType, sourceId) =>
+                    setCreditDebitNoteTarget({ partyType, sourceType, sourceId })
+                  }
                 />
               )}
 
@@ -644,6 +653,16 @@ function AppContent() {
         }}
         preselectedProjectId={modalProjectId}
       />
+
+      {creditDebitNoteTarget && (
+        <CreditDebitNoteModal
+          isOpen={!!creditDebitNoteTarget}
+          onClose={() => setCreditDebitNoteTarget(null)}
+          partyType={creditDebitNoteTarget.partyType}
+          sourceType={creditDebitNoteTarget.sourceType}
+          sourceId={creditDebitNoteTarget.sourceId}
+        />
+      )}
 
       <ExpenseModal
         isOpen={isExpenseOpen}

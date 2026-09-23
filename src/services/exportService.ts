@@ -5,6 +5,9 @@ import { accountingService } from './accountingService';
 import { authService } from './authService';
 import { formatOMR } from '../utils/formatters';
 import { NavView } from '../components/Sidebar';
+import { COMPANY_PROFILE } from '../config/companyProfile';
+import { ClientInvoice, CreditDebitNote } from '../types';
+import { VAT_TREATMENT_LABELS } from '../utils/vat';
 
 export type ExportFormat = 'csv' | 'xlsx' | 'pdf';
 
@@ -284,6 +287,185 @@ export function exportToPdf(options: ExportOptions): void {
 
   const cleanFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
   doc.save(cleanFilename);
+}
+
+/**
+ * Compliant single-document Tax Invoice (Oman VAT, Royal Decree 121/2020).
+ * Mandatory fields: supplier name + VATIN, sequential invoice number, date,
+ * customer name (+ VATIN when registered), description, net amount, VAT
+ * rate & amount, and the VAT-inclusive gross total, all in OMR.
+ */
+export function generateTaxInvoicePdf(invoice: ClientInvoice, customerVatin?: string): void {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  let y = 40;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(15, 23, 42);
+  doc.text(COMPANY_PROFILE.name, 40, y);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  y += 14;
+  if (COMPANY_PROFILE.address) {
+    doc.text(COMPANY_PROFILE.address, 40, y);
+    y += 12;
+  }
+  doc.text(`VATIN: ${COMPANY_PROFILE.vatin}`, 40, y);
+  if (COMPANY_PROFILE.crNumber) {
+    doc.text(`CR No: ${COMPANY_PROFILE.crNumber}`, 220, y);
+  }
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(15, 23, 42);
+  doc.text(invoice.invoiceType === 'IPC' ? 'TAX INVOICE / IPC' : 'TAX INVOICE', pageWidth - 40, 40, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Invoice #: ${invoice.invoiceNumber}`, pageWidth - 40, 58, { align: 'right' });
+  doc.text(`Date: ${invoice.date}`, pageWidth - 40, 71, { align: 'right' });
+
+  y = 110;
+  doc.setDrawColor(226, 232, 240);
+  doc.line(40, y, pageWidth - 40, y);
+  y += 20;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.text('BILL TO', 40, y);
+  y += 14;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text(invoice.customerName, 40, y);
+  y += 14;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`VATIN: ${customerVatin || 'Not VAT-registered'}`, 40, y);
+  y += 14;
+  doc.text(`Project: ${invoice.projectName}`, 40, y);
+
+  y += 30;
+  autoTable(doc, {
+    startY: y,
+    margin: { left: 40, right: 40 },
+    head: [['Description', 'Net Amount (OMR)', `VAT (${invoice.vatRate}%)`, 'Gross Amount (OMR)']],
+    body: [[
+      invoice.description || `${invoice.invoiceType} - ${invoice.projectName}`,
+      invoice.netAmount.toFixed(3),
+      invoice.vatAmount.toFixed(3),
+      invoice.amount.toFixed(3),
+    ]],
+    theme: 'grid',
+    styles: { font: 'helvetica', fontSize: 9, cellPadding: 8, textColor: [30, 41, 59] },
+    headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
+    columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+  });
+
+  const afterTableY = (doc as any).lastAutoTable.finalY + 20;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`VAT Treatment: ${VAT_TREATMENT_LABELS[invoice.vatTreatment]}`, 40, afterTableY);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text(`Total Due (VAT-Inclusive): ${formatOMR(invoice.amount)}`, pageWidth - 40, afterTableY, { align: 'right' });
+
+  const footerY = doc.internal.pageSize.getHeight() - 30;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(148, 163, 184);
+  doc.text('This is a system-generated tax invoice.', 40, footerY);
+
+  doc.save(`${invoice.invoiceNumber}.pdf`);
+}
+
+/**
+ * Compliant Credit / Debit Note document, mirroring generateTaxInvoicePdf's
+ * mandatory fields plus a reference back to the original tax invoice or
+ * purchase bill it amends — required by Oman VAT for the note to be valid.
+ */
+export function generateCreditDebitNotePdf(note: CreditDebitNote, partyVatin?: string): void {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  let y = 40;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(15, 23, 42);
+  doc.text(COMPANY_PROFILE.name, 40, y);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  y += 14;
+  doc.text(`VATIN: ${COMPANY_PROFILE.vatin}`, 40, y);
+
+  const title = note.noteType === 'credit' ? 'CREDIT NOTE' : 'DEBIT NOTE';
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(15, 23, 42);
+  doc.text(title, pageWidth - 40, 40, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Note #: ${note.noteNumber}`, pageWidth - 40, 58, { align: 'right' });
+  doc.text(`Date: ${note.date}`, pageWidth - 40, 71, { align: 'right' });
+  doc.text(`Against: ${note.sourceDocumentNumber}`, pageWidth - 40, 84, { align: 'right' });
+
+  y = 120;
+  doc.setDrawColor(226, 232, 240);
+  doc.line(40, y, pageWidth - 40, y);
+  y += 20;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.text(note.partyType === 'customer' ? 'BILL TO' : 'VENDOR', 40, y);
+  y += 14;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text(note.customerName || note.vendorName || '', 40, y);
+  y += 14;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`VATIN: ${partyVatin || 'Not VAT-registered'}`, 40, y);
+  y += 14;
+  doc.text(`Reason: ${note.reason}`, 40, y);
+
+  y += 30;
+  autoTable(doc, {
+    startY: y,
+    margin: { left: 40, right: 40 },
+    head: [['Description', 'Net Amount (OMR)', `VAT (${note.vatRate}%)`, 'Gross Amount (OMR)']],
+    body: [[note.reason, note.netAmount.toFixed(3), note.vatAmount.toFixed(3), note.grossAmount.toFixed(3)]],
+    theme: 'grid',
+    styles: { font: 'helvetica', fontSize: 9, cellPadding: 8, textColor: [30, 41, 59] },
+    headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
+    columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+  });
+
+  const afterTableY = (doc as any).lastAutoTable.finalY + 20;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text(
+    `Total ${note.noteType === 'credit' ? 'Deducted' : 'Added'}: ${formatOMR(note.grossAmount)}`,
+    pageWidth - 40,
+    afterTableY,
+    { align: 'right' }
+  );
+
+  doc.save(`${note.noteNumber}.pdf`);
 }
 
 /**

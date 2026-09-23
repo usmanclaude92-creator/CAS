@@ -9,6 +9,10 @@ import {
   ExpenseHead,
   ClientInvoice,
   Purchase,
+  CreditDebitNote,
+  NoteType,
+  NoteParty,
+  NoteSourceType,
   MoneyIn,
   MoneyOut,
   DirectExpense,
@@ -55,6 +59,7 @@ export interface AppDatabaseState {
   expenseHeads: ExpenseHead[];
   clientInvoices: ClientInvoice[];
   purchases: Purchase[];
+  creditDebitNotes: CreditDebitNote[];
   moneyInList: MoneyIn[];
   moneyOutList: MoneyOut[];
   directExpenses: DirectExpense[];
@@ -76,6 +81,7 @@ function emptyState(): AppDatabaseState {
     expenseHeads: [],
     clientInvoices: [],
     purchases: [],
+    creditDebitNotes: [],
     moneyInList: [],
     moneyOutList: [],
     directExpenses: [],
@@ -173,7 +179,7 @@ class AccountingService {
     try {
       const [
         projects, customers, vendors, bankAccounts, cashAccounts, pettyCashAccounts,
-        businessPartners, expenseHeads, clientInvoices, purchases, moneyIn, moneyOut, directExpenses,
+        businessPartners, expenseHeads, clientInvoices, purchases, creditDebitNotes, moneyIn, moneyOut, directExpenses,
         transfers, openingBalances, journalEntries, auditLogs,
       ] = await Promise.all([
         client.from('projects').select('*').order('created_at', { ascending: true }),
@@ -186,6 +192,7 @@ class AccountingService {
         client.from('expense_heads').select('*').order('created_at', { ascending: true }),
         client.from('client_invoices').select('*').order('created_at', { ascending: true }),
         client.from('purchases').select('*').order('created_at', { ascending: true }),
+        client.from('credit_debit_notes').select('*').order('created_at', { ascending: true }),
         client.from('money_in').select('*').order('created_at', { ascending: true }),
         client.from('money_out').select('*').order('created_at', { ascending: true }),
         client.from('direct_expenses').select('*').order('created_at', { ascending: true }),
@@ -197,7 +204,7 @@ class AccountingService {
 
       const firstError = [
         projects, customers, vendors, bankAccounts, cashAccounts, pettyCashAccounts, businessPartners,
-        expenseHeads, clientInvoices, purchases, moneyIn, moneyOut, directExpenses, transfers, openingBalances,
+        expenseHeads, clientInvoices, purchases, creditDebitNotes, moneyIn, moneyOut, directExpenses, transfers, openingBalances,
         journalEntries, auditLogs,
       ].find((r) => r.error)?.error;
       if (firstError) throw firstError;
@@ -213,6 +220,7 @@ class AccountingService {
         expenseHeads: (expenseHeads.data ?? []).map(this.mapExpenseHead),
         clientInvoices: [],
         purchases: [],
+        creditDebitNotes: [],
         moneyInList: [],
         moneyOutList: [],
         directExpenses: [],
@@ -227,6 +235,7 @@ class AccountingService {
       this.state = newState;
       this.state.clientInvoices = (clientInvoices.data ?? []).map((r) => this.mapClientInvoice(r));
       this.state.purchases = (purchases.data ?? []).map((r) => this.mapPurchase(r));
+      this.state.creditDebitNotes = (creditDebitNotes.data ?? []).map((r) => this.mapCreditDebitNote(r));
       this.state.moneyInList = (moneyIn.data ?? []).map((r) => this.mapMoneyIn(r));
       this.state.moneyOutList = (moneyOut.data ?? []).map((r) => this.mapMoneyOut(r));
       this.state.directExpenses = (directExpenses.data ?? []).map((r) => this.mapDirectExpense(r));
@@ -249,7 +258,7 @@ class AccountingService {
     if (!client || this.realtimeChannel) return;
     const tables = [
       'projects', 'customers', 'vendors', 'bank_accounts', 'cash_accounts', 'petty_cash_accounts',
-      'business_partners', 'expense_heads', 'client_invoices', 'purchases', 'money_in', 'money_out', 'direct_expenses',
+      'business_partners', 'expense_heads', 'client_invoices', 'purchases', 'credit_debit_notes', 'money_in', 'money_out', 'direct_expenses',
       'transfers', 'opening_balances', 'journal_entries',
     ];
     let channel = client.channel('accounting-data-sync');
@@ -446,6 +455,40 @@ class AccountingService {
       remarks: row.remarks ?? undefined,
       createdAt: row.created_at,
       ...workflowFields(row),
+    };
+  };
+
+  private mapCreditDebitNote = (row: any): CreditDebitNote => {
+    const customer = row.customer_id ? this.state.customers.find((c) => c.id === row.customer_id) : undefined;
+    const vendor = row.vendor_id ? this.state.vendors.find((v) => v.id === row.vendor_id) : undefined;
+    const project = this.state.projects.find((p) => p.id === row.project_id);
+    return {
+      id: row.id,
+      noteType: row.note_type,
+      noteNumber: row.note_number,
+      date: row.date,
+      partyType: row.party_type,
+      sourceType: row.source_type,
+      sourceId: row.source_id,
+      sourceDocumentNumber: row.source_document_number,
+      customerId: row.customer_id ?? undefined,
+      customerName: customer?.name,
+      vendorId: row.vendor_id ?? undefined,
+      vendorName: vendor?.name,
+      projectId: row.project_id,
+      projectName: project?.name || 'Unknown Project',
+      reason: row.reason ?? '',
+      netAmount: Number(row.net_amount) || 0,
+      vatRate: Number(row.vat_rate) || 0,
+      vatAmount: Number(row.vat_amount) || 0,
+      grossAmount: Number(row.gross_amount) || 0,
+      vatTreatment: row.vat_treatment || 'out_of_scope',
+      documentRef: row.document_ref,
+      attachmentUrl: row.attachment_url ?? undefined,
+      attachmentName: row.attachment_name ?? undefined,
+      status: row.status,
+      remarks: row.remarks ?? undefined,
+      createdAt: row.created_at,
     };
   };
 
@@ -673,7 +716,6 @@ class AccountingService {
   // -------------------------------------------------------------
   public async createClientInvoice(data: {
     invoiceType: 'IPC' | 'Invoice';
-    invoiceNumber: string;
     date: string;
     customerId: string;
     projectId: string;
@@ -686,7 +728,6 @@ class AccountingService {
     attachmentName?: string;
     remarks?: string;
   }): Promise<ClientInvoice> {
-    if (!data.invoiceNumber?.trim()) throw new Error('Invoice / IPC Number is required.');
     if (!data.customerId) throw new Error('Customer is required.');
     if (!data.projectId) throw new Error('Project is required.');
     if (data.netAmount <= 0) throw new Error('Amount must be positive.');
@@ -699,10 +740,12 @@ class AccountingService {
     const projectName = project ? project.name : 'Unknown Project';
     const vat = computeVatSplit(data.netAmount, data.vatRate, data.vatTreatment);
 
+    // invoiceNumber is intentionally not sent — create_client_invoice generates
+    // it server-side via next_document_number(), so numbering stays sequential
+    // and gap-free (Oman VAT requires this), regardless of what a client sends.
     const { data: row, error } = await client.rpc('create_client_invoice', {
       payload: {
         invoiceType: data.invoiceType,
-        invoiceNumber: data.invoiceNumber.trim(),
         date: data.date,
         customerId: data.customerId,
         projectId: data.projectId,
@@ -717,10 +760,10 @@ class AccountingService {
         attachmentName: data.attachmentName,
         remarks: data.remarks,
         entryNumber: generateUniqueRef('JE-INV'),
-        journalDescription: `${data.invoiceType} #${data.invoiceNumber.trim()} - ${customerName}`,
+        journalDescription: `${data.invoiceType} - ${customerName}`,
         debitAccount: `Accounts Receivable (${customerName})`,
         creditAccount: `Project Revenue (${projectName})`,
-        auditDetails: `Posted ${data.invoiceType} #${data.invoiceNumber} — Net OMR ${vat.netAmount.toFixed(3)} + VAT OMR ${vat.vatAmount.toFixed(3)} = Gross OMR ${vat.grossAmount.toFixed(3)} to Project "${projectName}".`,
+        auditDetails: `Posted ${data.invoiceType} — Net OMR ${vat.netAmount.toFixed(3)} + VAT OMR ${vat.vatAmount.toFixed(3)} = Gross OMR ${vat.grossAmount.toFixed(3)} to Project "${projectName}".`,
       },
     });
     if (error) throw new Error(error.message);
@@ -851,6 +894,68 @@ class AccountingService {
 
     await this.loadAll();
     return this.state.purchases.find((p) => p.id === row.id) || this.mapPurchase(row);
+  }
+
+  // -------------------------------------------------------------
+  // 3b. CREDIT / DEBIT NOTES
+  // Amends a posted ClientInvoice (customer-side, Output VAT) or Purchase
+  // (vendor-side, Input VAT): the source document's amount/netAmount/
+  // vatAmount/outstanding are adjusted by the note's effect server-side,
+  // never rewritten directly by the client.
+  // -------------------------------------------------------------
+  public async createCreditDebitNote(data: {
+    noteType: NoteType;
+    partyType: NoteParty;
+    sourceType: NoteSourceType;
+    sourceId: string;
+    date: string;
+    reason: string;
+    netAmount: number;
+    vatRate: number;
+    vatTreatment: VatTreatment;
+    documentRef: string;
+    attachmentUrl?: string;
+    attachmentName?: string;
+    remarks?: string;
+  }): Promise<CreditDebitNote> {
+    if (!data.sourceId) throw new Error('Source document is required.');
+    if (!data.reason?.trim()) throw new Error('Reason for the note is required.');
+    if (data.netAmount <= 0) throw new Error('Amount must be positive.');
+    if (!data.documentRef?.trim()) throw new Error('Document Reference is required.');
+
+    const client = this.requireClient();
+    const vat = computeVatSplit(data.netAmount, data.vatRate, data.vatTreatment);
+
+    const sourceLabel =
+      data.partyType === 'customer'
+        ? this.state.clientInvoices.find((i) => i.id === data.sourceId)?.invoiceNumber
+        : this.state.purchases.find((p) => p.id === data.sourceId)?.purchaseInvoiceNumber;
+
+    const { data: row, error } = await client.rpc('create_credit_debit_note', {
+      payload: {
+        noteType: data.noteType,
+        partyType: data.partyType,
+        sourceType: data.sourceType,
+        sourceId: data.sourceId,
+        date: data.date,
+        reason: data.reason.trim(),
+        netAmount: vat.netAmount,
+        vatRate: vat.vatRate,
+        vatAmount: vat.vatAmount,
+        grossAmount: vat.grossAmount,
+        vatTreatment: vat.vatTreatment,
+        documentRef: data.documentRef.trim(),
+        attachmentUrl: data.attachmentUrl,
+        attachmentName: data.attachmentName,
+        remarks: data.remarks,
+        journalDescription: `${data.noteType === 'credit' ? 'Credit' : 'Debit'} Note against ${sourceLabel || 'source document'}`,
+        auditDetails: `Posted ${data.noteType} note against ${sourceLabel || 'source document'} — Net OMR ${vat.netAmount.toFixed(3)} + VAT OMR ${vat.vatAmount.toFixed(3)} = OMR ${vat.grossAmount.toFixed(3)}. Reason: ${data.reason.trim()}`,
+      },
+    });
+    if (error) throw new Error(error.message);
+
+    await this.loadAll();
+    return this.state.creditDebitNotes.find((n) => n.id === row.id) || this.mapCreditDebitNote(row);
   }
 
   // -------------------------------------------------------------
