@@ -52,11 +52,12 @@ export const MastersView: React.FC<MastersViewProps> = ({
   const state = accountingService.getState();
   const isSuperAdmin = authService.isSuperAdmin();
 
-  // STRICT UI SECURITY REQUIREMENT:
-  // Import buttons must NOT be shown to any user except Super Administrator!
-  // Do NOT merely disable the buttons. Do NOT render them at all for unauthorized users.
-  const canImportMasterData =
-    authService.isSuperAdmin() && authService.hasPermission('master_data.import');
+  // Permission-gated (not hardcoded to Super Admin): a Super Admin can grant
+  // the 'master_data.import' permission to other roles under Roles &
+  // Permissions, and hasPermission() already returns true unconditionally
+  // for super_admin — so this alone covers both cases correctly. Do NOT
+  // render the import buttons at all for unauthorized users.
+  const canImportMasterData = authService.hasPermission('master_data.import');
 
   useEffect(() => {
     const unsubAuth = authService.subscribe(() => setRerender((v) => v + 1));
@@ -168,14 +169,14 @@ export const MastersView: React.FC<MastersViewProps> = ({
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Projects Master List</h3>
               <div className="flex items-center gap-2">
-                {/* STRICT CHECK: Super Admin only bulk import button */}
+                {/* Permission-gated: only rendered for users whose role holds 'master_data.import' */}
                 {canImportMasterData && (
                   <button
                     onClick={() => setImportModalType('projects')}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-200 dark:border-emerald-800 cursor-pointer transition-colors"
                   >
                     <UploadCloud className="w-3.5 h-3.5" />
-                    <span>Import Projects (Super Admin)</span>
+                    <span>Import Projects</span>
                   </button>
                 )}
                 <button
@@ -372,7 +373,7 @@ export const MastersView: React.FC<MastersViewProps> = ({
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-200 dark:border-emerald-800 cursor-pointer transition-colors"
                   >
                     <UploadCloud className="w-3.5 h-3.5" />
-                    <span>Import Banks (Super Admin)</span>
+                    <span>Import Banks</span>
                   </button>
                 )}
                 <button

@@ -14,6 +14,7 @@ import {
 import { accountingService } from '../../services/accountingService';
 import { formatOMR, formatPercent, addMoney } from '../../utils/formatters';
 import { exportToExcel } from '../../utils/exportToExcel';
+import { buildProjectExportRows } from '../../utils/projectImportTemplate';
 import {
   DatePreset,
   getDateRangeFromPreset,
@@ -212,25 +213,20 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   };
 
   const handleExportAllProjects = () => {
-    const data = filteredProfitabilities.map((p) => ({
-      'Project Code': p.projectCode,
-      'Project Name': p.projectName,
-      'Client': p.customerName,
-      'Contract Value (OMR)': p.contractValue,
-      'Invoiced Revenue (OMR)': p.totalInvoiced,
-      'Cash Received (OMR)': p.totalReceived,
-      'Receivable Due (OMR)': p.outstandingReceivable,
-      'Materials & Purchases (OMR)': p.totalPurchases,
-      'Direct Expenses (OMR)': p.totalExpenses,
-      'Total Project Cost (OMR)': p.totalProjectCost,
-      'Gross Profit (OMR)': p.grossProfit,
-      'Margin %': `${p.profitMargin.toFixed(2)}%`,
-    }));
+    // Same master-data column layout as the Project import template (see
+    // src/utils/projectImportTemplate.ts), so the export can be re-uploaded
+    // as-is. Preserves the current master-list search/margin filter and
+    // sort order by following filteredProfitabilities' project codes.
+    const orderedProjects = filteredProfitabilities
+      .map((p) => state.projects.find((proj) => proj.code === p.projectCode))
+      .filter((p): p is NonNullable<typeof p> => Boolean(p));
+
+    const data = buildProjectExportRows(orderedProjects, state.customers);
 
     exportToExcel({
-      filename: `All_Projects_Report_${new Date().toISOString().split('T')[0]}`,
+      filename: `Projects_Master_Data_${new Date().toISOString().split('T')[0]}`,
       sheetName: 'Projects',
-      title: 'MASTER CONSTRUCTION PROJECTS SUMMARY REPORT (FILTERED)',
+      title: 'CONSTRUCTION PROJECTS MASTER DATA (FILTERED)',
       companyName: 'Al Tasneem & Partners Construction LLC - Muscat, Oman',
       currency: 'OMR',
       data,
