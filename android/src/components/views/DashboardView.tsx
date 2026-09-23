@@ -881,6 +881,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           (txn.projectName && txn.projectName.toLowerCase().includes(term))
         );
       })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 15);
   }, [allTransactions, scope, selectedProjectId, dateRange, txnFilterType, txnSearchTerm]);
 
