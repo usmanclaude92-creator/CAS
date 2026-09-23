@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Clock,
   Settings,
+  Handshake,
 } from 'lucide-react';
 import { authService } from '../services/authService';
 
@@ -22,6 +23,7 @@ export type NavView =
   | 'banking'
   | 'customers'
   | 'purchases'
+  | 'business_partners'
   | 'expenses'
   | 'approvals'
   | 'reports'
@@ -70,6 +72,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'banking', label: 'Banking & Treasury', icon: Landmark, permission: 'treasury.view', section: 'main' },
     { id: 'customers', label: 'Clients & Receivables', icon: Users, permission: 'customers.view', section: 'main' },
     { id: 'purchases', label: 'Vendors & Payables', icon: Truck, permission: 'purchases.view', section: 'main' },
+    { id: 'business_partners', label: 'Business Partners', icon: Handshake, permission: 'business_partners.view', section: 'main' },
     { id: 'expenses', label: 'Direct Site Expenses', icon: Coins, permission: 'expenses.view', section: 'main' },
     { id: 'reports', label: 'Financial Reports', icon: FileBarChart, permission: 'reports.view', section: 'main' },
     { id: 'masters', label: 'Business Masters', icon: Layers, permission: 'settings.view', section: 'masters' },
