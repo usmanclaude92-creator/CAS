@@ -2,6 +2,7 @@ node_modules/
 build/
 dist/
 coverage/
+/api/index.js
 .DS_Store
 *.log
 .env*
