@@ -64,7 +64,7 @@ export interface Vendor {
   createdAt: string;
 }
 
-export type TreasuryAccountType = 'bank' | 'cash' | 'petty_cash';
+export type TreasuryAccountType = 'bank' | 'cash' | 'petty_cash' | 'partner';
 
 export interface BankAccount {
   id: string;
@@ -99,6 +99,35 @@ export interface PettyCashAccount {
   openingBalance: number;
   currentBalance: number;
   openingDate?: string;
+  status: 'active' | 'inactive';
+  remarks?: string;
+  createdAt: string;
+}
+
+export type BusinessPartnerType =
+  | 'Director/Shareholder'
+  | 'Related/Group Company'
+  | 'Joint Venture Partner'
+  | 'Intercompany'
+  | 'Employee (Non-Payroll)'
+  | 'Other';
+
+// Money transferred to/from parties that are neither a Customer (receivable)
+// nor a Vendor (payable) — e.g. directors, related companies, JV partners,
+// intercompany accounts. Modeled as a treasury-account-like entity (see
+// TreasuryAccountType) so it can be a Transfer endpoint, with its own
+// running balance instead of being tracked via ad-hoc remarks.
+export interface BusinessPartner {
+  id: string;
+  code: string; // Unique
+  name: string;
+  partnerType: BusinessPartnerType;
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  openingBalance: number;
+  currentBalance: number;
   status: 'active' | 'inactive';
   remarks?: string;
   createdAt: string;

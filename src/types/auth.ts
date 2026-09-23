@@ -80,7 +80,7 @@ export type ApprovalAction = 'submit' | 'approve' | 'reject' | 'post' | 'reverse
 
 export interface MasterImportAuditRecord {
   id: string;
-  importType: 'customers' | 'vendors' | 'projects' | 'banks' | 'expense_heads';
+  importType: 'customers' | 'vendors' | 'projects' | 'banks' | 'expense_heads' | 'business_partners';
   fileName: string;
   importedByUserId: string;
   importedByUserName: string;
