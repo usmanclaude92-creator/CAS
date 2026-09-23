@@ -229,7 +229,7 @@ export const MastersView: React.FC<MastersViewProps> = ({
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Customer &amp; Client Master</h3>
               <div className="flex items-center gap-2">
-                {/* STRICT CHECK: Super Admin only bulk import buttons */}
+                {/* Permission-gated: only rendered for users whose role holds 'master_data.import' */}
                 {canImportMasterData && (
                   <>
                     <button

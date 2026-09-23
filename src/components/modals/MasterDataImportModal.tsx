@@ -12,6 +12,7 @@ import * as XLSX from 'xlsx';
 import { authService } from '../../services/authService';
 import { accountingService } from '../../services/accountingService';
 import { downloadProjectImportTemplate } from '../../utils/projectImportTemplate';
+import { downloadCustomerImportTemplate } from '../../utils/customerImportTemplate';
 
 export type MasterImportType = 'customers' | 'vendors' | 'projects' | 'banks' | 'expense_heads';
 
@@ -173,11 +174,15 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
       if (importType === 'customers') {
         const codeIdx = findCol(header, 'code');
         const nameIdx = findCol(header, 'name');
+        const vatinIdx = findCol(header, 'vatin', 'vat');
         const phoneIdx = findCol(header, 'phone', 'mobile');
         const emailIdx = findCol(header, 'email');
         const addressIdx = findCol(header, 'address');
         const contactIdx = findCol(header, 'contact');
         const balanceIdx = findCol(header, 'balance');
+        const statusIdx = findCol(header, 'status');
+        const remarksIdx = findCol(header, 'remarks', 'notes');
+        const validStatuses = new Set(['active', 'inactive']);
         const existingCodes = new Set(state.customers.map((c) => c.code.toLowerCase()));
 
         for (const cols of dataLines) {
@@ -185,16 +190,21 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
           const name = (nameIdx >= 0 ? cols[nameIdx] : cols[1] || '').trim();
           if (!code || !name) { invalidRecords++; continue; }
           if (existingCodes.has(code.toLowerCase())) { duplicateRecords++; existingRecords++; continue; }
+
+          const statusRaw = (statusIdx >= 0 ? cols[statusIdx] : '').trim().toLowerCase();
+          const remarks = (remarksIdx >= 0 ? cols[remarksIdx] : '').trim();
+
           await accountingService.createCustomer({
             code,
             name,
+            vatin: vatinIdx >= 0 ? cols[vatinIdx] || undefined : undefined,
             contactPerson: contactIdx >= 0 ? cols[contactIdx] : undefined,
             phone: phoneIdx >= 0 ? cols[phoneIdx] : undefined,
             email: emailIdx >= 0 ? cols[emailIdx] : undefined,
             address: addressIdx >= 0 ? cols[addressIdx] : undefined,
             openingBalance: balanceIdx >= 0 ? parseFloat(cols[balanceIdx]) || 0 : 0,
-            status: 'active',
-            remarks: 'Imported via Super Admin bulk master import',
+            status: validStatuses.has(statusRaw) ? (statusRaw as 'active' | 'inactive') : 'active',
+            remarks: remarks || 'Imported via bulk master data import',
           });
           existingCodes.add(code.toLowerCase());
           newRecords++;
@@ -473,11 +483,13 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
                 downloadProjectImportTemplate();
                 return;
               }
+              if (importType === 'customers') {
+                downloadCustomerImportTemplate();
+                return;
+              }
               // Quick download sample template
               const csvContent =
-                importType === 'customers'
-                  ? 'Code,Name,Phone,Email,OpeningBalance\nCUST-005,Al Khuwair Towers LLC,+968 99887766,towers@khuwair.om,5000'
-                  : 'Code,Name,Category,OpeningBalance\nVND-005,Muscat Cement Products,Building Materials,3500';
+                'Code,Name,Category,OpeningBalance\nVND-005,Muscat Cement Products,Building Materials,3500';
               const blob = new Blob([csvContent], { type: 'text/csv' });
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');
@@ -488,7 +500,9 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
             className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
-            {importType === 'projects' ? 'Download Excel Import Template' : 'Download Sample CSV Template'}
+            {importType === 'projects' || importType === 'customers'
+              ? 'Download Excel Import Template'
+              : 'Download Sample CSV Template'}
           </button>
 
           <div className="flex items-center gap-2">

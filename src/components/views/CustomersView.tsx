@@ -9,6 +9,7 @@ import {
 import { accountingService } from '../../services/accountingService';
 import { formatOMR } from '../../utils/formatters';
 import { exportToExcel } from '../../utils/exportToExcel';
+import { buildCustomerExportRows } from '../../utils/customerImportTemplate';
 
 interface CustomersViewProps {
   selectedCustomerId?: string | null;
@@ -66,28 +67,15 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   };
 
   const handleExportAllCustomers = () => {
-    const data = state.customers.map((c) => {
-      const ledger = accountingService.getCustomerLedger(c.id);
-      const outstanding = ledger.length > 0 ? ledger[ledger.length - 1].outstanding : c.openingBalance;
-      const totalInvoiced = ledger.reduce((acc, row) => acc + row.invoiced, 0);
-      const totalReceived = ledger.reduce((acc, row) => acc + row.received, 0);
-
-      return {
-        'Customer Code': c.code,
-        'Customer Name': c.name,
-        'Contact Person': c.contactPerson || '—',
-        'Phone': c.phone || '—',
-        'Opening Balance (OMR)': c.openingBalance,
-        'Total Invoiced (OMR)': totalInvoiced,
-        'Total Received (OMR)': totalReceived,
-        'Current Outstanding (OMR)': outstanding,
-      };
-    });
+    // Same master-data column layout as the Customer import template (see
+    // src/utils/customerImportTemplate.ts), so the export can be
+    // re-uploaded as-is.
+    const data = buildCustomerExportRows(state.customers);
 
     exportToExcel({
-      filename: `Customers_Receivables_Summary_${new Date().toISOString().split('T')[0]}`,
-      sheetName: 'Receivables',
-      title: 'ACCOUNTS RECEIVABLE MASTER SUMMARY REPORT',
+      filename: `Customers_Master_Data_${new Date().toISOString().split('T')[0]}`,
+      sheetName: 'Customers',
+      title: 'CUSTOMER & CLIENT MASTER DATA',
       companyName: 'Al Tasneem & Partners Construction LLC - Muscat, Oman',
       currency: 'OMR',
       data,
