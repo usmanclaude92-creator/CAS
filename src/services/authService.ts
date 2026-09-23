@@ -69,6 +69,12 @@ class AuthService {
   private listeners: Array<() => void> = [];
   private ready = false;
   private lastAuthError: string | null = null;
+  // True as soon as a Supabase session (valid JWT) is known to exist —
+  // well before the profile/roles chain below resolves. Row Level Security
+  // (is_active_user(), has_permission()) is enforced entirely server-side
+  // from auth.uid(), so dependent services (accountingService) can safely
+  // start fetching data on this signal instead of waiting for `ready`.
+  private hasSession = false;
 
   constructor() {
     this.bootstrap();
@@ -86,10 +92,17 @@ class AuthService {
     }
 
     client.auth.onAuthStateChange((_event, session) => {
+      this.hasSession = Boolean(session?.user);
       this.handleSession(session);
     });
 
     const { data } = await client.auth.getSession();
+    this.hasSession = Boolean(data.session?.user);
+    // Notify immediately once session presence is known, so dependent
+    // services can start fetching in parallel with the profile/roles
+    // lookups below rather than waiting for the full chain to finish.
+    this.notify();
+
     await this.handleSession(data.session);
     this.ready = true;
     this.notify();
@@ -103,11 +116,12 @@ class AuthService {
       return;
     }
 
-    const { data: profileRow, error } = await client
-      .from('profiles')
-      .select('*')
-      .eq('id', session.user.id)
-      .maybeSingle();
+    // Independent of each other (both keyed only off session.user.id) —
+    // fetch in parallel instead of one after another.
+    const [{ data: profileRow, error }, { data: assignments }] = await Promise.all([
+      client.from('profiles').select('*').eq('id', session.user.id).maybeSingle(),
+      client.from('user_project_assignments').select('project_id').eq('user_id', session.user.id),
+    ]);
 
     if (error || !profileRow) {
       console.error('[AuthService] Failed to load profile for authenticated session:', error);
@@ -115,11 +129,6 @@ class AuthService {
       this.notify();
       return;
     }
-
-    const { data: assignments } = await client
-      .from('user_project_assignments')
-      .select('project_id')
-      .eq('user_id', session.user.id);
 
     this.currentUser = mapProfileRow(profileRow, (assignments ?? []).map((a: any) => a.project_id));
 
@@ -210,6 +219,10 @@ class AuthService {
     return this.ready;
   }
 
+  public hasActiveSession(): boolean {
+    return this.hasSession;
+  }
+
   public getLastAuthError(): string | null {
     return this.lastAuthError;
   }
@@ -264,6 +277,7 @@ class AuthService {
         console.warn('[AuthService] signOut error:', e);
       }
     }
+    this.hasSession = false;
     this.currentUser = null;
     this.users = [];
     this.notify();
