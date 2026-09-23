@@ -2,6 +2,7 @@ package com.artifysols.cas
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.app.DownloadManager
 import android.content.ContentValues
 import android.content.pm.ApplicationInfo
@@ -13,6 +14,8 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Base64
+import android.util.Log
+import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.URLUtil
@@ -40,6 +43,8 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
     private var pendingFileChooserCallback: ValueCallback<Array<Uri>>? = null
+    private var isDebugBuild = false
+    private var hasShownJsErrorDialog = false
 
     private val backCallback = object : OnBackPressedCallback(false) {
         override fun handleOnBackPressed() {
@@ -77,8 +82,8 @@ class MainActivity : ComponentActivity() {
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        val isDebuggable = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        WebView.setWebContentsDebuggingEnabled(isDebuggable)
+        isDebugBuild = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        WebView.setWebContentsDebuggingEnabled(isDebugBuild)
 
         webView = WebView(this).apply {
             settings.apply {
@@ -102,6 +107,7 @@ class MainActivity : ComponentActivity() {
                 override fun onPageFinished(view: WebView, url: String?) {
                     super.onPageFinished(view, url)
                     backCallback.isEnabled = view.canGoBack()
+                    if (isDebugBuild) checkAppMounted(view)
                 }
 
                 override fun onReceivedError(
@@ -133,6 +139,20 @@ class MainActivity : ComponentActivity() {
                         false
                     }
                 }
+
+                // Debug builds only: surfaces WebView JS console errors as an
+                // on-screen dialog, since there's no way to reach chrome://inspect
+                // without a USB-connected computer.
+                override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
+                    Log.e("CAS-WebView", "${consoleMessage.message()} (${consoleMessage.sourceId()}:${consoleMessage.lineNumber()})")
+                    if (isDebugBuild && consoleMessage.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
+                        showDiagnosticDialog(
+                            "JavaScript error",
+                            "${consoleMessage.message()}\n\nat ${consoleMessage.sourceId()}:${consoleMessage.lineNumber()}"
+                        )
+                    }
+                    return false
+                }
             }
 
             setDownloadListener { url, _, contentDisposition, mimeType, _ ->
@@ -157,6 +177,39 @@ class MainActivity : ComponentActivity() {
 
         setContentView(webView)
         onBackPressedDispatcher.addCallback(this, backCallback)
+    }
+
+    // Debug builds only: 2.5s after the page finishes loading, checks whether
+    // anything actually rendered into #root. Catches failures (e.g. a JS
+    // error that fires before any console.error, or a missing asset) that
+    // leave a blank page without ever calling onConsoleMessage or
+    // onReceivedError.
+    private fun checkAppMounted(view: WebView) {
+        view.postDelayed({
+            view.evaluateJavascript(
+                "document.getElementById('root') ? document.getElementById('root').children.length : -1;"
+            ) { result ->
+                if (result?.toIntOrNull() == 0) {
+                    showDiagnosticDialog(
+                        "Blank page detected",
+                        "file:///android_asset/www/index.html finished loading but nothing rendered " +
+                            "into #root after 2.5s. This usually means a JS error occurred with no " +
+                            "console.error logged, or a required asset (JS/CSS bundle) failed to load."
+                    )
+                }
+            }
+        }, 2500)
+    }
+
+    private fun showDiagnosticDialog(title: String, message: String) {
+        if (hasShownJsErrorDialog || isFinishing) return
+        hasShownJsErrorDialog = true
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .setCancelable(true)
+            .show()
     }
 
     private fun handleDownload(url: String, contentDisposition: String?, mimeType: String?) {
