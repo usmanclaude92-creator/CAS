@@ -57,6 +57,7 @@ import { ShieldAlert, ArrowLeft } from 'lucide-react';
 function AppContent() {
   const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
   const [currentUser, setCurrentUser] = useState(authService.getCurrentUser());
+  const [authReady, setAuthReady] = useState(authService.isReady());
   const [activeView, setActiveView] = useState<NavView>(() => {
     try {
       const saved = localStorage.getItem('construction_active_view');
@@ -158,6 +159,7 @@ function AppContent() {
     const unsubAuth = authService.subscribe(() => {
       setIsAuthenticated(authService.isAuthenticated());
       setCurrentUser(authService.getCurrentUser());
+      setAuthReady(authService.isReady());
       setTick((t) => t + 1);
     });
 
@@ -279,6 +281,30 @@ function AppContent() {
         initialRequestId={approvalRequestId}
         initialToken={approvalToken}
       />
+    );
+  }
+
+  // Auth state not yet determined (session restore in progress on page
+  // load/refresh) — show a lightweight loading screen instead of deciding
+  // between Login and the app. Deciding early here is what previously
+  // caused a flash of the Login screen on every refresh: isAuthenticated
+  // starts false until the async session/profile lookup resolves.
+  if (!authReady) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center gap-4 transition-colors duration-200">
+        <img
+          src="/artify-logo-light.png"
+          alt="Artify Construction Accounting System"
+          className="w-48 h-auto object-contain block dark:hidden select-none"
+        />
+        <img
+          src="/artify-logo.png"
+          alt="Artify Construction Accounting System"
+          className="w-48 h-auto object-contain hidden dark:block select-none"
+        />
+        <div className="w-6 h-6 border-2 border-slate-300 dark:border-slate-700 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin" />
+        <p className="text-xs text-slate-400 dark:text-slate-500">Restoring your session…</p>
+      </div>
     );
   }
 

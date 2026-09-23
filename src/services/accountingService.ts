@@ -110,21 +110,38 @@ class AccountingService {
   private loaded = false;
   private loadError: string | null = null;
   private realtimeChannel: ReturnType<NonNullable<ReturnType<typeof getSupabaseClient>>['channel']> | null = null;
+  // Guards the auto-triggered bootstrap load only (below) against being
+  // kicked off twice — once as soon as a session is known, and again once
+  // authService finishes resolving the full profile/roles chain. Manual/
+  // mutation-triggered loadAll() calls elsewhere are unaffected.
+  private bootstrapping = false;
 
   constructor() {
     authService.subscribe(() => {
-      if (authService.isAuthenticated() && !this.loaded) {
-        this.loadAll();
+      // Start fetching as soon as a Supabase session exists rather than
+      // waiting for authService's full profile/roles chain to resolve —
+      // RLS (is_active_user(), has_permission()) is enforced server-side
+      // from auth.uid() regardless, so there's nothing to gain by waiting,
+      // and this lets the two round trips run in parallel instead of
+      // back-to-back.
+      if (authService.hasActiveSession() && !this.loaded && !this.bootstrapping) {
+        this.bootstrapping = true;
+        this.loadAll().finally(() => {
+          this.bootstrapping = false;
+        });
       }
-      if (!authService.isAuthenticated()) {
+      if (!authService.hasActiveSession()) {
         this.teardownRealtime();
         this.state = emptyState();
         this.loaded = false;
         this.notify();
       }
     });
-    if (authService.isAuthenticated()) {
-      this.loadAll();
+    if (authService.hasActiveSession()) {
+      this.bootstrapping = true;
+      this.loadAll().finally(() => {
+        this.bootstrapping = false;
+      });
     }
   }
 
