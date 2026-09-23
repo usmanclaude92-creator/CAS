@@ -132,6 +132,9 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
               </div>
               <h2 className="text-lg font-bold text-slate-900 mt-1.5">{selectedCustomer.name}</h2>
               <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 mt-2">
+                {selectedCustomer.vatin && (
+                  <span>VATIN: <strong className="font-mono">{selectedCustomer.vatin}</strong></span>
+                )}
                 {selectedCustomer.contactPerson && (
                   <span>Contact: <strong>{selectedCustomer.contactPerson}</strong></span>
                 )}
@@ -275,6 +278,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
               <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
                 <th className="py-3 px-4">Code</th>
                 <th className="py-3 px-4">Customer Name</th>
+                <th className="py-3 px-4">VATIN</th>
                 <th className="py-3 px-4">Contact Info</th>
                 <th className="py-3 px-4 text-right">Opening Balance</th>
                 <th className="py-3 px-4 text-right">Total Invoiced</th>
@@ -301,6 +305,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                         {c.name}
                       </button>
                     </td>
+                    <td className="py-3 px-4 font-mono text-slate-600">{c.vatin || '—'}</td>
                     <td className="py-3 px-4 text-slate-600">
                       {c.phone || c.email ? (
                         <div className="text-[11px]">

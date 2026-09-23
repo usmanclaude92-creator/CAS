@@ -277,6 +277,7 @@ export const MastersView: React.FC<MastersViewProps> = ({
                   <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-semibold uppercase tracking-wider text-[11px]">
                     <th className="py-2.5 px-4">Code</th>
                     <th className="py-2.5 px-4">Customer Name</th>
+                    <th className="py-2.5 px-4">VATIN</th>
                     <th className="py-2.5 px-4">Contact</th>
                     <th className="py-2.5 px-4">Phone / Email</th>
                     <th className="py-2.5 px-4 text-right">Opening Balance</th>
@@ -288,6 +289,7 @@ export const MastersView: React.FC<MastersViewProps> = ({
                     <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
                       <td className="py-2.5 px-4 font-mono font-medium text-slate-800 dark:text-slate-200">{c.code}</td>
                       <td className="py-2.5 px-4 font-semibold text-slate-900 dark:text-white">{c.name}</td>
+                      <td className="py-2.5 px-4 font-mono text-slate-600 dark:text-slate-400">{c.vatin || '—'}</td>
                       <td className="py-2.5 px-4 text-slate-700 dark:text-slate-300">{c.contactPerson || '—'}</td>
                       <td className="py-2.5 px-4 text-slate-600 dark:text-slate-400">{c.phone || c.email || '—'}</td>
                       <td className="py-2.5 px-4 text-right font-mono text-slate-800 dark:text-slate-200">{formatOMR(c.openingBalance)}</td>
@@ -359,6 +361,7 @@ export const MastersView: React.FC<MastersViewProps> = ({
                     <th className="py-2.5 px-4">Code</th>
                     <th className="py-2.5 px-4">Vendor Name</th>
                     <th className="py-2.5 px-4">Category</th>
+                    <th className="py-2.5 px-4">VATIN</th>
                     <th className="py-2.5 px-4">Contact</th>
                     <th className="py-2.5 px-4 text-right">Opening Balance</th>
                     <th className="py-2.5 px-4">Status</th>
@@ -374,6 +377,7 @@ export const MastersView: React.FC<MastersViewProps> = ({
                           {v.category}
                         </span>
                       </td>
+                      <td className="py-2.5 px-4 font-mono text-slate-600 dark:text-slate-400">{v.vatin || '—'}</td>
                       <td className="py-2.5 px-4 text-slate-700 dark:text-slate-300">{v.contactPerson || '—'}</td>
                       <td className="py-2.5 px-4 text-right font-mono text-slate-800 dark:text-slate-200">{formatOMR(v.openingBalance)}</td>
                       <td className="py-2.5 px-4">

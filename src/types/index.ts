@@ -54,6 +54,7 @@ export interface Vendor {
   code: string; // Unique
   name: string;
   category?: string;
+  vatin?: string; // VAT Identification Number
   contactPerson?: string;
   phone?: string;
   email?: string;

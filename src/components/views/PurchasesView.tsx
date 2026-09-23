@@ -388,6 +388,9 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({
               </div>
               <h2 className="text-lg font-bold text-slate-900 mt-1.5">{selectedVendor.name}</h2>
               <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 mt-2">
+                {selectedVendor.vatin && (
+                  <span>VATIN: <strong className="font-mono">{selectedVendor.vatin}</strong></span>
+                )}
                 {selectedVendor.contactPerson && (
                   <span>
                     Contact: <strong>{selectedVendor.contactPerson}</strong>
@@ -1093,6 +1096,7 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({
                     <th className="py-3 px-4">Code</th>
                     <th className="py-3 px-4">Vendor Name</th>
                     <th className="py-3 px-4">Category</th>
+                    <th className="py-3 px-4">VATIN</th>
                     <th className="py-3 px-4">Contact Info</th>
                     <th className="py-3 px-4 text-right">Opening Balance</th>
                     <th className="py-3 px-4 text-right">Total Purchases</th>
@@ -1125,6 +1129,7 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({
                             {v.category}
                           </span>
                         </td>
+                        <td className="py-3 px-4 font-mono text-slate-600">{v.vatin || '—'}</td>
                         <td className="py-3 px-4 text-slate-600">
                           {v.phone || v.email ? (
                             <div className="text-[11px]">
@@ -1160,7 +1165,7 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({
                   })}
                   {filteredVendors.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="text-center py-8 text-slate-400">
+                      <td colSpan={10} className="text-center py-8 text-slate-400">
                         No vendors match your search criteria.
                       </td>
                     </tr>

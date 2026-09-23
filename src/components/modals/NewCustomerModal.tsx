@@ -13,6 +13,7 @@ interface NewCustomerModalProps {
 export const NewCustomerModal: React.FC<NewCustomerModalProps> = ({ isOpen, onClose, onCreated }) => {
   const [code, setCode] = useState(`CUST-${Date.now().toString().slice(-4)}`);
   const [name, setName] = useState('');
+  const [vatin, setVatin] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -34,6 +35,7 @@ export const NewCustomerModal: React.FC<NewCustomerModalProps> = ({ isOpen, onCl
       const created = await accountingService.createCustomer({
         code: code.trim(),
         name: name.trim(),
+        vatin: vatin.trim() || undefined,
         contactPerson: contactPerson.trim() || undefined,
         phone: phone.trim() || undefined,
         email: email.trim() || undefined,
@@ -116,6 +118,19 @@ export const NewCustomerModal: React.FC<NewCustomerModalProps> = ({ isOpen, onCl
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">
+              VATIN (VAT Registration Number)
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. OM1234567890"
+              value={vatin}
+              onChange={(e) => setVatin(e.target.value)}
+              className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
