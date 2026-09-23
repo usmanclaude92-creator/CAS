@@ -14,6 +14,7 @@ export const NewVendorModal: React.FC<NewVendorModalProps> = ({ isOpen, onClose,
   const [code, setCode] = useState(`VEND-${Date.now().toString().slice(-4)}`);
   const [name, setName] = useState('');
   const [category, setCategory] = useState('Materials');
+  const [vatin, setVatin] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -36,6 +37,7 @@ export const NewVendorModal: React.FC<NewVendorModalProps> = ({ isOpen, onClose,
         code: code.trim(),
         name: name.trim(),
         category,
+        vatin: vatin.trim() || undefined,
         contactPerson: contactPerson.trim() || undefined,
         phone: phone.trim() || undefined,
         email: email.trim() || undefined,
@@ -133,6 +135,19 @@ export const NewVendorModal: React.FC<NewVendorModalProps> = ({ isOpen, onClose,
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">
+              VATIN (VAT Registration Number)
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. OM1234567890"
+              value={vatin}
+              onChange={(e) => setVatin(e.target.value)}
+              className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg font-mono focus:ring-2 focus:ring-amber-500"
             />
           </div>
 

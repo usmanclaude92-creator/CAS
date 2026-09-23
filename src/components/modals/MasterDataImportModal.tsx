@@ -218,6 +218,7 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
         const codeIdx = findCol(header, 'code');
         const nameIdx = findCol(header, 'name');
         const categoryIdx = findCol(header, 'category');
+        const vatinIdx = findCol(header, 'vatin', 'vat');
         const contactIdx = findCol(header, 'contact');
         const phoneIdx = findCol(header, 'phone', 'mobile');
         const emailIdx = findCol(header, 'email');
@@ -241,6 +242,7 @@ export const MasterDataImportModal: React.FC<MasterDataImportModalProps> = ({
             code,
             name,
             category: categoryIdx >= 0 ? cols[categoryIdx] : undefined,
+            vatin: vatinIdx >= 0 ? cols[vatinIdx] || undefined : undefined,
             contactPerson: contactIdx >= 0 ? cols[contactIdx] : undefined,
             phone: phoneIdx >= 0 ? cols[phoneIdx] : undefined,
             email: emailIdx >= 0 ? cols[emailIdx] : undefined,
