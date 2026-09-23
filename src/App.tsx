@@ -17,6 +17,7 @@ import { ProjectsView } from './components/views/ProjectsView';
 import { BankingView } from './components/views/BankingView';
 import { CustomersView } from './components/views/CustomersView';
 import { PurchasesView } from './components/views/PurchasesView';
+import { BusinessPartnersView } from './components/views/BusinessPartnersView';
 import { ExpensesView } from './components/views/ExpensesView';
 import { ReportsView } from './components/views/ReportsView';
 import { MastersView } from './components/views/MastersView';
@@ -86,12 +87,14 @@ function AppContent() {
     if (v !== 'projects') setSelectedProjectId(null);
     if (v !== 'customers') setSelectedCustomerId(null);
     if (v !== 'purchases') setSelectedVendorId(null);
+    if (v !== 'business_partners') setSelectedBusinessPartnerId(null);
   };
 
   // Deep linking selections
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
+  const [selectedBusinessPartnerId, setSelectedBusinessPartnerId] = useState<string | null>(null);
 
   // Modal states
   const [isMoneyInOpen, setIsMoneyInOpen] = useState(false);
@@ -312,6 +315,8 @@ function AppContent() {
         return authService.hasPermission('customers.view');
       case 'purchases':
         return authService.hasPermission('purchases.view') || authService.hasPermission('vendors.view');
+      case 'business_partners':
+        return authService.hasPermission('business_partners.view');
       case 'expenses':
         return authService.hasPermission('expenses.view');
       case 'reports':
@@ -468,17 +473,7 @@ function AppContent() {
                 />
               )}
 
-              {activeView === 'banking' && (
-                <BankingView
-                  onOpenTransfer={() => setIsTransferOpen(true)}
-                  onOpenNewBankAccount={() => setIsNewBankAccountOpen(true)}
-                  onOpenMoneyIn={() => {
-                    setModalProjectId(undefined);
-                    setIsMoneyInOpen(true);
-                  }}
-                  onOpenMoneyOut={() => setIsMoneyOutOpen(true)}
-                />
-              )}
+              {activeView === 'banking' && <BankingView />}
 
               {activeView === 'customers' && (
                 <CustomersView
@@ -512,6 +507,16 @@ function AppContent() {
                     setSelectedProjectId(id);
                     setActiveView('projects');
                   }}
+                />
+              )}
+
+              {activeView === 'business_partners' && (
+                <BusinessPartnersView
+                  selectedBusinessPartnerId={selectedBusinessPartnerId}
+                  onClearSelectedBusinessPartner={() => setSelectedBusinessPartnerId(null)}
+                  onSelectBusinessPartner={(id) => setSelectedBusinessPartnerId(id)}
+                  onOpenNewBusinessPartner={() => setIsNewBusinessPartnerOpen(true)}
+                  onOpenTransfer={() => setIsTransferOpen(true)}
                 />
               )}
 

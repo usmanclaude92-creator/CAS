@@ -3,8 +3,6 @@ import {
   Landmark,
   Wallet,
   Coins,
-  ArrowRightLeft,
-  Plus,
   FileSpreadsheet,
   FileText,
   Filter,
@@ -27,19 +25,11 @@ import { TreasuryAccountType } from '../../types';
 import { TableDensityToggle } from '../TableDensityToggle';
 
 interface BankingViewProps {
-  onOpenTransfer: () => void;
-  onOpenNewBankAccount: () => void;
-  onOpenMoneyIn: () => void;
-  onOpenMoneyOut: () => void;
   selectedAccountId?: string;
   onSelectAccount?: (id: string) => void;
 }
 
 export const BankingView: React.FC<BankingViewProps> = ({
-  onOpenTransfer,
-  onOpenNewBankAccount,
-  onOpenMoneyIn,
-  onOpenMoneyOut,
   selectedAccountId: controlledAccountId,
   onSelectAccount,
 }) => {
@@ -58,6 +48,10 @@ export const BankingView: React.FC<BankingViewProps> = ({
   };
 
   const [activeTab, setActiveTab] = useState<'treasury_ledger' | 'transfers'>('treasury_ledger');
+  const ACCOUNT_LIST_PREVIEW_COUNT = 4;
+  const [showAllBanks, setShowAllBanks] = useState(false);
+  const [showAllCash, setShowAllCash] = useState(false);
+  const [showAllPettyCash, setShowAllPettyCash] = useState(false);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState<boolean>(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
@@ -285,34 +279,6 @@ export const BankingView: React.FC<BankingViewProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={onOpenTransfer}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-indigo-700 hover:bg-indigo-600 cursor-pointer shadow"
-          >
-            <ArrowRightLeft className="w-3.5 h-3.5" />
-            + Internal Transfer
-          </button>
-          <button
-            onClick={onOpenMoneyIn}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-emerald-700 hover:bg-emerald-600 cursor-pointer shadow"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            + Money In
-          </button>
-          <button
-            onClick={onOpenMoneyOut}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-slate-900 hover:bg-slate-800 cursor-pointer shadow"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            + Money Out
-          </button>
-          <button
-            onClick={onOpenNewBankAccount}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5 text-slate-500" />
-            Add Bank A/C
-          </button>
           {/* Export Dropdown Menu with Screen Format Alignment */}
           <div className="relative" ref={exportMenuRef}>
             <button
@@ -391,7 +357,7 @@ export const BankingView: React.FC<BankingViewProps> = ({
           </div>
 
           <div className="space-y-2 pt-2 border-t border-slate-100">
-            {state.bankAccounts.map((b) => (
+            {(showAllBanks ? state.bankAccounts : state.bankAccounts.slice(0, ACCOUNT_LIST_PREVIEW_COUNT)).map((b) => (
               <div
                 key={b.id}
                 onClick={() => handleSelectAccount(selectedAccountId === b.id ? 'all' : b.id)}
@@ -411,6 +377,15 @@ export const BankingView: React.FC<BankingViewProps> = ({
                 </div>
               </div>
             ))}
+            {state.bankAccounts.length > ACCOUNT_LIST_PREVIEW_COUNT && (
+              <button
+                type="button"
+                onClick={() => setShowAllBanks((v) => !v)}
+                className="w-full text-center text-[11px] font-semibold text-blue-700 hover:text-blue-800 py-1.5 cursor-pointer"
+              >
+                {showAllBanks ? 'Show Less' : `View All (${state.bankAccounts.length})`}
+              </button>
+            )}
           </div>
         </div>
 
@@ -432,7 +407,7 @@ export const BankingView: React.FC<BankingViewProps> = ({
           </div>
 
           <div className="space-y-2 pt-2 border-t border-slate-100">
-            {state.cashAccounts.map((c) => (
+            {(showAllCash ? state.cashAccounts : state.cashAccounts.slice(0, ACCOUNT_LIST_PREVIEW_COUNT)).map((c) => (
               <div
                 key={c.id}
                 onClick={() => handleSelectAccount(selectedAccountId === c.id ? 'all' : c.id)}
@@ -451,6 +426,15 @@ export const BankingView: React.FC<BankingViewProps> = ({
                 </div>
               </div>
             ))}
+            {state.cashAccounts.length > ACCOUNT_LIST_PREVIEW_COUNT && (
+              <button
+                type="button"
+                onClick={() => setShowAllCash((v) => !v)}
+                className="w-full text-center text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 py-1.5 cursor-pointer"
+              >
+                {showAllCash ? 'Show Less' : `View All (${state.cashAccounts.length})`}
+              </button>
+            )}
           </div>
         </div>
 
@@ -472,7 +456,7 @@ export const BankingView: React.FC<BankingViewProps> = ({
           </div>
 
           <div className="space-y-2 pt-2 border-t border-slate-100">
-            {state.pettyCashAccounts.map((p) => (
+            {(showAllPettyCash ? state.pettyCashAccounts : state.pettyCashAccounts.slice(0, ACCOUNT_LIST_PREVIEW_COUNT)).map((p) => (
               <div
                 key={p.id}
                 onClick={() => handleSelectAccount(selectedAccountId === p.id ? 'all' : p.id)}
@@ -491,6 +475,15 @@ export const BankingView: React.FC<BankingViewProps> = ({
                 </div>
               </div>
             ))}
+            {state.pettyCashAccounts.length > ACCOUNT_LIST_PREVIEW_COUNT && (
+              <button
+                type="button"
+                onClick={() => setShowAllPettyCash((v) => !v)}
+                className="w-full text-center text-[11px] font-semibold text-amber-700 hover:text-amber-800 py-1.5 cursor-pointer"
+              >
+                {showAllPettyCash ? 'Show Less' : `View All (${state.pettyCashAccounts.length})`}
+              </button>
+            )}
           </div>
         </div>
       </div>

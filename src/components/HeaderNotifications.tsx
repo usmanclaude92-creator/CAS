@@ -109,7 +109,7 @@ export const HeaderNotifications: React.FC<HeaderNotificationsProps> = ({ onNavi
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 flex h-4.5 min-w-4.5 px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-xs animate-pulse">
-            {unreadCount > 9 ? '9+' : unreadCount}
+            {unreadCount}
           </span>
         )}
       </button>

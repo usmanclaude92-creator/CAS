@@ -416,6 +416,8 @@ export const Header: React.FC<HeaderProps> = ({
         return 'Customers & Accounts Receivable';
       case 'purchases':
         return 'Vendors, Materials & Accounts Payable';
+      case 'business_partners':
+        return 'Business Partners & Non-Trade Accounts';
       case 'expenses':
         return 'Direct Project & Site Expenses';
       case 'reports':
