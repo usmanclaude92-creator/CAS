@@ -468,6 +468,160 @@ export function generateCreditDebitNotePdf(note: CreditDebitNote, partyVatin?: s
   doc.save(`${note.noteNumber}.pdf`);
 }
 
+export interface VatReturnBoxes {
+  box1Value: number; // Standard-rated supplies (net)
+  box1Vat: number;
+  box2Value: number; // Zero-rated supplies (net)
+  box3Value: number; // Exempt supplies (net)
+  outOfScopeValue: number; // Informational only, no VAT liability
+  box4Value: number; // Standard-rated purchases/expenses (net, input)
+  box4Vat: number;
+  rcValue: number; // Reverse charge — imported services (net)
+  rcVat: number; // Self-charged, appears in both output and input
+  totalOutputVat: number;
+  totalInputVat: number;
+  netVatDue: number;
+}
+
+export interface VatReturnReverseChargeItem {
+  date: string;
+  documentNumber: string;
+  partyName: string;
+  netAmount: number;
+  vatAmount: number;
+}
+
+export interface VatReturnNoteItem {
+  date: string;
+  noteNumber: string;
+  noteType: string;
+  sourceDocumentNumber: string;
+  partyName: string;
+  netAmount: number;
+  vatAmount: number;
+  grossAmount: number;
+}
+
+/**
+ * Oman VAT Return summary (OTA-style boxes) + reverse-charge working paper +
+ * credit/debit note disclosure, as a single exportable PDF audit pack.
+ */
+export function generateVatReturnPdf(
+  periodLabel: string,
+  boxes: VatReturnBoxes,
+  reverseChargeItems: VatReturnReverseChargeItem[],
+  notes: VatReturnNoteItem[]
+): void {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  let y = 40;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(15, 23, 42);
+  doc.text(COMPANY_PROFILE.name, 40, y);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  y += 14;
+  doc.text(`VATIN: ${COMPANY_PROFILE.vatin}`, 40, y);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(15, 23, 42);
+  doc.text('VAT RETURN', pageWidth - 40, 40, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Period: ${periodLabel}`, pageWidth - 40, 58, { align: 'right' });
+  doc.text(`Generated: ${new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}`, pageWidth - 40, 71, {
+    align: 'right',
+  });
+
+  y = 100;
+  autoTable(doc, {
+    startY: y,
+    margin: { left: 40, right: 40 },
+    head: [['Box', 'Description', 'Net Value (OMR)', 'VAT Amount (OMR)']],
+    body: [
+      ['1', 'Standard-Rated Supplies (Sales)', boxes.box1Value.toFixed(3), boxes.box1Vat.toFixed(3)],
+      ['2', 'Zero-Rated Supplies (Sales)', boxes.box2Value.toFixed(3), '0.000'],
+      ['3', 'Exempt Supplies (Sales)', boxes.box3Value.toFixed(3), '0.000'],
+      ['—', 'Out-of-Scope Supplies (informational)', boxes.outOfScopeValue.toFixed(3), '0.000'],
+      ['4', 'Standard-Rated Purchases / Expenses (Input)', boxes.box4Value.toFixed(3), boxes.box4Vat.toFixed(3)],
+      ['RC', 'Reverse Charge — Imported Services (self-charged)', boxes.rcValue.toFixed(3), boxes.rcVat.toFixed(3)],
+    ],
+    theme: 'grid',
+    styles: { font: 'helvetica', fontSize: 8.5, cellPadding: 6, textColor: [30, 41, 59] },
+    headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
+    columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' } },
+  });
+
+  let afterY = (doc as any).lastAutoTable.finalY + 16;
+  autoTable(doc, {
+    startY: afterY,
+    margin: { left: 40, right: 40 },
+    body: [
+      ['Total Output VAT (Box 1 + RC self-charge)', boxes.totalOutputVat.toFixed(3)],
+      ['Total Input VAT (Box 4 + RC recoverable)', boxes.totalInputVat.toFixed(3)],
+      [boxes.netVatDue >= 0 ? 'Net VAT Payable' : 'Net VAT Refundable', Math.abs(boxes.netVatDue).toFixed(3)],
+    ],
+    theme: 'plain',
+    styles: { font: 'helvetica', fontSize: 10, fontStyle: 'bold', cellPadding: 6, textColor: [15, 23, 42] },
+    columnStyles: { 1: { halign: 'right' } },
+  });
+
+  afterY = (doc as any).lastAutoTable.finalY + 24;
+
+  if (reverseChargeItems.length > 0) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text('Reverse Charge Working Paper', 40, afterY);
+    autoTable(doc, {
+      startY: afterY + 8,
+      margin: { left: 40, right: 40 },
+      head: [['Date', 'Document #', 'Vendor', 'Net (OMR)', 'Self-Charged VAT (OMR)']],
+      body: reverseChargeItems.map((r) => [r.date, r.documentNumber, r.partyName, r.netAmount.toFixed(3), r.vatAmount.toFixed(3)]),
+      theme: 'grid',
+      styles: { font: 'helvetica', fontSize: 8, cellPadding: 5, textColor: [30, 41, 59] },
+      headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
+      columnStyles: { 3: { halign: 'right' }, 4: { halign: 'right' } },
+    });
+    afterY = (doc as any).lastAutoTable.finalY + 24;
+  }
+
+  if (notes.length > 0) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text('Credit / Debit Notes Issued This Period (disclosure only — already reflected in source documents above)', 40, afterY, {
+      maxWidth: pageWidth - 80,
+    });
+    autoTable(doc, {
+      startY: afterY + 22,
+      margin: { left: 40, right: 40 },
+      head: [['Date', 'Note #', 'Type', 'Against', 'Party', 'Net (OMR)', 'VAT (OMR)', 'Gross (OMR)']],
+      body: notes.map((n) => [
+        n.date,
+        n.noteNumber,
+        n.noteType,
+        n.sourceDocumentNumber,
+        n.partyName,
+        n.netAmount.toFixed(3),
+        n.vatAmount.toFixed(3),
+        n.grossAmount.toFixed(3),
+      ]),
+      theme: 'grid',
+      styles: { font: 'helvetica', fontSize: 7.5, cellPadding: 4.5, textColor: [30, 41, 59] },
+      headStyles: { fillColor: [51, 65, 85], textColor: [255, 255, 255], fontStyle: 'bold' },
+      columnStyles: { 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' } },
+    });
+  }
+
+  doc.save(`VAT_Return_${periodLabel.replace(/[^\w-]+/g, '_')}.pdf`);
+}
+
 /**
  * Universal export function supporting CSV, Excel, and PDF
  */
