@@ -7,6 +7,8 @@ import { formatOMR } from '../../utils/formatters';
 import { MasterDataSelect } from '../common/MasterDataSelect';
 import { NewProjectModal } from './NewProjectModal';
 import { NewCustomerModal } from './NewCustomerModal';
+import { VatTreatment } from '../../types';
+import { computeVatSplit, OMAN_STANDARD_VAT_RATE, VAT_TREATMENT_LABELS } from '../../utils/vat';
 
 interface ClientInvoiceModalProps {
   isOpen: boolean;
@@ -27,13 +29,16 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
   const [projectId, setProjectId] = useState(preselectedProjectId || state.projects[0]?.id || '');
   const [customerId, setCustomerId] = useState('');
   const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
+  const [netAmount, setNetAmount] = useState('');
+  const [vatTreatment, setVatTreatment] = useState<VatTreatment>('standard');
   const [documentRef, setDocumentRef] = useState('');
   const [remarks, setRemarks] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addNewOpen, setAddNewOpen] = useState<'project' | 'customer' | null>(null);
+
+  const vat = computeVatSplit(parseFloat(netAmount) || 0, OMAN_STANDARD_VAT_RATE, vatTreatment);
 
   // Auto-set customer when project changes
   const handleProjectChange = (pId: string) => {
@@ -52,12 +57,23 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
     }
   }, [projectId]);
 
+  // Default VAT treatment from the customer's registration status: a
+  // registered customer (has a VATIN) is presumed a standard-rated
+  // domestic supply; an unregistered one defaults to out-of-scope. Either
+  // way it's just a starting point — always user-editable.
+  React.useEffect(() => {
+    const customer = state.customers.find((c) => c.id === customerId);
+    if (customer) {
+      setVatTreatment(customer.vatin ? 'standard' : 'out_of_scope');
+    }
+  }, [customerId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    const numericAmount = parseFloat(amount);
-    if (isNaN(numericAmount) || numericAmount <= 0) {
+    const numericNetAmount = parseFloat(netAmount);
+    if (isNaN(numericNetAmount) || numericNetAmount <= 0) {
       setError('Please enter a valid positive amount.');
       return;
     }
@@ -100,7 +116,9 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
         customerId,
         projectId,
         description: description.trim(),
-        amount: numericAmount,
+        netAmount: numericNetAmount,
+        vatRate: OMAN_STANDARD_VAT_RATE,
+        vatTreatment,
         documentRef: documentRef.trim(),
         attachmentUrl,
         attachmentName,
@@ -110,7 +128,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
       notificationCenter.recordSaved(
         invoiceType === 'IPC' ? 'Client Interim Certificate (IPC)' : 'Client Invoice',
         invoiceNumber.trim(),
-        `Invoice of ${formatOMR(numericAmount)} committed to receivables.`
+        `Invoice of ${formatOMR(vat.grossAmount)} (Net ${formatOMR(vat.netAmount)} + VAT ${formatOMR(vat.vatAmount)}) committed to receivables.`
       );
 
       onClose();
@@ -200,7 +218,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Amount (OMR) <span className="text-rose-600">*</span>
+                Amount (OMR) — Excl. VAT <span className="text-rose-600">*</span>
               </label>
               <input
                 type="number"
@@ -208,10 +226,39 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
                 min="0.001"
                 required
                 placeholder="0.000"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                value={netAmount}
+                onChange={(e) => setNetAmount(e.target.value)}
                 className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+          </div>
+
+          {/* VAT Treatment & computed breakdown */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                VAT Treatment <span className="text-rose-600">*</span>
+              </label>
+              <select
+                value={vatTreatment}
+                onChange={(e) => setVatTreatment(e.target.value as VatTreatment)}
+                className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="standard">{VAT_TREATMENT_LABELS.standard}</option>
+                <option value="zero_rated">{VAT_TREATMENT_LABELS.zero_rated}</option>
+                <option value="exempt">{VAT_TREATMENT_LABELS.exempt}</option>
+                <option value="out_of_scope">{VAT_TREATMENT_LABELS.out_of_scope}</option>
+              </select>
+            </div>
+            <div className="bg-blue-50/60 border border-blue-200 rounded-lg px-3 py-2 text-xs flex flex-col justify-center">
+              <div className="flex items-center justify-between text-slate-600">
+                <span>VAT ({vat.vatRate}%)</span>
+                <span className="font-mono font-semibold text-slate-800">{formatOMR(vat.vatAmount)}</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-700 font-semibold mt-0.5">
+                <span>Total (Gross)</span>
+                <span className="font-mono">{formatOMR(vat.grossAmount)}</span>
+              </div>
             </div>
           </div>
 

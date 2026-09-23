@@ -168,6 +168,11 @@ export interface WorkflowRecord {
   rejectionReason?: string;
 }
 
+// Oman VAT (Royal Decree 121/2020). 'reverse_charge' only applies to
+// purchases/expenses (import of services from a non-resident supplier) —
+// ClientInvoice never uses it.
+export type VatTreatment = 'standard' | 'zero_rated' | 'exempt' | 'out_of_scope' | 'reverse_charge';
+
 export interface ClientInvoice extends WorkflowRecord {
   id: string;
   invoiceType: 'IPC' | 'Invoice';
@@ -178,7 +183,11 @@ export interface ClientInvoice extends WorkflowRecord {
   projectId: string;
   projectName: string;
   description: string;
-  amount: number;
+  amount: number; // VAT-inclusive gross total; drives receivedAmount/outstandingAmount
+  netAmount: number; // amount excl. VAT
+  vatRate: number; // percent, e.g. 5
+  vatAmount: number;
+  vatTreatment: VatTreatment;
   documentRef: string;
   attachmentUrl?: string;
   attachmentName?: string;
@@ -199,7 +208,11 @@ export interface Purchase extends WorkflowRecord {
   projectName: string;
   purchaseCategory: string;
   description: string;
-  amount: number;
+  amount: number; // VAT-inclusive gross total; drives paidAmount/outstandingAmount
+  netAmount: number; // amount excl. VAT
+  vatRate: number;
+  vatAmount: number;
+  vatTreatment: VatTreatment;
   documentRef: string;
   attachmentUrl?: string;
   attachmentName?: string;
@@ -267,7 +280,11 @@ export interface DirectExpense extends WorkflowRecord {
   expenseHeadId: string;
   expenseHeadName: string;
   description: string;
-  amount: number;
+  amount: number; // VAT-inclusive gross total actually paid out
+  netAmount: number; // amount excl. VAT
+  vatRate: number;
+  vatAmount: number;
+  vatTreatment: VatTreatment;
   paidFrom: TreasuryAccountType;
   accountId: string;
   accountName: string;
