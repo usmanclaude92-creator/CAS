@@ -10,6 +10,8 @@ import { MasterDataSelect, MasterDataSelectGroup } from '../common/MasterDataSel
 import { NewProjectModal } from './NewProjectModal';
 import { NewBankAccountModal } from './NewBankAccountModal';
 import { NewCashAccountModal } from './NewCashAccountModal';
+import { VatTreatment } from '../../types';
+import { computeVatSplit, OMAN_STANDARD_VAT_RATE, VAT_TREATMENT_LABELS } from '../../utils/vat';
 
 interface ExpenseModalProps {
   isOpen: boolean;
@@ -28,7 +30,8 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   const [projectId, setProjectId] = useState(preselectedProjectId || state.projects[0]?.id || '');
   const [expenseHeadId, setExpenseHeadId] = useState(state.expenseHeads[0]?.id || '');
   const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
+  const [netAmount, setNetAmount] = useState('');
+  const [vatTreatment, setVatTreatment] = useState<VatTreatment>('standard');
   const [paidFrom, setPaidFrom] = useState<TreasuryAccountType>('petty_cash');
   const [accountId, setAccountId] = useState(state.pettyCashAccounts[0]?.id || '');
   const [documentRef, setDocumentRef] = useState('');
@@ -55,12 +58,14 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
     }
   }, [paidFrom, state.bankAccounts, state.cashAccounts, state.pettyCashAccounts]);
 
+  const vat = computeVatSplit(parseFloat(netAmount) || 0, OMAN_STANDARD_VAT_RATE, vatTreatment);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    const numericAmount = parseFloat(amount);
-    if (isNaN(numericAmount) || numericAmount <= 0) {
+    const numericNetAmount = parseFloat(netAmount);
+    if (isNaN(numericNetAmount) || numericNetAmount <= 0) {
       setError('Please enter a valid positive amount.');
       return;
     }
@@ -101,7 +106,9 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
         projectId,
         expenseHeadId,
         description: description.trim(),
-        amount: numericAmount,
+        netAmount: numericNetAmount,
+        vatRate: OMAN_STANDARD_VAT_RATE,
+        vatTreatment,
         paidFrom,
         accountId,
         documentRef: documentRef.trim() || `EXP-${Date.now().toString().slice(-4)}`,
@@ -113,7 +120,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       notificationCenter.recordSaved(
         'Direct Expense Voucher',
         documentRef.trim() || 'Expense Voucher',
-        `Disbursement of ${formatOMR(numericAmount)} posted against project cost.`
+        `Disbursement of ${formatOMR(vat.grossAmount)} (Net ${formatOMR(vat.netAmount)} + VAT ${formatOMR(vat.vatAmount)}) posted against project cost.`
       );
 
       onClose();
@@ -212,7 +219,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
 
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Amount (OMR) <span className="text-rose-600">*</span>
+                Amount (OMR) — Excl. VAT <span className="text-rose-600">*</span>
               </label>
               <input
                 type="number"
@@ -220,10 +227,40 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                 min="0.001"
                 required
                 placeholder="0.000"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                value={netAmount}
+                onChange={(e) => setNetAmount(e.target.value)}
                 className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-rose-500"
               />
+            </div>
+          </div>
+
+          {/* VAT Treatment & computed breakdown */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                VAT Treatment <span className="text-rose-600">*</span>
+              </label>
+              <select
+                value={vatTreatment}
+                onChange={(e) => setVatTreatment(e.target.value as VatTreatment)}
+                className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+              >
+                <option value="standard">{VAT_TREATMENT_LABELS.standard}</option>
+                <option value="zero_rated">{VAT_TREATMENT_LABELS.zero_rated}</option>
+                <option value="exempt">{VAT_TREATMENT_LABELS.exempt}</option>
+                <option value="out_of_scope">{VAT_TREATMENT_LABELS.out_of_scope}</option>
+                <option value="reverse_charge">{VAT_TREATMENT_LABELS.reverse_charge}</option>
+              </select>
+            </div>
+            <div className="bg-rose-50/60 border border-rose-200 rounded-lg px-3 py-2 text-xs flex flex-col justify-center">
+              <div className="flex items-center justify-between text-slate-600">
+                <span>VAT ({vat.vatRate}%){vatTreatment === 'reverse_charge' ? ' — self-accounted' : ''}</span>
+                <span className="font-mono font-semibold text-slate-800">{formatOMR(vat.vatAmount)}</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-700 font-semibold mt-0.5">
+                <span>Total Paid</span>
+                <span className="font-mono">{formatOMR(vat.grossAmount)}</span>
+              </div>
             </div>
           </div>
 

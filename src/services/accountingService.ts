@@ -24,8 +24,10 @@ import {
   TreasuryAccountType,
   TransactionStatus,
   Transaction,
+  VatTreatment,
 } from '../types';
 import { addMoney, subtractMoney } from '../utils/formatters';
+import { computeVatSplit } from '../utils/vat';
 import { getSupabaseClient } from './supabaseClient';
 import { authService } from './authService';
 
@@ -401,6 +403,10 @@ class AccountingService {
       projectName: project?.name || 'Unknown Project',
       description: row.description ?? '',
       amount: Number(row.amount) || 0,
+      netAmount: Number(row.net_amount) || 0,
+      vatRate: Number(row.vat_rate) || 0,
+      vatAmount: Number(row.vat_amount) || 0,
+      vatTreatment: row.vat_treatment || 'out_of_scope',
       documentRef: row.document_ref,
       attachmentUrl: row.attachment_url ?? undefined,
       attachmentName: row.attachment_name ?? undefined,
@@ -427,6 +433,10 @@ class AccountingService {
       purchaseCategory: row.purchase_category ?? 'Materials',
       description: row.description ?? '',
       amount: Number(row.amount) || 0,
+      netAmount: Number(row.net_amount) || 0,
+      vatRate: Number(row.vat_rate) || 0,
+      vatAmount: Number(row.vat_amount) || 0,
+      vatTreatment: row.vat_treatment || 'out_of_scope',
       documentRef: row.document_ref,
       attachmentUrl: row.attachment_url ?? undefined,
       attachmentName: row.attachment_name ?? undefined,
@@ -513,6 +523,10 @@ class AccountingService {
       expenseHeadName: expenseHead?.name || 'General Expense',
       description: row.description ?? '',
       amount: Number(row.amount) || 0,
+      netAmount: Number(row.net_amount) || 0,
+      vatRate: Number(row.vat_rate) || 0,
+      vatAmount: Number(row.vat_amount) || 0,
+      vatTreatment: row.vat_treatment || 'out_of_scope',
       paidFrom: row.paid_from,
       accountId: row.account_id,
       accountName: this.resolveAccountName(row.paid_from, row.account_id) || 'Account',
@@ -664,7 +678,9 @@ class AccountingService {
     customerId: string;
     projectId: string;
     description: string;
-    amount: number;
+    netAmount: number;
+    vatRate: number;
+    vatTreatment: VatTreatment;
     documentRef: string;
     attachmentUrl?: string;
     attachmentName?: string;
@@ -673,7 +689,7 @@ class AccountingService {
     if (!data.invoiceNumber?.trim()) throw new Error('Invoice / IPC Number is required.');
     if (!data.customerId) throw new Error('Customer is required.');
     if (!data.projectId) throw new Error('Project is required.');
-    if (data.amount <= 0) throw new Error('Amount must be positive.');
+    if (data.netAmount <= 0) throw new Error('Amount must be positive.');
     if (!data.documentRef?.trim()) throw new Error('Document Reference is required.');
 
     const client = this.requireClient();
@@ -681,6 +697,7 @@ class AccountingService {
     const project = this.state.projects.find((p) => p.id === data.projectId);
     const customerName = customer ? customer.name : 'Unknown Customer';
     const projectName = project ? project.name : 'Unknown Project';
+    const vat = computeVatSplit(data.netAmount, data.vatRate, data.vatTreatment);
 
     const { data: row, error } = await client.rpc('create_client_invoice', {
       payload: {
@@ -690,7 +707,11 @@ class AccountingService {
         customerId: data.customerId,
         projectId: data.projectId,
         description: data.description,
-        amount: data.amount,
+        amount: vat.grossAmount,
+        netAmount: vat.netAmount,
+        vatRate: vat.vatRate,
+        vatAmount: vat.vatAmount,
+        vatTreatment: vat.vatTreatment,
         documentRef: data.documentRef.trim(),
         attachmentUrl: data.attachmentUrl,
         attachmentName: data.attachmentName,
@@ -699,7 +720,7 @@ class AccountingService {
         journalDescription: `${data.invoiceType} #${data.invoiceNumber.trim()} - ${customerName}`,
         debitAccount: `Accounts Receivable (${customerName})`,
         creditAccount: `Project Revenue (${projectName})`,
-        auditDetails: `Posted ${data.invoiceType} #${data.invoiceNumber} for OMR ${data.amount} to Project "${projectName}".`,
+        auditDetails: `Posted ${data.invoiceType} #${data.invoiceNumber} — Net OMR ${vat.netAmount.toFixed(3)} + VAT OMR ${vat.vatAmount.toFixed(3)} = Gross OMR ${vat.grossAmount.toFixed(3)} to Project "${projectName}".`,
       },
     });
     if (error) throw new Error(error.message);
@@ -781,7 +802,9 @@ class AccountingService {
     projectId: string;
     purchaseCategory?: string;
     description: string;
-    amount: number;
+    netAmount: number;
+    vatRate: number;
+    vatTreatment: VatTreatment;
     documentRef: string;
     attachmentUrl?: string;
     attachmentName?: string;
@@ -790,7 +813,7 @@ class AccountingService {
     if (!data.purchaseInvoiceNumber?.trim()) throw new Error('Purchase Invoice Number is required.');
     if (!data.vendorId) throw new Error('Vendor is required.');
     if (!data.projectId) throw new Error('Project is required.');
-    if (data.amount <= 0) throw new Error('Amount must be positive.');
+    if (data.netAmount <= 0) throw new Error('Amount must be positive.');
     if (!data.documentRef?.trim()) throw new Error('Document Reference is required.');
 
     const client = this.requireClient();
@@ -798,6 +821,7 @@ class AccountingService {
     const project = this.state.projects.find((p) => p.id === data.projectId);
     const vendorName = vendor ? vendor.name : 'Unknown Vendor';
     const projectName = project ? project.name : 'Unknown Project';
+    const vat = computeVatSplit(data.netAmount, data.vatRate, data.vatTreatment);
 
     const { data: row, error } = await client.rpc('create_purchase', {
       payload: {
@@ -807,7 +831,11 @@ class AccountingService {
         projectId: data.projectId,
         purchaseCategory: data.purchaseCategory || 'Materials',
         description: data.description,
-        amount: data.amount,
+        amount: vat.grossAmount,
+        netAmount: vat.netAmount,
+        vatRate: vat.vatRate,
+        vatAmount: vat.vatAmount,
+        vatTreatment: vat.vatTreatment,
         documentRef: data.documentRef.trim(),
         attachmentUrl: data.attachmentUrl,
         attachmentName: data.attachmentName,
@@ -816,7 +844,7 @@ class AccountingService {
         journalDescription: `Purchase Invoice #${data.purchaseInvoiceNumber.trim()} - ${vendorName}`,
         debitAccount: `Project Cost - Materials (${projectName})`,
         creditAccount: `Accounts Payable (${vendorName})`,
-        auditDetails: `Posted Purchase #${data.purchaseInvoiceNumber} from "${vendorName}" for OMR ${data.amount}.`,
+        auditDetails: `Posted Purchase #${data.purchaseInvoiceNumber} from "${vendorName}" — Net OMR ${vat.netAmount.toFixed(3)} + VAT OMR ${vat.vatAmount.toFixed(3)} = Gross OMR ${vat.grossAmount.toFixed(3)}.`,
       },
     });
     if (error) throw new Error(error.message);
@@ -908,7 +936,9 @@ class AccountingService {
     projectId: string;
     expenseHeadId: string;
     description: string;
-    amount: number;
+    netAmount: number;
+    vatRate: number;
+    vatTreatment: VatTreatment;
     paidFrom: TreasuryAccountType;
     accountId: string;
     documentRef: string;
@@ -919,7 +949,7 @@ class AccountingService {
     if (!data.projectId) throw new Error('Project is required.');
     if (!data.expenseHeadId) throw new Error('Expense Head is required.');
     if (!data.description?.trim()) throw new Error('Description is required.');
-    if (data.amount <= 0) throw new Error('Amount must be positive.');
+    if (data.netAmount <= 0) throw new Error('Amount must be positive.');
     if (!data.accountId) throw new Error('Paid From account is required.');
 
     const client = this.requireClient();
@@ -928,6 +958,7 @@ class AccountingService {
     const accountName = this.getAccountName(data.paidFrom, data.accountId);
     const expenseHeadName = expenseHead ? expenseHead.name : 'General Expense';
     const projectName = project ? project.name : 'Unknown Project';
+    const vat = computeVatSplit(data.netAmount, data.vatRate, data.vatTreatment);
 
     const { data: row, error } = await client.rpc('create_direct_expense', {
       payload: {
@@ -935,7 +966,11 @@ class AccountingService {
         projectId: data.projectId,
         expenseHeadId: data.expenseHeadId,
         description: data.description.trim(),
-        amount: data.amount,
+        amount: vat.grossAmount,
+        netAmount: vat.netAmount,
+        vatRate: vat.vatRate,
+        vatAmount: vat.vatAmount,
+        vatTreatment: vat.vatTreatment,
         paidFrom: data.paidFrom,
         accountId: data.accountId,
         documentRef: data.documentRef?.trim() || generateUniqueRef('EXP'),
@@ -946,7 +981,7 @@ class AccountingService {
         journalDescription: `Direct Expense: ${expenseHeadName} (${data.description}) on ${projectName}`,
         debitAccount: `Project Cost - ${expenseHeadName} (${projectName})`,
         creditAccount: `${accountName} (${data.paidFrom.toUpperCase()})`,
-        auditDetails: `Recorded expense OMR ${data.amount} for "${expenseHeadName}" from "${accountName}" on project "${projectName}".`,
+        auditDetails: `Recorded expense — Net OMR ${vat.netAmount.toFixed(3)} + VAT OMR ${vat.vatAmount.toFixed(3)} = Gross OMR ${vat.grossAmount.toFixed(3)} for "${expenseHeadName}" from "${accountName}" on project "${projectName}".`,
       },
     });
     if (error) throw new Error(error.message);
@@ -960,7 +995,9 @@ class AccountingService {
     projectId: string;
     expenseHeadId: string;
     description: string;
-    amount: number;
+    netAmount: number;
+    vatRate: number;
+    vatTreatment: VatTreatment;
     paidFrom: TreasuryAccountType;
     accountId: string;
     documentRef: string;
