@@ -15,6 +15,7 @@ import { accountingService } from '../../services/accountingService';
 import { formatOMR, formatPercent, addMoney } from '../../utils/formatters';
 import { exportToExcel } from '../../utils/exportToExcel';
 import { buildProjectExportRows } from '../../utils/projectImportTemplate';
+import { generateTaxInvoicePdf, generateCreditDebitNotePdf } from '../../services/exportService';
 import {
   DatePreset,
   getDateRangeFromPreset,
@@ -30,6 +31,7 @@ interface ProjectsViewProps {
   onOpenPurchase: (projectId?: string) => void;
   onOpenExpense: (projectId?: string) => void;
   onOpenMoneyIn: (projectId?: string) => void;
+  onOpenCreditDebitNote: (partyType: 'customer' | 'vendor', sourceType: 'client_invoice' | 'purchase', sourceId: string) => void;
 }
 
 export const ProjectsView: React.FC<ProjectsViewProps> = ({
@@ -41,8 +43,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   onOpenPurchase,
   onOpenExpense,
   onOpenMoneyIn,
+  onOpenCreditDebitNote,
 }) => {
-  const [activeTab, setActiveTab] = useState<'ledger' | 'invoices' | 'purchases' | 'expenses'>('ledger');
+  const [activeTab, setActiveTab] = useState<'ledger' | 'invoices' | 'purchases' | 'expenses' | 'notes'>('ledger');
   const state = accountingService.getState();
 
   // Master view quick filters
@@ -82,6 +85,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
   const rawProjectExpenses = selectedProject
     ? state.directExpenses.filter((exp) => exp.projectId === selectedProject.id)
+    : [];
+
+  const projectNotes = selectedProject
+    ? state.creditDebitNotes.filter((n) => n.projectId === selectedProject.id)
     : [];
 
   // Filtered detail datasets
@@ -414,6 +421,16 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             >
               Direct Site Expenses ({projectExpenses.length})
             </button>
+            <button
+              onClick={() => setActiveTab('notes')}
+              className={`py-3.5 text-xs font-semibold border-b-2 cursor-pointer transition-colors ${
+                activeTab === 'notes'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              Credit / Debit Notes ({projectNotes.length})
+            </button>
           </div>
 
           {/* Quick Filters for Project Tab */}
@@ -580,6 +597,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       <th className="py-3 px-4 text-right">Received</th>
                       <th className="py-3 px-4 text-right">Outstanding</th>
                       <th className="py-3 px-4 text-center">Status</th>
+                      <th className="py-3 px-4 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -611,11 +629,28 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                             {inv.status.replace('_', ' ')}
                           </span>
                         </td>
+                        <td className="py-3 px-4 text-center space-x-2 whitespace-nowrap">
+                          <button
+                            onClick={() => {
+                              const customer = state.customers.find((c) => c.id === inv.customerId);
+                              generateTaxInvoicePdf(inv, customer?.vatin);
+                            }}
+                            className="text-[10px] font-semibold text-slate-600 hover:text-slate-900 cursor-pointer underline decoration-dotted"
+                          >
+                            Print
+                          </button>
+                          <button
+                            onClick={() => onOpenCreditDebitNote('customer', 'client_invoice', inv.id)}
+                            className="text-[10px] font-semibold text-blue-700 hover:text-blue-900 cursor-pointer underline decoration-dotted"
+                          >
+                            + Note
+                          </button>
+                        </td>
                       </tr>
                     ))}
                     {projectInvoices.length === 0 && (
                       <tr>
-                        <td colSpan={8} className="text-center py-8 text-slate-400">
+                        <td colSpan={9} className="text-center py-8 text-slate-400">
                           No client invoices recorded. Click &quot;+ Client Invoice / IPC&quot; above.
                         </td>
                       </tr>
@@ -639,6 +674,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       <th className="py-3 px-4 text-right">Paid</th>
                       <th className="py-3 px-4 text-right">Outstanding</th>
                       <th className="py-3 px-4 text-center">Status</th>
+                      <th className="py-3 px-4 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -671,11 +707,19 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                             {p.status.replace('_', ' ')}
                           </span>
                         </td>
+                        <td className="py-3 px-4 text-center">
+                          <button
+                            onClick={() => onOpenCreditDebitNote('vendor', 'purchase', p.id)}
+                            className="text-[10px] font-semibold text-blue-700 hover:text-blue-900 cursor-pointer underline decoration-dotted"
+                          >
+                            + Note
+                          </button>
+                        </td>
                       </tr>
                     ))}
                     {projectPurchases.length === 0 && (
                       <tr>
-                        <td colSpan={9} className="text-center py-8 text-slate-400">
+                        <td colSpan={10} className="text-center py-8 text-slate-400">
                           No vendor purchases recorded for this project yet.
                         </td>
                       </tr>
@@ -715,6 +759,74 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                       <tr>
                         <td colSpan={6} className="text-center py-8 text-slate-400">
                           No direct site expenses recorded for this project yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {activeTab === 'notes' && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/75 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">Note #</th>
+                      <th className="py-3 px-4">Type</th>
+                      <th className="py-3 px-4">Against</th>
+                      <th className="py-3 px-4">Party</th>
+                      <th className="py-3 px-4">Reason</th>
+                      <th className="py-3 px-4 text-right">Net</th>
+                      <th className="py-3 px-4 text-right">VAT</th>
+                      <th className="py-3 px-4 text-right">Total</th>
+                      <th className="py-3 px-4 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {projectNotes.map((n, idx) => (
+                      <tr key={`${n.id}-${idx}`} className="hover:bg-slate-50/70">
+                        <td className="py-3 px-4 font-mono text-slate-600">{n.date}</td>
+                        <td className="py-3 px-4 font-mono font-medium text-slate-900">{n.noteNumber}</td>
+                        <td className="py-3 px-4">
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${
+                              n.noteType === 'credit' ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'
+                            }`}
+                          >
+                            {n.noteType === 'credit' ? 'Credit Note' : 'Debit Note'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 font-mono text-slate-600">{n.sourceDocumentNumber}</td>
+                        <td className="py-3 px-4 text-slate-700">{n.customerName || n.vendorName}</td>
+                        <td className="py-3 px-4 text-slate-600">{n.reason}</td>
+                        <td className="py-3 px-4 text-right font-mono text-slate-800">{formatOMR(n.netAmount)}</td>
+                        <td className="py-3 px-4 text-right font-mono text-slate-600">{formatOMR(n.vatAmount)}</td>
+                        <td className="py-3 px-4 text-right font-mono font-semibold text-slate-900">
+                          {formatOMR(n.grossAmount)}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <button
+                            onClick={() => {
+                              const partyVatin =
+                                n.partyType === 'customer'
+                                  ? state.customers.find((c) => c.id === n.customerId)?.vatin
+                                  : state.vendors.find((v) => v.id === n.vendorId)?.vatin;
+                              generateCreditDebitNotePdf(n, partyVatin);
+                            }}
+                            className="text-[10px] font-semibold text-slate-600 hover:text-slate-900 cursor-pointer underline decoration-dotted"
+                          >
+                            Print
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {projectNotes.length === 0 && (
+                      <tr>
+                        <td colSpan={10} className="text-center py-8 text-slate-400">
+                          No credit or debit notes recorded for this project yet. Use &quot;+ Note&quot; against an
+                          invoice or purchase above.
                         </td>
                       </tr>
                     )}

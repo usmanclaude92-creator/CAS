@@ -24,7 +24,6 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
   const state = accountingService.getState();
 
   const [invoiceType, setInvoiceType] = useState<'IPC' | 'Invoice'>('IPC');
-  const [invoiceNumber, setInvoiceNumber] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [projectId, setProjectId] = useState(preselectedProjectId || state.projects[0]?.id || '');
   const [customerId, setCustomerId] = useState('');
@@ -78,11 +77,6 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
       return;
     }
 
-    if (!invoiceNumber.trim()) {
-      setError('Invoice / IPC Number is required.');
-      return;
-    }
-
     if (!projectId) {
       setError('Please select a project.');
       return;
@@ -104,14 +98,13 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
       let attachmentName: string | undefined;
 
       if (file) {
-        const uploadRes = await uploadAttachmentFile(file, invoiceType, invoiceNumber);
+        const uploadRes = await uploadAttachmentFile(file, invoiceType, documentRef.trim());
         attachmentUrl = uploadRes.url;
         attachmentName = uploadRes.name;
       }
 
-      await accountingService.createClientInvoice({
+      const invoice = await accountingService.createClientInvoice({
         invoiceType,
-        invoiceNumber: invoiceNumber.trim(),
         date,
         customerId,
         projectId,
@@ -127,7 +120,7 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
 
       notificationCenter.recordSaved(
         invoiceType === 'IPC' ? 'Client Interim Certificate (IPC)' : 'Client Invoice',
-        invoiceNumber.trim(),
+        invoice.invoiceNumber,
         `Invoice of ${formatOMR(vat.grossAmount)} (Net ${formatOMR(vat.netAmount)} + VAT ${formatOMR(vat.vatAmount)}) committed to receivables.`
       );
 
@@ -185,20 +178,10 @@ export const ClientInvoiceModal: React.FC<ClientInvoiceModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                {invoiceType} Number <span className="text-rose-600">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                placeholder={invoiceType === 'IPC' ? 'e.g. IPC-001' : 'e.g. INV-2026-001'}
-                value={invoiceNumber}
-                onChange={(e) => {
-                  setInvoiceNumber(e.target.value);
-                  if (!documentRef) setDocumentRef(e.target.value);
-                }}
-                className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <label className="block text-xs font-medium text-slate-700 mb-1">{invoiceType} Number</label>
+              <div className="w-full text-xs px-3 py-2 border border-dashed border-slate-300 rounded-lg bg-slate-50 text-slate-500 italic">
+                Assigned automatically on save (sequential Tax Invoice numbering)
+              </div>
             </div>
           </div>
 

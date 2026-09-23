@@ -223,6 +223,43 @@ export interface Purchase extends WorkflowRecord {
   createdAt: string;
 }
 
+export type NoteType = 'credit' | 'debit';
+export type NoteParty = 'customer' | 'vendor';
+export type NoteSourceType = 'client_invoice' | 'purchase';
+
+// Amends a posted ClientInvoice (customer-side, Output VAT) or Purchase
+// (vendor-side, Input VAT). Never rewrites the source document's own
+// transaction history — the source's amount/netAmount/vatAmount/outstanding
+// are adjusted by the note's effect, and this row is the audit trail of why.
+export interface CreditDebitNote {
+  id: string;
+  noteType: NoteType;
+  noteNumber: string;
+  date: string;
+  partyType: NoteParty;
+  sourceType: NoteSourceType;
+  sourceId: string;
+  sourceDocumentNumber: string;
+  customerId?: string;
+  customerName?: string;
+  vendorId?: string;
+  vendorName?: string;
+  projectId: string;
+  projectName: string;
+  reason: string;
+  netAmount: number;
+  vatRate: number;
+  vatAmount: number;
+  grossAmount: number;
+  vatTreatment: VatTreatment;
+  documentRef: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
+  status: 'posted' | 'reversed';
+  remarks?: string;
+  createdAt: string;
+}
+
 export interface MoneyIn extends WorkflowRecord {
   id: string;
   transactionDate: string;
