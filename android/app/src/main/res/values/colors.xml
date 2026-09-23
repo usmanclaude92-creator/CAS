@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the web app's theme-color (index.html) so the native shell,
+         splash screen and status/navigation bars stay visually consistent
+         with the in-app UI. -->
+    <color name="cas_brand_background">#070c1e</color>
+</resources>

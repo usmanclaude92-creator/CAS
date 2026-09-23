@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.Cas" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/cas_brand_background</item>
+        <item name="android:statusBarColor">@color/cas_brand_background</item>
+        <item name="android:navigationBarColor">@color/cas_brand_background</item>
+        <item name="android:colorPrimary">@color/cas_brand_background</item>
+        <item name="android:colorPrimaryDark">@color/cas_brand_background</item>
+    </style>
+
+    <!-- Reuses the launcher icon (generated into mipmap-* at build time from
+         public/favicon-512x512.png, see .github/workflows/main.yml) as the
+         splash screen icon so no separate splash asset needs to be maintained. -->
+    <style name="Theme.Cas.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/cas_brand_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.Cas</item>
+    </style>
+
+</resources>
