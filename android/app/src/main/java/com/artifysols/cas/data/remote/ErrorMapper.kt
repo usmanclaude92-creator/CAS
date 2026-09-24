@@ -18,7 +18,7 @@ import java.io.IOException
  * already knows how to render.
  */
 fun Throwable.toAppError(): AppError = when (this) {
-    is AuthRestException -> when (statusCode.value) {
+    is AuthRestException -> when (statusCode) {
         400, 422 -> AppError.Validation(null, message ?: "Invalid email or password.")
         401 -> AppError.Unauthorized
         403 -> AppError.Forbidden
