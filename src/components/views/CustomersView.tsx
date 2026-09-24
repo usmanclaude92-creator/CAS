@@ -1,15 +1,18 @@
-import React, {} from 'react';
+import React, { useState } from 'react';
 import {
   Plus,
   FileSpreadsheet,
   ArrowLeft,
   Mail,
   Phone,
+  UploadCloud,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
+import { authService } from '../../services/authService';
 import { formatOMR } from '../../utils/formatters';
 import { exportToExcel } from '../../utils/exportToExcel';
 import { buildCustomerExportRows } from '../../utils/customerImportTemplate';
+import { ClientInvoiceImportModal } from '../modals/ClientInvoiceImportModal';
 
 interface CustomersViewProps {
   selectedCustomerId?: string | null;
@@ -29,6 +32,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   onOpenMoneyIn,
 }) => {
   const state = accountingService.getState();
+  const [isInvoiceImportOpen, setIsInvoiceImportOpen] = useState(false);
+  const canImportInvoices = authService.hasPermission('invoices.import');
 
   const selectedCustomer = selectedCustomerId
     ? state.customers.find((c) => c.id === selectedCustomerId)
@@ -253,6 +258,16 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
           </p>
         </div>
         <div className="flex items-center gap-2.5">
+          {/* Permission-gated: only rendered for users whose role holds 'invoices.import' */}
+          {canImportInvoices && (
+            <button
+              onClick={() => setIsInvoiceImportOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 cursor-pointer"
+            >
+              <UploadCloud className="w-3.5 h-3.5" />
+              Import Historical Invoices
+            </button>
+          )}
           <button
             onClick={handleExportAllCustomers}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer"
@@ -269,6 +284,13 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
           </button>
         </div>
       </div>
+
+      {isInvoiceImportOpen && (
+        <ClientInvoiceImportModal
+          isOpen={isInvoiceImportOpen}
+          onClose={() => setIsInvoiceImportOpen(false)}
+        />
+      )}
 
       {/* Customers Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
