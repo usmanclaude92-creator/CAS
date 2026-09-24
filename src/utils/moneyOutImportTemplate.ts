@@ -5,7 +5,7 @@ export interface MoneyOutTemplateColumn {
   key: string;
 }
 
-// Single source of truth for the historical Money Out import column layout,
+// Single source of truth for the Money Out import column layout,
 // shared by the template download and the import parser/validator.
 export const MONEY_OUT_TEMPLATE_COLUMNS: MoneyOutTemplateColumn[] = [
   { header: 'Transaction Date', key: 'transactionDate' },
@@ -61,5 +61,5 @@ export function downloadMoneyOutImportTemplate() {
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Money Out Template');
-  XLSX.writeFile(workbook, 'Historical_Money_Out_Import_Template.xlsx', { bookType: 'xlsx' });
+  XLSX.writeFile(workbook, 'Money_Out_Import_Template.xlsx', { bookType: 'xlsx' });
 }

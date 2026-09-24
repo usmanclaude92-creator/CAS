@@ -37,8 +37,8 @@ export const ALL_PERMISSIONS: Permission[] = [
     id: 'p94',
     code: 'invoices.import',
     module: 'Client Invoices',
-    name: 'Import Historical Invoices',
-    description: 'Bulk-import historical Client Invoices/IPCs from Excel, preserving each row\'s real historical invoice number instead of assigning a new sequential one (Super Administrator only by default)',
+    name: 'Import Invoices',
+    description: 'Bulk-import Client Invoices/IPCs from Excel, preserving each row\'s real invoice number instead of assigning a new sequential one (Super Administrator only by default)',
   },
 
   // Purchases
@@ -51,6 +51,13 @@ export const ALL_PERMISSIONS: Permission[] = [
   { id: 'p30', code: 'purchases.cancel', module: 'Purchases', name: 'Cancel Purchases', description: 'Cancel draft purchases' },
   { id: 'p31', code: 'purchases.reverse', module: 'Purchases', name: 'Reverse Purchases', description: 'Reverse posted purchase bills' },
   { id: 'p32', code: 'purchases.export', module: 'Purchases', name: 'Export Purchases', description: 'Export purchase reports' },
+  {
+    id: 'p96',
+    code: 'purchases.import',
+    module: 'Purchases',
+    name: 'Import Purchases',
+    description: 'Bulk-import Vendor Invoices/Purchases from Excel, preserving each row\'s real purchase invoice number (Super Administrator only by default)',
+  },
 
   // Money In
   { id: 'p33', code: 'money_in.view', module: 'Money In', name: 'View Receipts', description: 'View client receipts and collections' },
@@ -65,8 +72,8 @@ export const ALL_PERMISSIONS: Permission[] = [
     id: 'p92',
     code: 'money_in.import',
     module: 'Money In',
-    name: 'Import Historical Receipts',
-    description: 'Bulk-import historical Money In transactions from Excel, including filling in missing fields on already-posted records (Super Administrator only by default)',
+    name: 'Import Receipts',
+    description: 'Bulk-import Money In transactions from Excel, including filling in missing fields on already-posted records (Super Administrator only by default)',
   },
 
   // Money Out
@@ -82,8 +89,8 @@ export const ALL_PERMISSIONS: Permission[] = [
     id: 'p93',
     code: 'money_out.import',
     module: 'Money Out',
-    name: 'Import Historical Payments',
-    description: 'Bulk-import historical Money Out transactions from Excel, including filling in missing fields on already-posted records (Super Administrator only by default)',
+    name: 'Import Payments',
+    description: 'Bulk-import Money Out transactions from Excel, including filling in missing fields on already-posted records (Super Administrator only by default)',
   },
 
   // Expenses
@@ -99,8 +106,8 @@ export const ALL_PERMISSIONS: Permission[] = [
     id: 'p95',
     code: 'expenses.import',
     module: 'Expenses',
-    name: 'Import Historical Expenses',
-    description: 'Bulk-import historical Direct/Cash Expenses from Excel, including filling in missing fields on already-posted records (Super Administrator only by default)',
+    name: 'Import Expenses',
+    description: 'Bulk-import Direct/Cash Expenses from Excel, including filling in missing fields on already-posted records (Super Administrator only by default)',
   },
 
   // Treasury

@@ -15,10 +15,13 @@ import {
   CheckCircle2,
   Clock,
   ChevronRight,
+  UploadCloud,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
+import { authService } from '../../services/authService';
 import { formatOMR } from '../../utils/formatters';
 import { exportToExcel } from '../../utils/exportToExcel';
+import { PurchaseImportModal } from '../modals/PurchaseImportModal';
 
 interface PurchasesViewProps {
   selectedVendorId?: string | null;
@@ -41,6 +44,8 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({
 }) => {
   const [, setVersion] = useState(0);
   const [activeTab, setActiveTab] = useState<'bills' | 'vendors'>('bills');
+  const [isPurchaseImportOpen, setIsPurchaseImportOpen] = useState(false);
+  const canImportPurchases = authService.hasPermission('purchases.import');
 
   // Filter states for Purchase Bills
   const [searchQuery, setSearchQuery] = useState('');
@@ -636,6 +641,17 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Permission-gated: only rendered for users whose role holds 'purchases.import' */}
+          {canImportPurchases && (
+            <button
+              onClick={() => setIsPurchaseImportOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 cursor-pointer shadow-2xs transition-colors"
+              title="Bulk-import Vendor Invoices/Purchases from Excel"
+            >
+              <UploadCloud className="w-3.5 h-3.5" />
+              <span>Import Purchases</span>
+            </button>
+          )}
           <button
             onClick={activeTab === 'bills' ? handleExportBills : handleExportAllVendors}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 cursor-pointer shadow-xs transition-colors"
@@ -1175,6 +1191,13 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {isPurchaseImportOpen && (
+        <PurchaseImportModal
+          isOpen={isPurchaseImportOpen}
+          onClose={() => setIsPurchaseImportOpen(false)}
+        />
       )}
     </div>
   );

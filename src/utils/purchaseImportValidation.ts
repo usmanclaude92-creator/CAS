@@ -1,13 +1,13 @@
-import { Customer, Project, ClientInvoice, VatTreatment } from '../types';
+import { Vendor, Project, Purchase, VatTreatment } from '../types';
 import { computeVatSplit } from './vat';
 
-export interface ClientInvoiceImportRawRow {
+export interface PurchaseImportRawRow {
   rowNumber: number; // 1-based spreadsheet row number (header is row 1, so data starts at 2)
-  invoiceType: string;
-  invoiceNumber: string;
+  purchaseInvoiceNumber: string;
   date: string;
-  customerName: string;
+  vendorName: string;
   projectName: string;
+  purchaseCategory: string;
   description: string;
   netAmount: string;
   vatRate: string;
@@ -16,15 +16,15 @@ export interface ClientInvoiceImportRawRow {
   remarks: string;
 }
 
-export interface ClientInvoiceImportResolved {
-  invoiceType: 'IPC' | 'Invoice';
-  invoiceNumber: string;
+export interface PurchaseImportResolved {
+  purchaseInvoiceNumber: string;
   date: string;
-  customerId: string;
-  customerName: string;
+  vendorId: string;
+  vendorName: string;
   projectId: string;
   projectName: string;
-  description?: string;
+  purchaseCategory: string;
+  description: string;
   netAmount: number;
   vatRate: number;
   vatTreatment: VatTreatment;
@@ -34,37 +34,39 @@ export interface ClientInvoiceImportResolved {
   remarks?: string;
 }
 
-export type ClientInvoiceImportRowStatus = 'new' | 'error';
+export type PurchaseImportRowStatus = 'new' | 'error';
 
-export interface ClientInvoiceImportRowResult {
+export interface PurchaseImportRowResult {
   rowNumber: number;
-  raw: ClientInvoiceImportRawRow;
-  status: ClientInvoiceImportRowStatus;
+  raw: PurchaseImportRawRow;
+  status: PurchaseImportRowStatus;
   /** Blocking reasons — a non-empty list means this row (and therefore the whole file) cannot be imported as-is. */
   errors: string[];
-  resolved?: ClientInvoiceImportResolved;
+  resolved?: PurchaseImportResolved;
 }
 
-export interface ClientInvoiceImportState {
-  customers: Customer[];
+export interface PurchaseImportState {
+  vendors: Vendor[];
   projects: Project[];
-  clientInvoices: ClientInvoice[];
+  purchases: Purchase[];
 }
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const VALID_VAT_TREATMENTS = new Set<string>(['standard', 'zero_rated', 'exempt', 'out_of_scope']);
+const VALID_VAT_TREATMENTS = new Set<string>(['standard', 'zero_rated', 'exempt', 'out_of_scope', 'reverse_charge']);
+const VALID_CATEGORIES = new Set<string>(['materials', 'subcontractor', 'equipment', 'safety & consumables', 'other']);
+const DEFAULT_CATEGORY = 'Materials';
 
 /** Normalizes a parsed spreadsheet grid (header row + data rows) into raw import rows. */
-export function parseClientInvoiceImportRows(rows: string[][]): ClientInvoiceImportRawRow[] {
+export function parsePurchaseImportRows(rows: string[][]): PurchaseImportRawRow[] {
   if (rows.length <= 1) return [];
   const header = rows[0].map((h) => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
   const findCol = (...keywords: string[]) => header.findIndex((h) => keywords.some((k) => h.includes(k)));
 
-  const invoiceTypeIdx = findCol('invoicetype');
-  const invoiceNumberIdx = findCol('invoicenumber');
+  const purchaseInvoiceNumberIdx = findCol('purchaseinvoicenumber', 'invoicenumber');
   const dateIdx = findCol('date');
-  const customerIdx = findCol('customername', 'customer');
+  const vendorIdx = findCol('vendorname', 'vendor');
   const projectIdx = findCol('projectname', 'project');
+  const categoryIdx = findCol('purchasecategory', 'category');
   const descriptionIdx = findCol('description');
   const netAmountIdx = findCol('netamount');
   const vatRateIdx = findCol('vatrate');
@@ -80,11 +82,11 @@ export function parseClientInvoiceImportRows(rows: string[][]): ClientInvoiceImp
     .filter(({ cols }) => cols.some((v) => v.trim()))
     .map(({ cols, rowNumber }) => ({
       rowNumber,
-      invoiceType: col(cols, invoiceTypeIdx),
-      invoiceNumber: col(cols, invoiceNumberIdx),
+      purchaseInvoiceNumber: col(cols, purchaseInvoiceNumberIdx),
       date: col(cols, dateIdx),
-      customerName: col(cols, customerIdx),
+      vendorName: col(cols, vendorIdx),
       projectName: col(cols, projectIdx),
+      purchaseCategory: col(cols, categoryIdx),
       description: col(cols, descriptionIdx),
       netAmount: col(cols, netAmountIdx),
       vatRate: col(cols, vatRateIdx),
@@ -96,40 +98,35 @@ export function parseClientInvoiceImportRows(rows: string[][]): ClientInvoiceImp
 
 /**
  * Validates and classifies every row against current master data and
- * existing Client Invoices. Unlike the Money In/Out imports, there is no
- * 'update' status here: this import preserves each row's own invoice
- * number (see import_client_invoice) rather than assigning a new one — so
- * the invoice number is the natural, unambiguous duplicate key. A number
- * that already exists (in the database or earlier in the same file) is
- * always a blocking error, never something to silently merge into.
+ * existing Purchases. Like the Client Invoice import, there is no 'update'
+ * status here: the Purchase Invoice Number is the natural, unambiguous
+ * duplicate key (enforced by the table's own UNIQUE constraint), so a
+ * number that already exists — in the database or earlier in the same
+ * file — is always a blocking error, never something to silently merge
+ * into.
  */
-export function classifyClientInvoiceImportRows(
-  rawRows: ClientInvoiceImportRawRow[],
-  state: ClientInvoiceImportState
-): ClientInvoiceImportRowResult[] {
-  const results: ClientInvoiceImportRowResult[] = [];
+export function classifyPurchaseImportRows(
+  rawRows: PurchaseImportRawRow[],
+  state: PurchaseImportState
+): PurchaseImportRowResult[] {
+  const results: PurchaseImportRowResult[] = [];
 
-  const existingNumbers = new Set(state.clientInvoices.map((i) => i.invoiceNumber.toLowerCase()));
+  const existingNumbers = new Set(state.purchases.map((p) => p.purchaseInvoiceNumber.toLowerCase()));
   const numbersSeenInFile = new Map<string, number>(); // lowercase number -> row number first seen
 
   for (const raw of rawRows) {
     const errors: string[] = [];
 
-    const invoiceTypeRaw = raw.invoiceType.trim();
-    const invoiceType: 'IPC' | 'Invoice' | null =
-      invoiceTypeRaw === 'IPC' ? 'IPC' : invoiceTypeRaw === 'Invoice' ? 'Invoice' : null;
-    if (!invoiceType) errors.push('Invoice Type must be exactly "IPC" or "Invoice".');
-
-    const invoiceNumber = raw.invoiceNumber.trim();
-    if (!invoiceNumber) {
-      errors.push('Invoice Number is required.');
+    const purchaseInvoiceNumber = raw.purchaseInvoiceNumber.trim();
+    if (!purchaseInvoiceNumber) {
+      errors.push('Purchase Invoice Number is required.');
     } else {
-      const key = invoiceNumber.toLowerCase();
+      const key = purchaseInvoiceNumber.toLowerCase();
       if (existingNumbers.has(key)) {
-        errors.push(`Invoice number "${invoiceNumber}" already exists.`);
+        errors.push(`Purchase invoice number "${purchaseInvoiceNumber}" already exists.`);
       } else if (numbersSeenInFile.has(key)) {
         errors.push(
-          `Invoice number "${invoiceNumber}" is used more than once in this file (first seen on row ${numbersSeenInFile.get(key)}).`
+          `Purchase invoice number "${purchaseInvoiceNumber}" is used more than once in this file (first seen on row ${numbersSeenInFile.get(key)}).`
         );
       } else {
         numbersSeenInFile.set(key, raw.rowNumber);
@@ -143,13 +140,13 @@ export function classifyClientInvoiceImportRows(
       errors.push('Date must be in YYYY-MM-DD format.');
     }
 
-    const customerNameInput = raw.customerName.trim();
-    let customer: Customer | undefined;
-    if (!customerNameInput) {
-      errors.push('Customer Name is required.');
+    const vendorNameInput = raw.vendorName.trim();
+    let vendor: Vendor | undefined;
+    if (!vendorNameInput) {
+      errors.push('Vendor Name is required.');
     } else {
-      customer = state.customers.find((c) => c.name.toLowerCase() === customerNameInput.toLowerCase());
-      if (!customer) errors.push(`Customer "${customerNameInput}" does not match any existing customer.`);
+      vendor = state.vendors.find((v) => v.name.toLowerCase() === vendorNameInput.toLowerCase());
+      if (!vendor) errors.push(`Vendor "${vendorNameInput}" does not match any existing vendor.`);
     }
 
     const projectNameInput = raw.projectName.trim();
@@ -159,6 +156,16 @@ export function classifyClientInvoiceImportRows(
     } else {
       project = state.projects.find((p) => p.name.toLowerCase() === projectNameInput.toLowerCase());
       if (!project) errors.push(`Project "${projectNameInput}" does not match any existing project.`);
+    }
+
+    const categoryInput = raw.purchaseCategory.trim();
+    let purchaseCategory = DEFAULT_CATEGORY;
+    if (categoryInput) {
+      if (!VALID_CATEGORIES.has(categoryInput.toLowerCase())) {
+        errors.push('Purchase Category must be one of: Materials, Subcontractor, Equipment, Safety & Consumables, Other.');
+      } else {
+        purchaseCategory = categoryInput;
+      }
     }
 
     const netAmountRaw = raw.netAmount.trim();
@@ -180,7 +187,7 @@ export function classifyClientInvoiceImportRows(
     if (!vatTreatmentRaw) {
       errors.push('VAT Treatment is required.');
     } else if (!vatTreatment) {
-      errors.push('VAT Treatment must be exactly "standard", "zero_rated", "exempt", or "out_of_scope".');
+      errors.push('VAT Treatment must be exactly "standard", "zero_rated", "exempt", "out_of_scope", or "reverse_charge".');
     }
 
     const documentRef = raw.documentRef.trim();
@@ -195,15 +202,15 @@ export function classifyClientInvoiceImportRows(
     const remarks = raw.remarks.trim();
     const vat = computeVatSplit(netAmount, vatRate, vatTreatment!);
 
-    const resolved: ClientInvoiceImportResolved = {
-      invoiceType: invoiceType!,
-      invoiceNumber,
+    const resolved: PurchaseImportResolved = {
+      purchaseInvoiceNumber,
       date,
-      customerId: customer!.id,
-      customerName: customer!.name,
+      vendorId: vendor!.id,
+      vendorName: vendor!.name,
       projectId: project!.id,
       projectName: project!.name,
-      description: description || undefined,
+      purchaseCategory,
+      description,
       netAmount: vat.netAmount,
       vatRate: vat.vatRate,
       vatTreatment: vat.vatTreatment,

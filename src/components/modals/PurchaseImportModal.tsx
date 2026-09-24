@@ -11,15 +11,15 @@ import {
 import * as XLSX from 'xlsx';
 import { authService } from '../../services/authService';
 import { accountingService } from '../../services/accountingService';
-import { downloadClientInvoiceImportTemplate } from '../../utils/clientInvoiceImportTemplate';
+import { downloadPurchaseImportTemplate } from '../../utils/purchaseImportTemplate';
 import {
-  parseClientInvoiceImportRows,
-  classifyClientInvoiceImportRows,
-  ClientInvoiceImportRowResult,
-} from '../../utils/clientInvoiceImportValidation';
+  parsePurchaseImportRows,
+  classifyPurchaseImportRows,
+  PurchaseImportRowResult,
+} from '../../utils/purchaseImportValidation';
 import { formatOMR } from '../../utils/formatters';
 
-interface ClientInvoiceImportModalProps {
+interface PurchaseImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
@@ -34,11 +34,11 @@ interface ImportSummary {
   failedRows: { rowNumber: number; message: string }[];
 }
 
-export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> = ({ isOpen, onClose, onSuccess }) => {
+export const PurchaseImportModal: React.FC<PurchaseImportModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [phase, setPhase] = useState<ImportPhase>('upload');
   const [fileName, setFileName] = useState('');
-  const [rowResults, setRowResults] = useState<ClientInvoiceImportRowResult[]>([]);
+  const [rowResults, setRowResults] = useState<PurchaseImportRowResult[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
@@ -58,7 +58,7 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
     onClose();
   };
 
-  const authCheck = authService.verifyClientInvoiceImportAuthority();
+  const authCheck = authService.verifyPurchaseImportAuthority();
   if (!authCheck.allowed) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
@@ -69,7 +69,7 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
           <h3 className="text-base font-bold text-slate-900 dark:text-white">403 Forbidden</h3>
           <p className="text-xs text-slate-600 dark:text-slate-300">
             {authCheck.error ||
-              'Invoice import requires the "invoices.import" permission, grantable to a role under Roles & Permissions.'}
+              'Purchase import requires the "purchases.import" permission, grantable to a role under Roles & Permissions.'}
           </p>
           <button
             onClick={handleCloseModal}
@@ -108,14 +108,14 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
     setIsProcessing(true);
     try {
       const grid = await parseSpreadsheetFile(file);
-      const raw = parseClientInvoiceImportRows(grid);
+      const raw = parsePurchaseImportRows(grid);
       if (raw.length === 0) {
         setParseError('The selected file contains no data rows.');
         setIsProcessing(false);
         return;
       }
       const state = accountingService.getState();
-      const results = classifyClientInvoiceImportRows(raw, state);
+      const results = classifyPurchaseImportRows(raw, state);
       setRowResults(results);
       setPhase('review');
     } catch (err: any) {
@@ -141,12 +141,12 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
     for (const row of newRows) {
       const r = row.resolved!;
       try {
-        await accountingService.importClientInvoice({
-          invoiceType: r.invoiceType,
-          invoiceNumber: r.invoiceNumber,
+        await accountingService.createPurchase({
+          purchaseInvoiceNumber: r.purchaseInvoiceNumber,
           date: r.date,
-          customerId: r.customerId,
+          vendorId: r.vendorId,
           projectId: r.projectId,
+          purchaseCategory: r.purchaseCategory,
           description: r.description,
           netAmount: r.netAmount,
           vatRate: r.vatRate,
@@ -161,9 +161,9 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
     }
 
     accountingService.addAuditLog(
-      'BULK_IMPORT_CLIENT_INVOICES',
-      'Invoices & IPC',
-      `${currentUser.fullName} imported Client Invoices/IPCs from "${fileName}": ${postedCount} new, ${failedRows.length} failed. Total rows in file: ${rowResults.length}.`
+      'BULK_IMPORT_PURCHASES',
+      'Purchases',
+      `${currentUser.fullName} imported Vendor Invoices/Purchases from "${fileName}": ${postedCount} new, ${failedRows.length} failed. Total rows in file: ${rowResults.length}.`
     );
 
     setSummary({
@@ -183,7 +183,7 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
         <div className="flex items-center justify-between px-6 pt-6 pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
             <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            <span>Import Client Invoices / IPCs</span>
+            <span>Import Vendor Invoices / Purchases</span>
           </div>
           <button
             type="button"
@@ -202,10 +202,9 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
                 <div>
                   <strong className="font-semibold">Permission-Gated & Fully Audited</strong>
                   <p className="mt-0.5 text-[11px] text-amber-800 dark:text-amber-300">
-                    Only users whose role holds the "invoices.import" permission may run this import. Each row's
-                    real invoice number is preserved exactly as given — it is not reassigned a new
-                    sequential number — and a number that already exists anywhere in the system blocks the
-                    whole file until fixed.
+                    Only users whose role holds the "purchases.import" permission may run this import. Each row's
+                    Purchase Invoice Number is posted exactly as given, and a number that already exists anywhere
+                    in the system blocks the whole file until fixed.
                   </p>
                 </div>
               </div>
@@ -221,7 +220,7 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
                   {isProcessing ? 'Reading file…' : 'Click to select Excel (.xlsx) or CSV file'}
                 </p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                  Customer Name and Project Name must match existing records exactly.
+                  Vendor Name and Project Name must match existing records exactly.
                 </p>
               </div>
 
@@ -234,7 +233,7 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
 
               <button
                 type="button"
-                onClick={downloadClientInvoiceImportTemplate}
+                onClick={downloadPurchaseImportTemplate}
                 className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
@@ -247,7 +246,7 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
             <>
               <div className="grid grid-cols-2 gap-2 text-center text-[11px]">
                 <div className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded-lg">
-                  <span className="block text-slate-500 dark:text-slate-400 uppercase">New Invoices</span>
+                  <span className="block text-slate-500 dark:text-slate-400 uppercase">New Purchases</span>
                   <strong className="text-emerald-700 dark:text-emerald-300 text-sm">{newRows.length}</strong>
                 </div>
                 <div className="bg-slate-50 dark:bg-slate-800/60 p-2 rounded-lg">
@@ -284,14 +283,14 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
               {newRows.length > 0 && (
                 <div>
                   <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
-                    New invoices to post ({newRows.length})
+                    New purchases to post ({newRows.length})
                   </div>
                   <div className="rounded-lg border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 max-h-56 overflow-y-auto">
                     {newRows.map((row) => (
                       <div key={row.rowNumber} className="p-2.5 text-[11px] flex items-center justify-between gap-2">
                         <span className="text-slate-700 dark:text-slate-300">
-                          Row {row.rowNumber} — {row.resolved?.invoiceNumber} · {row.resolved?.date} ·{' '}
-                          {row.resolved?.customerName}
+                          Row {row.rowNumber} — {row.resolved?.purchaseInvoiceNumber} · {row.resolved?.date} ·{' '}
+                          {row.resolved?.vendorName}
                         </span>
                         <span className="font-mono font-semibold text-slate-900 dark:text-white">
                           {formatOMR(row.resolved?.grossAmount || 0)}
@@ -320,7 +319,7 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
                 )}
                 <span>
                   {summary.success
-                    ? `Import complete: ${summary.postedCount} invoice(s) posted.`
+                    ? `Import complete: ${summary.postedCount} purchase(s) posted.`
                     : `Import partially completed before a row failed: ${summary.postedCount} posted, ${summary.failedRows.length} failed.`}
                 </span>
               </div>
@@ -380,4 +379,4 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
   );
 };
 
-export default ClientInvoiceImportModal;
+export default PurchaseImportModal;
