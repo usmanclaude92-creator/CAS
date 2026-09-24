@@ -11,13 +11,16 @@ import {
   X,
   Calendar,
   RotateCcw,
+  UploadCloud,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
+import { authService } from '../../services/authService';
 import { formatOMR } from '../../utils/formatters';
 import { exportToExcel } from '../../utils/exportToExcel';
 import { NewExpenseCategoryModal } from '../modals/NewExpenseCategoryModal';
 import { AddExpenseCategoryModal } from '../modals/AddExpenseCategoryModal';
 import { ManageExpenseCategoriesModal } from '../modals/ManageExpenseCategoriesModal';
+import { DirectExpenseImportModal } from '../modals/DirectExpenseImportModal';
 import { ExpenseHead } from '../../types';
 
 interface ExpensesViewProps {
@@ -43,6 +46,8 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
   const [isManageCategoriesModalOpen, setIsManageCategoriesModalOpen] = useState(false);
+  const [isExpenseImportOpen, setIsExpenseImportOpen] = useState(false);
+  const canImportExpenses = authService.hasPermission('expenses.import');
   const [editingCategory, setEditingCategory] = useState<ExpenseHead | null>(null);
   const [, setVersion] = useState(0);
 
@@ -190,6 +195,16 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Permission-gated: only rendered for users whose role holds 'expenses.import' */}
+          {canImportExpenses && (
+            <button
+              onClick={() => setIsExpenseImportOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 cursor-pointer shadow-xs transition-colors"
+            >
+              <UploadCloud className="w-3.5 h-3.5" />
+              Import Historical Expenses
+            </button>
+          )}
           {/* Edit Categories Button */}
           <button
             id="btn-edit-categories"
@@ -630,6 +645,13 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
             setEditingCategory(null);
             setVersion((v) => v + 1);
           }}
+        />
+      )}
+
+      {isExpenseImportOpen && (
+        <DirectExpenseImportModal
+          isOpen={isExpenseImportOpen}
+          onClose={() => setIsExpenseImportOpen(false)}
         />
       )}
     </div>

@@ -81,6 +81,13 @@ export const ALL_PERMISSIONS: Permission[] = [
   { id: 'p54', code: 'expenses.post', module: 'Expenses', name: 'Post Expenses', description: 'Post direct expense' },
   { id: 'p55', code: 'expenses.reverse', module: 'Expenses', name: 'Reverse Expenses', description: 'Reverse direct expense' },
   { id: 'p56', code: 'expenses.export', module: 'Expenses', name: 'Export Expenses', description: 'Export expenses' },
+  {
+    id: 'p95',
+    code: 'expenses.import',
+    module: 'Expenses',
+    name: 'Import Historical Expenses',
+    description: 'Bulk-import historical Direct/Cash Expenses from Excel, including filling in missing fields on already-posted records (Super Administrator only by default)',
+  },
 
   // Treasury
   { id: 'p57', code: 'treasury.view', module: 'Treasury', name: 'View Treasury', description: 'View liquidity, bank, cash & petty cash' },
