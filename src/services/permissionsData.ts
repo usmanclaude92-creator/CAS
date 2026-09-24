@@ -51,6 +51,13 @@ export const ALL_PERMISSIONS: Permission[] = [
   { id: 'p30', code: 'purchases.cancel', module: 'Purchases', name: 'Cancel Purchases', description: 'Cancel draft purchases' },
   { id: 'p31', code: 'purchases.reverse', module: 'Purchases', name: 'Reverse Purchases', description: 'Reverse posted purchase bills' },
   { id: 'p32', code: 'purchases.export', module: 'Purchases', name: 'Export Purchases', description: 'Export purchase reports' },
+  {
+    id: 'p96',
+    code: 'purchases.import',
+    module: 'Purchases',
+    name: 'Import Purchases',
+    description: 'Bulk-import Vendor Invoices/Purchases from Excel, preserving each row\'s real purchase invoice number (Super Administrator only by default)',
+  },
 
   // Money In
   { id: 'p33', code: 'money_in.view', module: 'Money In', name: 'View Receipts', description: 'View client receipts and collections' },
