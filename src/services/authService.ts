@@ -464,6 +464,26 @@ class AuthService {
     return { allowed: true, status: 200 };
   }
 
+  // -------------------------------------------------------------
+  // TRANSFER IMPORT SECURITY (defense-in-depth; DB RLS/RPC is authoritative)
+  // -------------------------------------------------------------
+  public verifyTransferImportAuthority(): { allowed: boolean; status: number; error?: string } {
+    if (!this.currentUser) {
+      return { allowed: false, status: 401, error: '401 Unauthorized: User session not established.' };
+    }
+    if (this.currentUser.status !== 'active') {
+      return { allowed: false, status: 403, error: '403 Forbidden: User account is inactive.' };
+    }
+    if (!this.hasPermission('transfers.import')) {
+      return {
+        allowed: false,
+        status: 403,
+        error: '403 Forbidden: Missing required privilege "transfers.import".',
+      };
+    }
+    return { allowed: true, status: 200 };
+  }
+
   public async recordMasterDataImportAudit(record: Omit<MasterImportAuditRecord, 'id' | 'timestamp'>) {
     const client = getSupabaseClient();
     const entry: MasterImportAuditRecord = {

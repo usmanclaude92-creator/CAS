@@ -112,6 +112,13 @@ export const ALL_PERMISSIONS: Permission[] = [
   { id: 'p62', code: 'petty_cash.view', module: 'Treasury', name: 'View Petty Cash', description: 'View site petty cash funds' },
   { id: 'p63', code: 'transfers.create', module: 'Treasury', name: 'Create Transfers', description: 'Execute transfer between bank and cash accounts' },
   { id: 'p64', code: 'transfers.approve', module: 'Treasury', name: 'Approve Transfers', description: 'Authorize inter-account transfers' },
+  {
+    id: 'p97',
+    code: 'transfers.import',
+    module: 'Treasury',
+    name: 'Import Transfers',
+    description: 'Bulk-import Bank/Cash Transfers from Excel (Super Administrator only by default)',
+  },
 
   // Reports
   { id: 'p65', code: 'reports.view', module: 'Reports', name: 'View Reports', description: 'View P&L, Balance Sheet, Ledgers and Trial Balance' },
