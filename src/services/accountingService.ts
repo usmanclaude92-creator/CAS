@@ -573,6 +573,7 @@ class AccountingService {
       paidFrom: row.paid_from,
       accountId: row.account_id,
       accountName: this.resolveAccountName(row.paid_from, row.account_id) || 'Account',
+      vendorName: row.vendor_name ?? undefined,
       documentRef: row.document_ref,
       attachmentUrl: row.attachment_url ?? undefined,
       attachmentName: row.attachment_name ?? undefined,
@@ -1159,6 +1160,7 @@ class AccountingService {
     vatTreatment: VatTreatment;
     paidFrom: TreasuryAccountType;
     accountId: string;
+    vendorName?: string;
     documentRef: string;
     attachmentUrl?: string;
     attachmentName?: string;
@@ -1191,6 +1193,7 @@ class AccountingService {
         vatTreatment: vat.vatTreatment,
         paidFrom: data.paidFrom,
         accountId: data.accountId,
+        vendorName: data.vendorName,
         documentRef: data.documentRef?.trim() || generateUniqueRef('EXP'),
         attachmentUrl: data.attachmentUrl,
         attachmentName: data.attachmentName,
@@ -1200,6 +1203,32 @@ class AccountingService {
         debitAccount: `Project Cost - ${expenseHeadName} (${projectName})`,
         creditAccount: `${accountName} (${data.paidFrom.toUpperCase()})`,
         auditDetails: `Recorded expense — Net OMR ${vat.netAmount.toFixed(3)} + VAT OMR ${vat.vatAmount.toFixed(3)} = Gross OMR ${vat.grossAmount.toFixed(3)} for "${expenseHeadName}" from "${accountName}" on project "${projectName}".`,
+      },
+    });
+    if (error) throw new Error(error.message);
+
+    await this.loadAll();
+    return this.state.directExpenses.find((e) => e.id === row.id) || this.mapDirectExpense(row);
+  }
+
+  /**
+   * Fills in currently-blank fields (vendorName, remarks) on an already
+   * posted Direct Expense record — used by the historical transaction
+   * import to enrich an existing row without creating a duplicate. Never
+   * overwrites a field that already has a value; the
+   * `fill_missing_direct_expense_fields` RPC enforces that server-side and
+   * requires the expenses.import permission.
+   */
+  public async fillMissingDirectExpenseFields(
+    id: string,
+    patch: { vendorName?: string; remarks?: string }
+  ): Promise<DirectExpense> {
+    const client = this.requireClient();
+    const { data: row, error } = await client.rpc('fill_missing_direct_expense_fields', {
+      p_id: id,
+      patch: {
+        vendorName: patch.vendorName,
+        remarks: patch.remarks,
       },
     });
     if (error) throw new Error(error.message);

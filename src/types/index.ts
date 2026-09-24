@@ -325,6 +325,7 @@ export interface DirectExpense extends WorkflowRecord {
   paidFrom: TreasuryAccountType;
   accountId: string;
   accountName: string;
+  vendorName?: string; // free-text — no formal Vendor master link, just a descriptive who-was-paid field
   documentRef: string;
   attachmentUrl?: string;
   attachmentName?: string;
