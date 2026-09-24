@@ -4,21 +4,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.RequestQuote
 import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,39 +37,18 @@ private fun formatOmr(amount: Double): String {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardRoute(
-    viewModel: DashboardViewModel,
-    onLoggedOut: () -> Unit,
-) {
+fun DashboardRoute(viewModel: DashboardViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Executive Dashboard") },
-                actions = {
-                    IconButton(onClick = { viewModel.logout(onLoggedOut) }) {
-                        Icon(Icons.Filled.Logout, contentDescription = "Log out")
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(),
-            )
-        },
-    ) { padding ->
-        when (val current = state) {
-            is DashboardUiState.Loading -> LoadingView(Modifier.padding(padding))
-            is DashboardUiState.Error -> ErrorView(
-                error = current.error,
-                onRetry = viewModel::load,
-                modifier = Modifier.padding(padding),
-            )
-            is DashboardUiState.Content -> PullToRefreshBox(
-                isRefreshing = current.isRefreshing,
-                onRefresh = viewModel::refresh,
-                modifier = Modifier.padding(padding).fillMaxSize(),
-            ) {
-                DashboardContent(current)
-            }
+    when (val current = state) {
+        is DashboardUiState.Loading -> LoadingView()
+        is DashboardUiState.Error -> ErrorView(error = current.error, onRetry = viewModel::load)
+        is DashboardUiState.Content -> PullToRefreshBox(
+            isRefreshing = current.isRefreshing,
+            onRefresh = viewModel::refresh,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            DashboardContent(current)
         }
     }
 }

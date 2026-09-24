@@ -45,4 +45,5 @@ data class ProfileDto(
 data class RoleDto(
     @SerialName("code") val code: String,
     @SerialName("name") val name: String,
+    @SerialName("permissions") val permissions: List<String> = emptyList(),
 )

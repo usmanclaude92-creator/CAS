@@ -36,12 +36,11 @@ class SupabaseAuthDataSource(private val client: SupabaseClient) {
             .decodeSingle()
     }
 
-    suspend fun fetchRoleName(roleCode: String): String? {
+    suspend fun fetchRole(roleCode: String): RoleDto? {
         return client.postgrest.from("roles")
-            .select(columns = Columns.list("code", "name")) {
+            .select(columns = Columns.list("code", "name", "permissions")) {
                 filter { eq("code", roleCode) }
             }
             .decodeSingleOrNull<RoleDto>()
-            ?.name
     }
 }
