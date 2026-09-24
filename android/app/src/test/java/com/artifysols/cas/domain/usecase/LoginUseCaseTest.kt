@@ -17,12 +17,16 @@ private class FakeAuthRepository : AuthRepository {
 
     override suspend fun login(email: String, password: String): AppResult<User> {
         loginCallCount++
-        return AppResult.Success(User(id = "1", email = email, fullName = "Test User", roleName = "Admin"))
+        return AppResult.Success(
+            User(id = "1", email = email, fullName = "Test User", roleCode = "admin", roleName = "Admin")
+        )
     }
 
     override suspend fun logout(): AppResult<Unit> = AppResult.Success(Unit)
     override suspend fun currentUser(): AppResult<User> =
-        AppResult.Success(User(id = "1", email = "test@artifysols.com", fullName = "Test User", roleName = "Admin"))
+        AppResult.Success(
+            User(id = "1", email = "test@artifysols.com", fullName = "Test User", roleCode = "admin", roleName = "Admin")
+        )
 }
 
 class LoginUseCaseTest {

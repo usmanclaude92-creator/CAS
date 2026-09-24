@@ -63,13 +63,15 @@ class AuthRepositoryImpl(
             ?: return AppResult.Failure(AppError.Unauthorized)
         return try {
             val profile = dataSource.fetchProfile(userId)
-            val roleName = profile.roleCode?.let { dataSource.fetchRoleName(it) }
+            val role = profile.roleCode?.let { dataSource.fetchRole(it) }
             AppResult.Success(
                 User(
                     id = profile.id,
                     email = profile.email,
                     fullName = profile.fullName,
-                    roleName = roleName,
+                    roleCode = profile.roleCode,
+                    roleName = role?.name,
+                    permissions = role?.permissions ?: emptyList(),
                 )
             )
         } catch (t: Throwable) {
