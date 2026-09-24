@@ -1058,6 +1058,31 @@ class AccountingService {
     return this.state.moneyOutList.find((m) => m.id === row.id) || this.mapMoneyOut(row);
   }
 
+  /**
+   * Fills in currently-blank fields (vendorId, remarks) on an already
+   * posted Money Out record — used by the historical transaction import to
+   * enrich an existing row without creating a duplicate. Never overwrites a
+   * field that already has a value; the `fill_missing_money_out_fields` RPC
+   * enforces that server-side and requires the money_out.import permission.
+   */
+  public async fillMissingMoneyOutFields(
+    id: string,
+    patch: { vendorId?: string; remarks?: string }
+  ): Promise<MoneyOut> {
+    const client = this.requireClient();
+    const { data: row, error } = await client.rpc('fill_missing_money_out_fields', {
+      p_id: id,
+      patch: {
+        vendorId: patch.vendorId,
+        remarks: patch.remarks,
+      },
+    });
+    if (error) throw new Error(error.message);
+
+    await this.loadAll();
+    return this.state.moneyOutList.find((m) => m.id === row.id) || this.mapMoneyOut(row);
+  }
+
   // -------------------------------------------------------------
   // 5. DIRECT EXPENSES
   // -------------------------------------------------------------
