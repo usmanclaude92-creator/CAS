@@ -78,6 +78,13 @@ export const ALL_PERMISSIONS: Permission[] = [
   { id: 'p46', code: 'money_out.post', module: 'Money Out', name: 'Post Payments', description: 'Post payment' },
   { id: 'p47', code: 'money_out.reverse', module: 'Money Out', name: 'Reverse Payments', description: 'Reverse payment transaction' },
   { id: 'p48', code: 'money_out.export', module: 'Money Out', name: 'Export Payments', description: 'Export payments' },
+  {
+    id: 'p93',
+    code: 'money_out.import',
+    module: 'Money Out',
+    name: 'Import Historical Payments',
+    description: 'Bulk-import historical Money Out transactions from Excel, including filling in missing fields on already-posted records (Super Administrator only by default)',
+  },
 
   // Expenses
   { id: 'p49', code: 'expenses.view', module: 'Expenses', name: 'View Expenses', description: 'View direct site expenses' },
