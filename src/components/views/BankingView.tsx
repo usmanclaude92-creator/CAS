@@ -27,6 +27,7 @@ import { TreasuryAccountType } from '../../types';
 import { TableDensityToggle } from '../TableDensityToggle';
 import { MoneyInImportModal } from '../modals/MoneyInImportModal';
 import { MoneyOutImportModal } from '../modals/MoneyOutImportModal';
+import { TransferImportModal } from '../modals/TransferImportModal';
 
 interface BankingViewProps {
   selectedAccountId?: string;
@@ -62,6 +63,8 @@ export const BankingView: React.FC<BankingViewProps> = ({
   const canImportMoneyIn = authService.hasPermission('money_in.import');
   const [isMoneyOutImportOpen, setIsMoneyOutImportOpen] = useState(false);
   const canImportMoneyOut = authService.hasPermission('money_out.import');
+  const [isTransferImportOpen, setIsTransferImportOpen] = useState(false);
+  const canImportTransfers = authService.hasPermission('transfers.import');
 
   // Close export dropdown when clicking outside
   useEffect(() => {
@@ -308,6 +311,18 @@ export const BankingView: React.FC<BankingViewProps> = ({
             >
               <UploadCloud className="w-3.5 h-3.5" />
               <span>Import Money Out</span>
+            </button>
+          )}
+
+          {/* Permission-gated: only rendered for users whose role holds 'transfers.import' */}
+          {canImportTransfers && (
+            <button
+              onClick={() => setIsTransferImportOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 cursor-pointer shadow-2xs transition-colors"
+              title="Bulk-import Bank/Cash Transfers from Excel"
+            >
+              <UploadCloud className="w-3.5 h-3.5" />
+              <span>Import Transfers</span>
             </button>
           )}
 
@@ -885,6 +900,13 @@ export const BankingView: React.FC<BankingViewProps> = ({
         <MoneyOutImportModal
           isOpen={isMoneyOutImportOpen}
           onClose={() => setIsMoneyOutImportOpen(false)}
+        />
+      )}
+
+      {isTransferImportOpen && (
+        <TransferImportModal
+          isOpen={isTransferImportOpen}
+          onClose={() => setIsTransferImportOpen(false)}
         />
       )}
     </div>
