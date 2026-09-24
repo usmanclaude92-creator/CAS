@@ -54,6 +54,13 @@ export const ALL_PERMISSIONS: Permission[] = [
   { id: 'p38', code: 'money_in.post', module: 'Money In', name: 'Post Receipts', description: 'Post money receipt to cash/bank' },
   { id: 'p39', code: 'money_in.reverse', module: 'Money In', name: 'Reverse Receipts', description: 'Reverse receipt transaction' },
   { id: 'p40', code: 'money_in.export', module: 'Money In', name: 'Export Receipts', description: 'Export receipts' },
+  {
+    id: 'p92',
+    code: 'money_in.import',
+    module: 'Money In',
+    name: 'Import Historical Receipts',
+    description: 'Bulk-import historical Money In transactions from Excel, including filling in missing fields on already-posted records (Super Administrator only by default)',
+  },
 
   // Money Out
   { id: 'p41', code: 'money_out.view', module: 'Money Out', name: 'View Payments', description: 'View vendor and supplier payments' },

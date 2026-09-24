@@ -835,6 +835,31 @@ class AccountingService {
     return this.state.moneyInList.find((m) => m.id === row.id) || this.mapMoneyIn(row);
   }
 
+  /**
+   * Fills in currently-blank fields (customerId, remarks) on an already
+   * posted Money In record — used by the historical transaction import to
+   * enrich an existing row without creating a duplicate. Never overwrites a
+   * field that already has a value; the `fill_missing_money_in_fields` RPC
+   * enforces that server-side and requires the money_in.import permission.
+   */
+  public async fillMissingMoneyInFields(
+    id: string,
+    patch: { customerId?: string; remarks?: string }
+  ): Promise<MoneyIn> {
+    const client = this.requireClient();
+    const { data: row, error } = await client.rpc('fill_missing_money_in_fields', {
+      p_id: id,
+      patch: {
+        customerId: patch.customerId,
+        remarks: patch.remarks,
+      },
+    });
+    if (error) throw new Error(error.message);
+
+    await this.loadAll();
+    return this.state.moneyInList.find((m) => m.id === row.id) || this.mapMoneyIn(row);
+  }
+
   // -------------------------------------------------------------
   // 3. PURCHASES (Vendor Bill)
   // -------------------------------------------------------------

@@ -12,8 +12,10 @@ import {
   RotateCcw,
   ChevronDown,
   Download,
+  UploadCloud,
 } from 'lucide-react';
 import { accountingService } from '../../services/accountingService';
+import { authService } from '../../services/authService';
 import { formatOMR, addMoney } from '../../utils/formatters';
 import { exportData } from '../../services/exportService';
 import {
@@ -23,6 +25,7 @@ import {
 } from '../../utils/reportFilters';
 import { TreasuryAccountType } from '../../types';
 import { TableDensityToggle } from '../TableDensityToggle';
+import { MoneyInImportModal } from '../modals/MoneyInImportModal';
 
 interface BankingViewProps {
   selectedAccountId?: string;
@@ -54,6 +57,8 @@ export const BankingView: React.FC<BankingViewProps> = ({
   const [showAllPettyCash, setShowAllPettyCash] = useState(false);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState<boolean>(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const [isMoneyInImportOpen, setIsMoneyInImportOpen] = useState(false);
+  const canImportMoneyIn = authService.hasPermission('money_in.import');
 
   // Close export dropdown when clicking outside
   useEffect(() => {
@@ -279,6 +284,18 @@ export const BankingView: React.FC<BankingViewProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Permission-gated: only rendered for users whose role holds 'money_in.import' */}
+          {canImportMoneyIn && (
+            <button
+              onClick={() => setIsMoneyInImportOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 cursor-pointer shadow-2xs transition-colors"
+              title="Bulk-import historical Money In transactions from Excel"
+            >
+              <UploadCloud className="w-3.5 h-3.5" />
+              <span>Import Historical Money In</span>
+            </button>
+          )}
+
           {/* Export Dropdown Menu with Screen Format Alignment */}
           <div className="relative" ref={exportMenuRef}>
             <button
@@ -841,6 +858,13 @@ export const BankingView: React.FC<BankingViewProps> = ({
           </div>
         )}
       </div>
+
+      {isMoneyInImportOpen && (
+        <MoneyInImportModal
+          isOpen={isMoneyInImportOpen}
+          onClose={() => setIsMoneyInImportOpen(false)}
+        />
+      )}
     </div>
   );
 };
