@@ -265,7 +265,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 cursor-pointer"
             >
               <UploadCloud className="w-3.5 h-3.5" />
-              Import Historical Invoices
+              Import Invoices
             </button>
           )}
           <button

@@ -71,7 +71,7 @@ function row(overrides: Partial<ClientInvoiceImportRawRow> = {}): ClientInvoiceI
   return {
     rowNumber: 2,
     invoiceType: 'IPC',
-    historicalInvoiceNumber: 'IPC-2024-014',
+    invoiceNumber: 'IPC-2024-014',
     date: '2024-11-10',
     customerName: 'Al Khuwair Towers LLC',
     projectName: 'Al Khuwair Towers',
@@ -88,7 +88,7 @@ function row(overrides: Partial<ClientInvoiceImportRawRow> = {}): ClientInvoiceI
 describe('parseClientInvoiceImportRows', () => {
   it('maps header columns regardless of order and skips blank rows', () => {
     const grid = [
-      ['Net Amount (OMR)', 'Historical Invoice Number', 'Invoice Type', 'Customer Name', 'Project Name', 'Date', 'VAT Rate (%)', 'VAT Treatment', 'Document Ref'],
+      ['Net Amount (OMR)', 'Invoice Number', 'Invoice Type', 'Customer Name', 'Project Name', 'Date', 'VAT Rate (%)', 'VAT Treatment', 'Document Ref'],
       ['20000', 'IPC-2024-014', 'IPC', 'Al Khuwair Towers LLC', 'Al Khuwair Towers', '2024-11-10', '5', 'standard', 'DOC-IPC-14'],
       ['', '', '', '', '', '', '', '', ''],
     ];
@@ -97,7 +97,7 @@ describe('parseClientInvoiceImportRows', () => {
     expect(rows[0]).toMatchObject({
       rowNumber: 2,
       netAmount: '20000',
-      historicalInvoiceNumber: 'IPC-2024-014',
+      invoiceNumber: 'IPC-2024-014',
       invoiceType: 'IPC',
       customerName: 'Al Khuwair Towers LLC',
       projectName: 'Al Khuwair Towers',
@@ -124,10 +124,10 @@ describe('classifyClientInvoiceImportRows', () => {
     expect(results[0].errors[0]).toMatch(/Invoice Type must be exactly/);
   });
 
-  it('rejects a blank Historical Invoice Number', () => {
-    const results = classifyClientInvoiceImportRows([row({ historicalInvoiceNumber: '' })], baseState());
+  it('rejects a blank Invoice Number', () => {
+    const results = classifyClientInvoiceImportRows([row({ invoiceNumber: '' })], baseState());
     expect(results[0].status).toBe('error');
-    expect(results[0].errors[0]).toMatch(/Historical Invoice Number is required/);
+    expect(results[0].errors[0]).toMatch(/Invoice Number is required/);
   });
 
   it('rejects a row whose invoice number already exists in the database', () => {

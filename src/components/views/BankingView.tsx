@@ -292,10 +292,10 @@ export const BankingView: React.FC<BankingViewProps> = ({
             <button
               onClick={() => setIsMoneyInImportOpen(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 cursor-pointer shadow-2xs transition-colors"
-              title="Bulk-import historical Money In transactions from Excel"
+              title="Bulk-import Money In transactions from Excel"
             >
               <UploadCloud className="w-3.5 h-3.5" />
-              <span>Import Historical Money In</span>
+              <span>Import Money In</span>
             </button>
           )}
 
@@ -304,10 +304,10 @@ export const BankingView: React.FC<BankingViewProps> = ({
             <button
               onClick={() => setIsMoneyOutImportOpen(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 cursor-pointer shadow-2xs transition-colors"
-              title="Bulk-import historical Money Out transactions from Excel"
+              title="Bulk-import Money Out transactions from Excel"
             >
               <UploadCloud className="w-3.5 h-3.5" />
-              <span>Import Historical Money Out</span>
+              <span>Import Money Out</span>
             </button>
           )}
 

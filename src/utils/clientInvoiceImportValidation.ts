@@ -4,7 +4,7 @@ import { computeVatSplit } from './vat';
 export interface ClientInvoiceImportRawRow {
   rowNumber: number; // 1-based spreadsheet row number (header is row 1, so data starts at 2)
   invoiceType: string;
-  historicalInvoiceNumber: string;
+  invoiceNumber: string;
   date: string;
   customerName: string;
   projectName: string;
@@ -18,7 +18,7 @@ export interface ClientInvoiceImportRawRow {
 
 export interface ClientInvoiceImportResolved {
   invoiceType: 'IPC' | 'Invoice';
-  historicalInvoiceNumber: string;
+  invoiceNumber: string;
   date: string;
   customerId: string;
   customerName: string;
@@ -61,7 +61,7 @@ export function parseClientInvoiceImportRows(rows: string[][]): ClientInvoiceImp
   const findCol = (...keywords: string[]) => header.findIndex((h) => keywords.some((k) => h.includes(k)));
 
   const invoiceTypeIdx = findCol('invoicetype');
-  const historicalNumberIdx = findCol('historicalinvoicenumber', 'invoicenumber');
+  const invoiceNumberIdx = findCol('invoicenumber');
   const dateIdx = findCol('date');
   const customerIdx = findCol('customername', 'customer');
   const projectIdx = findCol('projectname', 'project');
@@ -81,7 +81,7 @@ export function parseClientInvoiceImportRows(rows: string[][]): ClientInvoiceImp
     .map(({ cols, rowNumber }) => ({
       rowNumber,
       invoiceType: col(cols, invoiceTypeIdx),
-      historicalInvoiceNumber: col(cols, historicalNumberIdx),
+      invoiceNumber: col(cols, invoiceNumberIdx),
       date: col(cols, dateIdx),
       customerName: col(cols, customerIdx),
       projectName: col(cols, projectIdx),
@@ -97,9 +97,8 @@ export function parseClientInvoiceImportRows(rows: string[][]): ClientInvoiceImp
 /**
  * Validates and classifies every row against current master data and
  * existing Client Invoices. Unlike the Money In/Out imports, there is no
- * 'update' status here: a Client Invoice is a VAT-relevant tax document,
- * and this import preserves each row's own historical invoice number (see
- * import_historical_client_invoice) rather than assigning a new one — so
+ * 'update' status here: this import preserves each row's own invoice
+ * number (see import_client_invoice) rather than assigning a new one — so
  * the invoice number is the natural, unambiguous duplicate key. A number
  * that already exists (in the database or earlier in the same file) is
  * always a blocking error, never something to silently merge into.
@@ -121,16 +120,16 @@ export function classifyClientInvoiceImportRows(
       invoiceTypeRaw === 'IPC' ? 'IPC' : invoiceTypeRaw === 'Invoice' ? 'Invoice' : null;
     if (!invoiceType) errors.push('Invoice Type must be exactly "IPC" or "Invoice".');
 
-    const historicalInvoiceNumber = raw.historicalInvoiceNumber.trim();
-    if (!historicalInvoiceNumber) {
-      errors.push('Historical Invoice Number is required.');
+    const invoiceNumber = raw.invoiceNumber.trim();
+    if (!invoiceNumber) {
+      errors.push('Invoice Number is required.');
     } else {
-      const key = historicalInvoiceNumber.toLowerCase();
+      const key = invoiceNumber.toLowerCase();
       if (existingNumbers.has(key)) {
-        errors.push(`Invoice number "${historicalInvoiceNumber}" already exists.`);
+        errors.push(`Invoice number "${invoiceNumber}" already exists.`);
       } else if (numbersSeenInFile.has(key)) {
         errors.push(
-          `Invoice number "${historicalInvoiceNumber}" is used more than once in this file (first seen on row ${numbersSeenInFile.get(key)}).`
+          `Invoice number "${invoiceNumber}" is used more than once in this file (first seen on row ${numbersSeenInFile.get(key)}).`
         );
       } else {
         numbersSeenInFile.set(key, raw.rowNumber);
@@ -198,7 +197,7 @@ export function classifyClientInvoiceImportRows(
 
     const resolved: ClientInvoiceImportResolved = {
       invoiceType: invoiceType!,
-      historicalInvoiceNumber,
+      invoiceNumber,
       date,
       customerId: customer!.id,
       customerName: customer!.name,

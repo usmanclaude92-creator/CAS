@@ -202,7 +202,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 cursor-pointer shadow-xs transition-colors"
             >
               <UploadCloud className="w-3.5 h-3.5" />
-              Import Historical Expenses
+              Import Expenses
             </button>
           )}
           {/* Edit Categories Button */}

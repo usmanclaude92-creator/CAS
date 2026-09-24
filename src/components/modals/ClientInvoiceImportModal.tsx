@@ -69,7 +69,7 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
           <h3 className="text-base font-bold text-slate-900 dark:text-white">403 Forbidden</h3>
           <p className="text-xs text-slate-600 dark:text-slate-300">
             {authCheck.error ||
-              'Historical Invoice import requires the "invoices.import" permission, grantable to a role under Roles & Permissions.'}
+              'Invoice import requires the "invoices.import" permission, grantable to a role under Roles & Permissions.'}
           </p>
           <button
             onClick={handleCloseModal}
@@ -141,9 +141,9 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
     for (const row of newRows) {
       const r = row.resolved!;
       try {
-        await accountingService.importHistoricalClientInvoice({
+        await accountingService.importClientInvoice({
           invoiceType: r.invoiceType,
-          historicalInvoiceNumber: r.historicalInvoiceNumber,
+          invoiceNumber: r.invoiceNumber,
           date: r.date,
           customerId: r.customerId,
           projectId: r.projectId,
@@ -163,7 +163,7 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
     accountingService.addAuditLog(
       'BULK_IMPORT_CLIENT_INVOICES',
       'Invoices & IPC',
-      `${currentUser.fullName} imported historical Client Invoices/IPCs from "${fileName}": ${postedCount} new, ${failedRows.length} failed. Total rows in file: ${rowResults.length}.`
+      `${currentUser.fullName} imported Client Invoices/IPCs from "${fileName}": ${postedCount} new, ${failedRows.length} failed. Total rows in file: ${rowResults.length}.`
     );
 
     setSummary({
@@ -183,7 +183,7 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
         <div className="flex items-center justify-between px-6 pt-6 pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
             <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            <span>Import Historical Client Invoices / IPCs</span>
+            <span>Import Client Invoices / IPCs</span>
           </div>
           <button
             type="button"
@@ -203,7 +203,7 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
                   <strong className="font-semibold">Permission-Gated & Fully Audited</strong>
                   <p className="mt-0.5 text-[11px] text-amber-800 dark:text-amber-300">
                     Only users whose role holds the "invoices.import" permission may run this import. Each row's
-                    real historical invoice number is preserved exactly as given — it is not reassigned a new
+                    real invoice number is preserved exactly as given — it is not reassigned a new
                     sequential number — and a number that already exists anywhere in the system blocks the
                     whole file until fixed.
                   </p>
@@ -290,7 +290,7 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
                     {newRows.map((row) => (
                       <div key={row.rowNumber} className="p-2.5 text-[11px] flex items-center justify-between gap-2">
                         <span className="text-slate-700 dark:text-slate-300">
-                          Row {row.rowNumber} — {row.resolved?.historicalInvoiceNumber} · {row.resolved?.date} ·{' '}
+                          Row {row.rowNumber} — {row.resolved?.invoiceNumber} · {row.resolved?.date} ·{' '}
                           {row.resolved?.customerName}
                         </span>
                         <span className="font-mono font-semibold text-slate-900 dark:text-white">
@@ -320,7 +320,7 @@ export const ClientInvoiceImportModal: React.FC<ClientInvoiceImportModalProps> =
                 )}
                 <span>
                   {summary.success
-                    ? `Import complete: ${summary.postedCount} historical invoice(s) posted.`
+                    ? `Import complete: ${summary.postedCount} invoice(s) posted.`
                     : `Import partially completed before a row failed: ${summary.postedCount} posted, ${summary.failedRows.length} failed.`}
                 </span>
               </div>

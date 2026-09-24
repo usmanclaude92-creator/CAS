@@ -385,7 +385,7 @@ class AuthService {
   }
 
   // -------------------------------------------------------------
-  // HISTORICAL MONEY IN IMPORT SECURITY (defense-in-depth; DB RLS/RPC is authoritative)
+  // MONEY IN IMPORT SECURITY (defense-in-depth; DB RLS/RPC is authoritative)
   // -------------------------------------------------------------
   public verifyMoneyInImportAuthority(): { allowed: boolean; status: number; error?: string } {
     if (!this.currentUser) {
@@ -405,7 +405,7 @@ class AuthService {
   }
 
   // -------------------------------------------------------------
-  // HISTORICAL MONEY OUT IMPORT SECURITY (defense-in-depth; DB RLS/RPC is authoritative)
+  // MONEY OUT IMPORT SECURITY (defense-in-depth; DB RLS/RPC is authoritative)
   // -------------------------------------------------------------
   public verifyMoneyOutImportAuthority(): { allowed: boolean; status: number; error?: string } {
     if (!this.currentUser) {
@@ -425,7 +425,7 @@ class AuthService {
   }
 
   // -------------------------------------------------------------
-  // HISTORICAL CLIENT INVOICE IMPORT SECURITY (defense-in-depth; DB RLS/RPC is authoritative)
+  // CLIENT INVOICE IMPORT SECURITY (defense-in-depth; DB RLS/RPC is authoritative)
   // -------------------------------------------------------------
   public verifyClientInvoiceImportAuthority(): { allowed: boolean; status: number; error?: string } {
     if (!this.currentUser) {
@@ -445,7 +445,7 @@ class AuthService {
   }
 
   // -------------------------------------------------------------
-  // HISTORICAL DIRECT EXPENSE IMPORT SECURITY (defense-in-depth; DB RLS/RPC is authoritative)
+  // DIRECT EXPENSE IMPORT SECURITY (defense-in-depth; DB RLS/RPC is authoritative)
   // -------------------------------------------------------------
   public verifyDirectExpenseImportAuthority(): { allowed: boolean; status: number; error?: string } {
     if (!this.currentUser) {
