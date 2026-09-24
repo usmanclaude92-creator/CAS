@@ -26,6 +26,7 @@ import {
 import { TreasuryAccountType } from '../../types';
 import { TableDensityToggle } from '../TableDensityToggle';
 import { MoneyInImportModal } from '../modals/MoneyInImportModal';
+import { MoneyOutImportModal } from '../modals/MoneyOutImportModal';
 
 interface BankingViewProps {
   selectedAccountId?: string;
@@ -59,6 +60,8 @@ export const BankingView: React.FC<BankingViewProps> = ({
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const [isMoneyInImportOpen, setIsMoneyInImportOpen] = useState(false);
   const canImportMoneyIn = authService.hasPermission('money_in.import');
+  const [isMoneyOutImportOpen, setIsMoneyOutImportOpen] = useState(false);
+  const canImportMoneyOut = authService.hasPermission('money_out.import');
 
   // Close export dropdown when clicking outside
   useEffect(() => {
@@ -293,6 +296,18 @@ export const BankingView: React.FC<BankingViewProps> = ({
             >
               <UploadCloud className="w-3.5 h-3.5" />
               <span>Import Historical Money In</span>
+            </button>
+          )}
+
+          {/* Permission-gated: only rendered for users whose role holds 'money_out.import' */}
+          {canImportMoneyOut && (
+            <button
+              onClick={() => setIsMoneyOutImportOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 cursor-pointer shadow-2xs transition-colors"
+              title="Bulk-import historical Money Out transactions from Excel"
+            >
+              <UploadCloud className="w-3.5 h-3.5" />
+              <span>Import Historical Money Out</span>
             </button>
           )}
 
@@ -863,6 +878,13 @@ export const BankingView: React.FC<BankingViewProps> = ({
         <MoneyInImportModal
           isOpen={isMoneyInImportOpen}
           onClose={() => setIsMoneyInImportOpen(false)}
+        />
+      )}
+
+      {isMoneyOutImportOpen && (
+        <MoneyOutImportModal
+          isOpen={isMoneyOutImportOpen}
+          onClose={() => setIsMoneyOutImportOpen(false)}
         />
       )}
     </div>

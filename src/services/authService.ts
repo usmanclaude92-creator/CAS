@@ -405,6 +405,46 @@ class AuthService {
   }
 
   // -------------------------------------------------------------
+  // HISTORICAL MONEY OUT IMPORT SECURITY (defense-in-depth; DB RLS/RPC is authoritative)
+  // -------------------------------------------------------------
+  public verifyMoneyOutImportAuthority(): { allowed: boolean; status: number; error?: string } {
+    if (!this.currentUser) {
+      return { allowed: false, status: 401, error: '401 Unauthorized: User session not established.' };
+    }
+    if (this.currentUser.status !== 'active') {
+      return { allowed: false, status: 403, error: '403 Forbidden: User account is inactive.' };
+    }
+    if (!this.hasPermission('money_out.import')) {
+      return {
+        allowed: false,
+        status: 403,
+        error: '403 Forbidden: Missing required privilege "money_out.import".',
+      };
+    }
+    return { allowed: true, status: 200 };
+  }
+
+  // -------------------------------------------------------------
+  // HISTORICAL CLIENT INVOICE IMPORT SECURITY (defense-in-depth; DB RLS/RPC is authoritative)
+  // -------------------------------------------------------------
+  public verifyClientInvoiceImportAuthority(): { allowed: boolean; status: number; error?: string } {
+    if (!this.currentUser) {
+      return { allowed: false, status: 401, error: '401 Unauthorized: User session not established.' };
+    }
+    if (this.currentUser.status !== 'active') {
+      return { allowed: false, status: 403, error: '403 Forbidden: User account is inactive.' };
+    }
+    if (!this.hasPermission('invoices.import')) {
+      return {
+        allowed: false,
+        status: 403,
+        error: '403 Forbidden: Missing required privilege "invoices.import".',
+      };
+    }
+    return { allowed: true, status: 200 };
+  }
+
+  // -------------------------------------------------------------
   // HISTORICAL DIRECT EXPENSE IMPORT SECURITY (defense-in-depth; DB RLS/RPC is authoritative)
   // -------------------------------------------------------------
   public verifyDirectExpenseImportAuthority(): { allowed: boolean; status: number; error?: string } {

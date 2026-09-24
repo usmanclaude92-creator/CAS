@@ -33,6 +33,13 @@ export const ALL_PERMISSIONS: Permission[] = [
   { id: 'p21', code: 'invoices.cancel', module: 'Client Invoices', name: 'Cancel Invoices', description: 'Cancel draft invoices' },
   { id: 'p22', code: 'invoices.reverse', module: 'Client Invoices', name: 'Reverse Invoices', description: 'Execute accounting reversal for posted invoices' },
   { id: 'p23', code: 'invoices.export', module: 'Client Invoices', name: 'Export Invoices', description: 'Export invoices to Excel' },
+  {
+    id: 'p94',
+    code: 'invoices.import',
+    module: 'Client Invoices',
+    name: 'Import Historical Invoices',
+    description: 'Bulk-import historical Client Invoices/IPCs from Excel, preserving each row\'s real historical invoice number instead of assigning a new sequential one (Super Administrator only by default)',
+  },
 
   // Purchases
   { id: 'p24', code: 'purchases.view', module: 'Purchases', name: 'View Purchases', description: 'View vendor bills and purchase records' },
@@ -71,6 +78,13 @@ export const ALL_PERMISSIONS: Permission[] = [
   { id: 'p46', code: 'money_out.post', module: 'Money Out', name: 'Post Payments', description: 'Post payment' },
   { id: 'p47', code: 'money_out.reverse', module: 'Money Out', name: 'Reverse Payments', description: 'Reverse payment transaction' },
   { id: 'p48', code: 'money_out.export', module: 'Money Out', name: 'Export Payments', description: 'Export payments' },
+  {
+    id: 'p93',
+    code: 'money_out.import',
+    module: 'Money Out',
+    name: 'Import Historical Payments',
+    description: 'Bulk-import historical Money Out transactions from Excel, including filling in missing fields on already-posted records (Super Administrator only by default)',
+  },
 
   // Expenses
   { id: 'p49', code: 'expenses.view', module: 'Expenses', name: 'View Expenses', description: 'View direct site expenses' },

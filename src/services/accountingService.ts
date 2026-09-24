@@ -773,6 +773,69 @@ class AccountingService {
     return this.state.clientInvoices.find((i) => i.id === row.id) || this.mapClientInvoice(row);
   }
 
+  /**
+   * Imports a historical Client Invoice/IPC, preserving its real original
+   * invoice number instead of assigning a new one via next_document_number()
+   * (which create_client_invoice always does, and which sequences by the
+   * CURRENT calendar year — wrong for backfilling a real past document).
+   * Requires the invoices.import permission; the historicalInvoiceNumber
+   * must not already exist (enforced by both the RPC and the table's
+   * UNIQUE constraint on invoice_number).
+   */
+  public async importHistoricalClientInvoice(data: {
+    invoiceType: 'IPC' | 'Invoice';
+    historicalInvoiceNumber: string;
+    date: string;
+    customerId: string;
+    projectId: string;
+    description?: string;
+    netAmount: number;
+    vatRate: number;
+    vatTreatment: VatTreatment;
+    documentRef: string;
+    remarks?: string;
+  }): Promise<ClientInvoice> {
+    if (!data.historicalInvoiceNumber?.trim()) throw new Error('Historical invoice number is required.');
+    if (!data.customerId) throw new Error('Customer is required.');
+    if (!data.projectId) throw new Error('Project is required.');
+    if (data.netAmount <= 0) throw new Error('Amount must be positive.');
+    if (!data.documentRef?.trim()) throw new Error('Document Reference is required.');
+
+    const client = this.requireClient();
+    const customer = this.state.customers.find((c) => c.id === data.customerId);
+    const project = this.state.projects.find((p) => p.id === data.projectId);
+    const customerName = customer ? customer.name : 'Unknown Customer';
+    const projectName = project ? project.name : 'Unknown Project';
+    const vat = computeVatSplit(data.netAmount, data.vatRate, data.vatTreatment);
+
+    const { data: row, error } = await client.rpc('import_historical_client_invoice', {
+      payload: {
+        invoiceType: data.invoiceType,
+        invoiceNumber: data.historicalInvoiceNumber.trim(),
+        date: data.date,
+        customerId: data.customerId,
+        projectId: data.projectId,
+        description: data.description,
+        amount: vat.grossAmount,
+        netAmount: vat.netAmount,
+        vatRate: vat.vatRate,
+        vatAmount: vat.vatAmount,
+        vatTreatment: vat.vatTreatment,
+        documentRef: data.documentRef.trim(),
+        remarks: data.remarks,
+        entryNumber: generateUniqueRef('JE-INV'),
+        journalDescription: `${data.invoiceType} - ${customerName} (historical import)`,
+        debitAccount: `Accounts Receivable (${customerName})`,
+        creditAccount: `Project Revenue (${projectName})`,
+        auditDetails: `Imported historical ${data.invoiceType} "${data.historicalInvoiceNumber}" — Net OMR ${vat.netAmount.toFixed(3)} + VAT OMR ${vat.vatAmount.toFixed(3)} = Gross OMR ${vat.grossAmount.toFixed(3)} to Project "${projectName}".`,
+      },
+    });
+    if (error) throw new Error(error.message);
+
+    await this.loadAll();
+    return this.state.clientInvoices.find((i) => i.id === row.id) || this.mapClientInvoice(row);
+  }
+
   // -------------------------------------------------------------
   // 2. MONEY IN (Client Receipts & Incoming Treasury)
   // -------------------------------------------------------------
@@ -1051,6 +1114,31 @@ class AccountingService {
             : `General Expenses (${data.paidTo})`,
         creditAccount: `${accountName} (${data.paidFrom.toUpperCase()})`,
         auditDetails: `Paid OMR ${data.amount} to "${data.paidTo}" from "${accountName}".`,
+      },
+    });
+    if (error) throw new Error(error.message);
+
+    await this.loadAll();
+    return this.state.moneyOutList.find((m) => m.id === row.id) || this.mapMoneyOut(row);
+  }
+
+  /**
+   * Fills in currently-blank fields (vendorId, remarks) on an already
+   * posted Money Out record — used by the historical transaction import to
+   * enrich an existing row without creating a duplicate. Never overwrites a
+   * field that already has a value; the `fill_missing_money_out_fields` RPC
+   * enforces that server-side and requires the money_out.import permission.
+   */
+  public async fillMissingMoneyOutFields(
+    id: string,
+    patch: { vendorId?: string; remarks?: string }
+  ): Promise<MoneyOut> {
+    const client = this.requireClient();
+    const { data: row, error } = await client.rpc('fill_missing_money_out_fields', {
+      p_id: id,
+      patch: {
+        vendorId: patch.vendorId,
+        remarks: patch.remarks,
       },
     });
     if (error) throw new Error(error.message);
