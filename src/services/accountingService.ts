@@ -774,17 +774,17 @@ class AccountingService {
   }
 
   /**
-   * Imports a historical Client Invoice/IPC, preserving its real original
-   * invoice number instead of assigning a new one via next_document_number()
+   * Imports a Client Invoice/IPC, preserving its real original invoice
+   * number instead of assigning a new one via next_document_number()
    * (which create_client_invoice always does, and which sequences by the
    * CURRENT calendar year — wrong for backfilling a real past document).
-   * Requires the invoices.import permission; the historicalInvoiceNumber
-   * must not already exist (enforced by both the RPC and the table's
-   * UNIQUE constraint on invoice_number).
+   * Requires the invoices.import permission; the invoiceNumber must not
+   * already exist (enforced by both the RPC and the table's UNIQUE
+   * constraint on invoice_number).
    */
-  public async importHistoricalClientInvoice(data: {
+  public async importClientInvoice(data: {
     invoiceType: 'IPC' | 'Invoice';
-    historicalInvoiceNumber: string;
+    invoiceNumber: string;
     date: string;
     customerId: string;
     projectId: string;
@@ -795,7 +795,7 @@ class AccountingService {
     documentRef: string;
     remarks?: string;
   }): Promise<ClientInvoice> {
-    if (!data.historicalInvoiceNumber?.trim()) throw new Error('Historical invoice number is required.');
+    if (!data.invoiceNumber?.trim()) throw new Error('Invoice number is required.');
     if (!data.customerId) throw new Error('Customer is required.');
     if (!data.projectId) throw new Error('Project is required.');
     if (data.netAmount <= 0) throw new Error('Amount must be positive.');
@@ -808,10 +808,10 @@ class AccountingService {
     const projectName = project ? project.name : 'Unknown Project';
     const vat = computeVatSplit(data.netAmount, data.vatRate, data.vatTreatment);
 
-    const { data: row, error } = await client.rpc('import_historical_client_invoice', {
+    const { data: row, error } = await client.rpc('import_client_invoice', {
       payload: {
         invoiceType: data.invoiceType,
-        invoiceNumber: data.historicalInvoiceNumber.trim(),
+        invoiceNumber: data.invoiceNumber.trim(),
         date: data.date,
         customerId: data.customerId,
         projectId: data.projectId,
@@ -824,10 +824,10 @@ class AccountingService {
         documentRef: data.documentRef.trim(),
         remarks: data.remarks,
         entryNumber: generateUniqueRef('JE-INV'),
-        journalDescription: `${data.invoiceType} - ${customerName} (historical import)`,
+        journalDescription: `${data.invoiceType} - ${customerName} (bulk import)`,
         debitAccount: `Accounts Receivable (${customerName})`,
         creditAccount: `Project Revenue (${projectName})`,
-        auditDetails: `Imported historical ${data.invoiceType} "${data.historicalInvoiceNumber}" — Net OMR ${vat.netAmount.toFixed(3)} + VAT OMR ${vat.vatAmount.toFixed(3)} = Gross OMR ${vat.grossAmount.toFixed(3)} to Project "${projectName}".`,
+        auditDetails: `Imported ${data.invoiceType} "${data.invoiceNumber}" — Net OMR ${vat.netAmount.toFixed(3)} + VAT OMR ${vat.vatAmount.toFixed(3)} = Gross OMR ${vat.grossAmount.toFixed(3)} to Project "${projectName}".`,
       },
     });
     if (error) throw new Error(error.message);
@@ -901,7 +901,7 @@ class AccountingService {
 
   /**
    * Fills in currently-blank fields (customerId, remarks) on an already
-   * posted Money In record — used by the historical transaction import to
+   * posted Money In record — used by the bulk transaction import to
    * enrich an existing row without creating a duplicate. Never overwrites a
    * field that already has a value; the `fill_missing_money_in_fields` RPC
    * enforces that server-side and requires the money_in.import permission.
@@ -1124,7 +1124,7 @@ class AccountingService {
 
   /**
    * Fills in currently-blank fields (vendorId, remarks) on an already
-   * posted Money Out record — used by the historical transaction import to
+   * posted Money Out record — used by the bulk transaction import to
    * enrich an existing row without creating a duplicate. Never overwrites a
    * field that already has a value; the `fill_missing_money_out_fields` RPC
    * enforces that server-side and requires the money_out.import permission.
@@ -1213,7 +1213,7 @@ class AccountingService {
 
   /**
    * Fills in currently-blank fields (vendorName, remarks) on an already
-   * posted Direct Expense record — used by the historical transaction
+   * posted Direct Expense record — used by the bulk transaction
    * import to enrich an existing row without creating a duplicate. Never
    * overwrites a field that already has a value; the
    * `fill_missing_direct_expense_fields` RPC enforces that server-side and

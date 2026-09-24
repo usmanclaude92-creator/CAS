@@ -5,11 +5,11 @@ export interface ClientInvoiceTemplateColumn {
   key: string;
 }
 
-// Single source of truth for the historical Client Invoice / IPC import
-// column layout, shared by the template download and the import parser/validator.
+// Single source of truth for the Client Invoice / IPC import column layout,
+// shared by the template download and the import parser/validator.
 export const CLIENT_INVOICE_TEMPLATE_COLUMNS: ClientInvoiceTemplateColumn[] = [
   { header: 'Invoice Type', key: 'invoiceType' },
-  { header: 'Historical Invoice Number', key: 'historicalInvoiceNumber' },
+  { header: 'Invoice Number', key: 'invoiceNumber' },
   { header: 'Date', key: 'date' },
   { header: 'Customer Name', key: 'customerName' },
   { header: 'Project Name', key: 'projectName' },
@@ -27,7 +27,7 @@ export function downloadClientInvoiceImportTemplate() {
   const sampleRows = [
     {
       'Invoice Type': 'IPC',
-      'Historical Invoice Number': 'IPC-2024-014',
+      'Invoice Number': 'IPC-2024-014',
       Date: '2024-11-10',
       'Customer Name': 'Al Khuwair Towers LLC',
       'Project Name': 'Al Khuwair Towers',
@@ -40,7 +40,7 @@ export function downloadClientInvoiceImportTemplate() {
     },
     {
       'Invoice Type': 'Invoice',
-      'Historical Invoice Number': 'INV-2024-102',
+      'Invoice Number': 'INV-2024-102',
       Date: '2024-12-01',
       'Customer Name': 'Al Khuwair Towers LLC',
       'Project Name': 'Al Khuwair Towers',
@@ -58,5 +58,5 @@ export function downloadClientInvoiceImportTemplate() {
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Invoice Import Template');
-  XLSX.writeFile(workbook, 'Historical_Client_Invoice_Import_Template.xlsx', { bookType: 'xlsx' });
+  XLSX.writeFile(workbook, 'Client_Invoice_Import_Template.xlsx', { bookType: 'xlsx' });
 }

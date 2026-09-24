@@ -71,7 +71,7 @@ export const MoneyOutImportModal: React.FC<MoneyOutImportModalProps> = ({ isOpen
           <h3 className="text-base font-bold text-slate-900 dark:text-white">403 Forbidden</h3>
           <p className="text-xs text-slate-600 dark:text-slate-300">
             {authCheck.error ||
-              'Historical Money Out import requires the "money_out.import" permission, grantable to a role under Roles & Permissions.'}
+              'Money Out import requires the "money_out.import" permission, grantable to a role under Roles & Permissions.'}
           </p>
           <button
             onClick={handleCloseModal}
@@ -157,7 +157,7 @@ export const MoneyOutImportModal: React.FC<MoneyOutImportModalProps> = ({ isOpen
           paidFrom: r.paidFrom,
           accountId: r.accountId,
           documentRef: r.documentRef || '',
-          remarks: r.remarks ? `${r.remarks} (historical import)` : 'Imported via historical Money Out bulk import',
+          remarks: r.remarks ? `${r.remarks} (bulk import)` : 'Imported via Money Out bulk import',
         });
         postedCount++;
       } catch (err: any) {
@@ -180,7 +180,7 @@ export const MoneyOutImportModal: React.FC<MoneyOutImportModalProps> = ({ isOpen
     accountingService.addAuditLog(
       'BULK_IMPORT_MONEY_OUT',
       'Purchases & Payables',
-      `${currentUser.fullName} imported historical Money Out transactions from "${fileName}": ${postedCount} new, ${updatedCount} updated, ${failedRows.length} failed. Total rows in file: ${rowResults.length}.`
+      `${currentUser.fullName} imported Money Out transactions from "${fileName}": ${postedCount} new, ${updatedCount} updated, ${failedRows.length} failed. Total rows in file: ${rowResults.length}.`
     );
 
     setSummary({
@@ -201,7 +201,7 @@ export const MoneyOutImportModal: React.FC<MoneyOutImportModalProps> = ({ isOpen
         <div className="flex items-center justify-between px-6 pt-6 pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
             <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            <span>Import Historical Money Out Transactions</span>
+            <span>Import Money Out Transactions</span>
           </div>
           <button
             type="button"

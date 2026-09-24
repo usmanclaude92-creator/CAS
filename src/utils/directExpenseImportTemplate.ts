@@ -5,7 +5,7 @@ export interface DirectExpenseTemplateColumn {
   key: string;
 }
 
-// Single source of truth for the historical Direct/Cash Expense import
+// Single source of truth for the Direct/Cash Expense import
 // column layout, shared by the template download and the import parser/validator.
 export const DIRECT_EXPENSE_TEMPLATE_COLUMNS: DirectExpenseTemplateColumn[] = [
   { header: 'Expense Date', key: 'expenseDate' },
@@ -61,5 +61,5 @@ export function downloadDirectExpenseImportTemplate() {
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Direct Expense Template');
-  XLSX.writeFile(workbook, 'Historical_Direct_Expense_Import_Template.xlsx', { bookType: 'xlsx' });
+  XLSX.writeFile(workbook, 'Direct_Expense_Import_Template.xlsx', { bookType: 'xlsx' });
 }

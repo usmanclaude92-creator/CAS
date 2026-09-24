@@ -5,7 +5,7 @@ export interface MoneyInTemplateColumn {
   key: string;
 }
 
-// Single source of truth for the historical Money In import column layout,
+// Single source of truth for the Money In import column layout,
 // shared by the template download and the import parser/validator.
 export const MONEY_IN_TEMPLATE_COLUMNS: MoneyInTemplateColumn[] = [
   { header: 'Transaction Date', key: 'transactionDate' },
@@ -58,5 +58,5 @@ export function downloadMoneyInImportTemplate() {
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Money In Template');
-  XLSX.writeFile(workbook, 'Historical_Money_In_Import_Template.xlsx', { bookType: 'xlsx' });
+  XLSX.writeFile(workbook, 'Money_In_Import_Template.xlsx', { bookType: 'xlsx' });
 }
