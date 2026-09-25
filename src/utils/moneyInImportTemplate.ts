@@ -57,6 +57,6 @@ export function downloadMoneyInImportTemplate() {
   worksheet['!cols'] = HEADERS.map((h) => ({ wch: Math.max(h.length + 4, 18) }));
 
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Money In Template');
-  XLSX.writeFile(workbook, 'Money_In_Import_Template.xlsx', { bookType: 'xlsx' });
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Receipt from Client Template');
+  XLSX.writeFile(workbook, 'Receipt_from_Client_Import_Template.xlsx', { bookType: 'xlsx' });
 }

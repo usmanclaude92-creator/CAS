@@ -60,6 +60,6 @@ export function downloadMoneyOutImportTemplate() {
   worksheet['!cols'] = HEADERS.map((h) => ({ wch: Math.max(h.length + 4, 18) }));
 
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Money Out Template');
-  XLSX.writeFile(workbook, 'Money_Out_Import_Template.xlsx', { bookType: 'xlsx' });
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Payment to Vendors Template');
+  XLSX.writeFile(workbook, 'Payment_to_Vendors_Import_Template.xlsx', { bookType: 'xlsx' });
 }

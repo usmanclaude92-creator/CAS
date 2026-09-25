@@ -135,14 +135,14 @@ export const MoneyInModal: React.FC<MoneyInModalProps> = ({ isOpen, onClose, pre
       });
 
       notificationCenter.recordSaved(
-        'Receipt Voucher (Money In)',
+        'Receipt Voucher (Receipt from Client)',
         documentRef.trim() || 'Receipt Voucher',
         `Receipt of ${formatOMR(numericAmount)} posted to treasury & receivables.`
       );
 
       onClose();
     } catch (err: any) {
-      setError(err?.message || 'Failed to record Money In transaction.');
+      setError(err?.message || 'Failed to record Receipt from Client transaction.');
     } finally {
       setIsSubmitting(false);
     }
@@ -156,7 +156,7 @@ export const MoneyInModal: React.FC<MoneyInModalProps> = ({ isOpen, onClose, pre
         {/* Header */}
         <div className="bg-emerald-700 px-6 py-4 text-white flex items-center justify-between">
           <div>
-            <h2 className="text-base font-semibold tracking-wide">Record Money In (Receipt)</h2>
+            <h2 className="text-base font-semibold tracking-wide">Record Receipt from Client</h2>
             <p className="text-xs text-emerald-100 mt-0.5">
               Updates Bank/Cash balance, Customer ledger, Invoice outstanding &amp; Project cash flow in one step.
             </p>
@@ -418,7 +418,7 @@ export const MoneyInModal: React.FC<MoneyInModalProps> = ({ isOpen, onClose, pre
               disabled={isSubmitting}
               className="px-4 py-2 text-xs font-medium rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white transition-colors disabled:opacity-50 cursor-pointer shadow"
             >
-              {isSubmitting ? 'Posting Receipt...' : 'Post Money In'}
+              {isSubmitting ? 'Posting Receipt...' : 'Post Receipt from Client'}
             </button>
           </div>
         </form>

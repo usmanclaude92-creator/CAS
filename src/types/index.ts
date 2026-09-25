@@ -436,7 +436,7 @@ export interface TreasuryLedgerEntry {
   accountId: string;
   accountName: string;
   date: string;
-  type: 'Money In' | 'Money Out' | 'Transfer In' | 'Transfer Out' | 'Direct Expense' | 'Opening Balance' | string;
+  type: 'Receipt from Client' | 'Payment to Vendors' | 'Transfer In' | 'Transfer Out' | 'Direct Expense' | 'Opening Balance' | string;
   documentRef: string;
   partyName?: string;
   party?: string;

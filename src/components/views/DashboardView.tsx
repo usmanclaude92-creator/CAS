@@ -1857,8 +1857,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <option value="CLIENT_INVOICE">Client Invoices / IPC</option>
               <option value="PURCHASE">Vendor Purchases</option>
               <option value="EXPENSE">Direct Site Expenses</option>
-              <option value="MONEY_IN">Money In (Receipts)</option>
-              <option value="MONEY_OUT">Money Out (Payments)</option>
+              <option value="MONEY_IN">Receipt from Client</option>
+              <option value="MONEY_OUT">Payment to Vendors</option>
               <option value="TRANSFER">Bank Transfers</option>
             </select>
 

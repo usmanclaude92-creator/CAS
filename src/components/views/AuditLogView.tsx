@@ -365,8 +365,8 @@ export const AuditLogView: React.FC = () => {
               <option value="CLIENT_INVOICE">Client Invoice</option>
               <option value="PURCHASE">Purchase Bill</option>
               <option value="DIRECT_EXPENSE">Direct Expense</option>
-              <option value="MONEY_IN">Money In</option>
-              <option value="MONEY_OUT">Money Out</option>
+              <option value="MONEY_IN">Receipt from Client</option>
+              <option value="MONEY_OUT">Payment to Vendors</option>
               <option value="TRANSFER">Internal Transfer</option>
             </select>
           </div>
