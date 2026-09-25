@@ -801,7 +801,7 @@ export const Header: React.FC<HeaderProps> = ({
                     className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700/60 text-slate-700 dark:text-slate-200 font-medium cursor-pointer"
                   >
                     <ArrowDownLeft className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                    <span>+ Money In (Receipt)</span>
+                    <span>+ Receipt from Client</span>
                   </button>
                 )}
                 <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
@@ -826,7 +826,7 @@ export const Header: React.FC<HeaderProps> = ({
                     className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700/60 text-slate-700 dark:text-slate-200 font-medium cursor-pointer"
                   >
                     <ArrowUpRight className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                    <span>+ Money Out (Payment)</span>
+                    <span>+ Payment to Vendors</span>
                   </button>
                 )}
                 <div className="my-1 border-t border-slate-100 dark:border-slate-700" />

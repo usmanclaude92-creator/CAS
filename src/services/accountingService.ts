@@ -2104,7 +2104,7 @@ class AccountingService {
       accountId: string;
       accountName: string;
       date: string;
-      type: 'Money In' | 'Money Out' | 'Transfer In' | 'Transfer Out' | 'Direct Expense' | 'Opening Balance' | string;
+      type: 'Receipt from Client' | 'Payment to Vendors' | 'Transfer In' | 'Transfer Out' | 'Direct Expense' | 'Opening Balance' | string;
       documentRef: string;
       partyName?: string;
       description: string;
@@ -2166,10 +2166,10 @@ class AccountingService {
           accountId: m.accountId,
           accountName: m.accountName,
           date: m.transactionDate,
-          type: 'Money In',
+          type: 'Receipt from Client',
           documentRef: m.documentRef,
           partyName: m.receivedFrom,
-          description: `Money In from ${m.receivedFrom} (${m.projectName})`,
+          description: `Receipt from ${m.receivedFrom} (${m.projectName})`,
           inflow: m.status === 'reversed' ? 0 : m.amount,
           outflow: 0,
           status: m.status,
@@ -2185,7 +2185,7 @@ class AccountingService {
           accountId: m.accountId,
           accountName: m.accountName,
           date: m.transactionDate,
-          type: 'Money Out',
+          type: 'Payment to Vendors',
           documentRef: m.documentRef,
           partyName: m.paidTo,
           description: `Payment to ${m.paidTo} (${m.paymentFor})`,

@@ -136,14 +136,14 @@ export const MoneyOutModal: React.FC<MoneyOutModalProps> = ({ isOpen, onClose, p
       });
 
       notificationCenter.recordSaved(
-        'Payment Voucher (Money Out)',
+        'Payment Voucher (Payment to Vendors)',
         documentRef.trim() || 'Payment Voucher',
         `Disbursement of ${formatOMR(numericAmount)} posted to treasury & payables.`
       );
 
       onClose();
     } catch (err: any) {
-      setError(err?.message || 'Failed to record Money Out transaction.');
+      setError(err?.message || 'Failed to record Payment to Vendors transaction.');
     } finally {
       setIsSubmitting(false);
     }
@@ -157,7 +157,7 @@ export const MoneyOutModal: React.FC<MoneyOutModalProps> = ({ isOpen, onClose, p
         {/* Header */}
         <div className="bg-slate-900 px-6 py-4 text-white flex items-center justify-between">
           <div>
-            <h2 className="text-base font-semibold tracking-wide">Record Money Out (Payment)</h2>
+            <h2 className="text-base font-semibold tracking-wide">Record Payment to Vendors</h2>
             <p className="text-xs text-slate-300 mt-0.5">
               Updates Bank/Cash balance, Vendor ledger, Purchase outstanding &amp; Treasury without double-counting.
             </p>
@@ -451,7 +451,7 @@ export const MoneyOutModal: React.FC<MoneyOutModalProps> = ({ isOpen, onClose, p
               disabled={isSubmitting}
               className="px-4 py-2 text-xs font-medium rounded-lg bg-slate-900 hover:bg-slate-800 text-white transition-colors disabled:opacity-50 cursor-pointer shadow"
             >
-              {isSubmitting ? 'Posting Payment...' : 'Post Money Out'}
+              {isSubmitting ? 'Posting Payment...' : 'Post Payment to Vendors'}
             </button>
           </div>
         </form>

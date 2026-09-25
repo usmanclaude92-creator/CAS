@@ -159,8 +159,8 @@ export const ApprovalsView: React.FC = () => {
           <option value="ALL">All Transaction Types</option>
           <option value="CLIENT_INVOICE">Client Invoices / IPC</option>
           <option value="PURCHASE">Purchases / Bills</option>
-          <option value="MONEY_IN">Money In / Receipts</option>
-          <option value="MONEY_OUT">Money Out / Payments</option>
+          <option value="MONEY_IN">Receipt from Client</option>
+          <option value="MONEY_OUT">Payment to Vendors</option>
           <option value="EXPENSE">Direct Site Expenses</option>
           <option value="TRANSFER">Bank / Cash Transfers</option>
         </select>

@@ -113,7 +113,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
               className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-emerald-700 hover:bg-emerald-600 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              + Record Money In
+              + Record Receipt from Client
             </button>
             <button
               onClick={handleExportCustomerStatement}

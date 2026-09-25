@@ -295,10 +295,10 @@ export const BankingView: React.FC<BankingViewProps> = ({
             <button
               onClick={() => setIsMoneyInImportOpen(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 cursor-pointer shadow-2xs transition-colors"
-              title="Bulk-import Money In transactions from Excel"
+              title="Bulk-import Receipt from Client transactions from Excel"
             >
               <UploadCloud className="w-3.5 h-3.5" />
-              <span>Import Money In</span>
+              <span>Import Receipt from Client</span>
             </button>
           )}
 
@@ -307,10 +307,10 @@ export const BankingView: React.FC<BankingViewProps> = ({
             <button
               onClick={() => setIsMoneyOutImportOpen(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 cursor-pointer shadow-2xs transition-colors"
-              title="Bulk-import Money Out transactions from Excel"
+              title="Bulk-import Payment to Vendors transactions from Excel"
             >
               <UploadCloud className="w-3.5 h-3.5" />
-              <span>Import Money Out</span>
+              <span>Import Payment to Vendors</span>
             </button>
           )}
 
@@ -757,9 +757,9 @@ export const BankingView: React.FC<BankingViewProps> = ({
                     <td className="py-3 px-4 whitespace-nowrap">
                       <span
                         className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${
-                          row.type === 'Money In' || row.type === 'Opening Balance'
+                          row.type === 'Receipt from Client' || row.type === 'Opening Balance'
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                            : row.type === 'Money Out'
+                            : row.type === 'Payment to Vendors'
                             ? 'bg-rose-50 text-rose-700 border border-rose-200/60'
                             : row.type === 'Direct Expense'
                             ? 'bg-amber-50 text-amber-700 border border-amber-200/60'

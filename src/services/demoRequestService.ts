@@ -106,10 +106,10 @@ export const VISITOR_SYSTEM_ROLES: SystemRoleInfo[] = [
     description: 'Day-to-day operational accounting, voucher creation, double-entry bookkeeping, invoice preparation, and bank entry recording.',
     responsibilities: [
       'Recording customer invoices, Interim Payment Certificates (IPC), and supplier bills',
-      'Preparing payment vouchers (Money Out), cash receipts (Money In), and journal adjustments',
+      'Preparing payment vouchers (Payment to Vendors), cash receipts (Receipt from Client), and journal adjustments',
       'General ledger reconciliations and transaction submission for managerial approval',
     ],
-    keyModules: ['Client Invoicing (IPC)', 'Vendor Purchases', 'Money In / Money Out', 'General Journal'],
+    keyModules: ['Client Invoicing (IPC)', 'Vendor Purchases', 'Receipt from Client / Payment to Vendors', 'General Journal'],
     badgeColor: 'emerald',
   },
   {
@@ -138,10 +138,10 @@ export const VISITOR_SYSTEM_ROLES: SystemRoleInfo[] = [
     description: 'Specialist managing customer master files, Interim Payment Certificates (IPC), client billing schedules, and incoming payment receipts.',
     responsibilities: [
       'Preparation of contractual IPC billing certificates and progressive invoices',
-      'Client collections recording (Money In), bank deposit logging, and payment allocation',
+      'Client collections recording (Receipt from Client), bank deposit logging, and payment allocation',
       'Customer statement reconciliation and aged debtor tracking',
     ],
-    keyModules: ['Customer Directory', 'Client IPC Invoices', 'Money In Receipts', 'AR Aging Reports'],
+    keyModules: ['Customer Directory', 'Client IPC Invoices', 'Receipt from Client', 'AR Aging Reports'],
     badgeColor: 'teal',
   },
   {
@@ -154,10 +154,10 @@ export const VISITOR_SYSTEM_ROLES: SystemRoleInfo[] = [
     description: 'Specialist handling supplier bills, subcontractor certificates, materials purchasing records, and scheduled payment vouchers.',
     responsibilities: [
       'Matching vendor bills against purchase orders and site delivery notes',
-      'Preparing disbursement vouchers (Money Out) for supplier and subcontractor settlements',
+      'Preparing disbursement vouchers (Payment to Vendors) for supplier and subcontractor settlements',
       'Monitoring vendor credit terms, discount periods, and payable aging schedules',
     ],
-    keyModules: ['Vendor Directory', 'Purchase Invoices', 'Money Out Payments', 'AP Aging Reports'],
+    keyModules: ['Vendor Directory', 'Purchase Invoices', 'Payment to Vendors', 'AP Aging Reports'],
     badgeColor: 'cyan',
   },
   {

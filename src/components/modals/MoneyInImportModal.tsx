@@ -71,7 +71,7 @@ export const MoneyInImportModal: React.FC<MoneyInImportModalProps> = ({ isOpen, 
           <h3 className="text-base font-bold text-slate-900 dark:text-white">403 Forbidden</h3>
           <p className="text-xs text-slate-600 dark:text-slate-300">
             {authCheck.error ||
-              'Money In import requires the "money_in.import" permission, grantable to a role under Roles & Permissions.'}
+              'Receipt from Client import requires the "money_in.import" permission, grantable to a role under Roles & Permissions.'}
           </p>
           <button
             onClick={handleCloseModal}
@@ -156,7 +156,7 @@ export const MoneyInImportModal: React.FC<MoneyInImportModalProps> = ({ isOpen, 
           receivedInto: r.receivedInto,
           accountId: r.accountId,
           documentRef: r.documentRef || '',
-          remarks: r.remarks ? `${r.remarks} (bulk import)` : 'Imported via Money In bulk import',
+          remarks: r.remarks ? `${r.remarks} (bulk import)` : 'Imported via Receipt from Client bulk import',
         });
         postedCount++;
       } catch (err: any) {
@@ -179,7 +179,7 @@ export const MoneyInImportModal: React.FC<MoneyInImportModalProps> = ({ isOpen, 
     accountingService.addAuditLog(
       'BULK_IMPORT_MONEY_IN',
       'Banking & Treasury',
-      `${currentUser.fullName} imported Money In transactions from "${fileName}": ${postedCount} new, ${updatedCount} updated, ${failedRows.length} failed. Total rows in file: ${rowResults.length}.`
+      `${currentUser.fullName} imported Receipt from Client transactions from "${fileName}": ${postedCount} new, ${updatedCount} updated, ${failedRows.length} failed. Total rows in file: ${rowResults.length}.`
     );
 
     setSummary({
@@ -200,7 +200,7 @@ export const MoneyInImportModal: React.FC<MoneyInImportModalProps> = ({ isOpen, 
         <div className="flex items-center justify-between px-6 pt-6 pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
             <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            <span>Import Money In Transactions</span>
+            <span>Import Receipt from Client Transactions</span>
           </div>
           <button
             type="button"
