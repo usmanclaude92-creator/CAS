@@ -83,13 +83,13 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <div className="w-full flex justify-center items-center py-1">
             {/* Light Mode Logo */}
             <img
-              src="/artify-logo-light.png"
+              src="./artify-logo-light.png"
               alt="Artify Construction Accounting System"
               className="w-[60%] h-auto object-contain block dark:hidden select-none bg-transparent"
             />
             {/* Dark Mode Logo */}
             <img
-              src="/artify-logo.png"
+              src="./artify-logo.png"
               alt="Artify Construction Accounting System"
               className="w-[60%] h-auto object-contain hidden dark:block select-none bg-transparent"
             />

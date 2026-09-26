@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Sidebar, NavView } from './components/Sidebar';
@@ -59,6 +59,22 @@ function AppContent() {
   const [activeView, setActiveView] = useState<NavView>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(supabaseService.isConfigured());
+
+  // Header is fixed (not sticky, which some WebView builds fail to keep
+  // pinned during scroll), so its rendered height is measured and used to
+  // push page content down by exactly that amount, at every breakpoint.
+  const headerRef = useRef<HTMLElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(56);
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const updateHeight = () => setHeaderHeight(el.offsetHeight);
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Table spacing optimization state (Compact vs Normal)
   const [isTableCompact, setIsTableCompact] = useState(() => {
@@ -281,6 +297,7 @@ function AppContent() {
       <div className="flex-1 lg:pl-64 flex flex-col min-w-0">
         {/* Header Bar with Theme Toggle, Global Search, Export Data & User Switcher */}
         <Header
+          ref={headerRef}
           activeView={activeView}
           selectedProjectId={selectedProjectId}
           selectedCustomerId={selectedCustomerId}
@@ -331,7 +348,10 @@ function AppContent() {
             }
           }}
         >
-          <main className="flex-1 py-3 sm:py-6 lg:py-8 w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-4 sm:space-y-6 pb-28 sm:pb-32 lg:pb-8">
+          <main
+            className="flex-1 py-3 sm:py-6 lg:py-8 w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-4 sm:space-y-6 pb-28 sm:pb-32 lg:pb-8"
+            style={{ paddingTop: headerHeight }}
+          >
           {/* Access Denied View if user lacks view permission */}
           {!hasAccessToActiveView ? (
             <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-rose-200 dark:border-rose-900/60 shadow-xs space-y-4 max-w-lg mx-auto mt-12">
