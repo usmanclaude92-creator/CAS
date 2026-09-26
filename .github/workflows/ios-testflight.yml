@@ -1,0 +1,123 @@
+name: iOS TestFlight Release
+
+# Manual only: uploading a signed build to TestFlight is a deliberate release
+# action, not something that should happen on every push. Run it from the
+# Actions tab ("Run workflow") once the four secrets below are set.
+#
+# Required repository secrets (Settings > Secrets and variables > Actions):
+#   APPLE_TEAM_ID          - 10-character Team ID (developer.apple.com > Membership)
+#   APPSTORE_API_KEY_ID    - Key ID from App Store Connect > Users and Access > Integrations
+#   APPSTORE_API_ISSUER_ID - Issuer ID from the same Integrations page
+#   APPSTORE_API_KEY_P8    - Full contents of the downloaded AuthKey_<KEY_ID>.p8 file
+#                            (paste as-is, multi-line secrets are supported)
+#
+# The App Store Connect API key needs the "Admin" role - a lower role can
+# upload builds but cannot create the distribution certificate/provisioning
+# profile that automatic signing needs on its first run. See ios/README.md
+# for the full step-by-step setup.
+on:
+  workflow_dispatch:
+
+jobs:
+  release-ios:
+    name: Archive, Sign & Upload to TestFlight
+    runs-on: macos-latest
+    env:
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+      APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check required secrets are set
+        run: |
+          missing=()
+          [ -z "$APPLE_TEAM_ID" ] && missing+=("APPLE_TEAM_ID")
+          [ -z "$APPSTORE_API_KEY_ID" ] && missing+=("APPSTORE_API_KEY_ID")
+          [ -z "$APPSTORE_API_ISSUER_ID" ] && missing+=("APPSTORE_API_ISSUER_ID")
+          [ -z "${{ secrets.APPSTORE_API_KEY_P8 }}" ] && missing+=("APPSTORE_API_KEY_P8")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing required repository secrets: ${missing[*]}. See ios/README.md for setup steps."
+            exit 1
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: android/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: android
+        run: npm ci
+
+      - name: Build web bundle with relative base paths
+        working-directory: android
+        run: npx vite build --base=./
+        env:
+          VITE_SUPABASE_URL: https://krclqyvsgxrcqojfmyaq.supabase.co
+          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtyY2xxeXZzZ3hyY3FvamZteWFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwOTg3NDAsImV4cCI6MjEwNTY3NDc0MH0.KEV7_vfYPUmdJyRHE89xrC_BPFyQlw7FT-TSsmsMW5c
+
+      - name: Copy web bundle into iOS app resources
+        run: |
+          rm -rf ios/CAS/www
+          cp -r android/dist ios/CAS/www
+
+      - name: Write App Store Connect API key
+        env:
+          APPSTORE_API_KEY_P8: ${{ secrets.APPSTORE_API_KEY_P8 }}
+        run: |
+          mkdir -p ~/private_keys
+          printf '%s\n' "$APPSTORE_API_KEY_P8" > ~/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8
+
+      - name: Write ExportOptions.plist
+        run: |
+          cat > ios/ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store-connect</string>
+              <key>teamID</key>
+              <string>${APPLE_TEAM_ID}</string>
+              <key>signingStyle</key>
+              <string>automatic</string>
+              <key>destination</key>
+              <string>upload</string>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Archive (Release, signed)
+        run: |
+          xcodebuild archive \
+            -project ios/CAS.xcodeproj \
+            -scheme CAS \
+            -configuration Release \
+            -archivePath "$RUNNER_TEMP/CAS.xcarchive" \
+            -destination "generic/platform=iOS" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$HOME/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8" \
+            -authenticationKeyID "$APPSTORE_API_KEY_ID" \
+            -authenticationKeyIssuerID "$APPSTORE_API_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER"
+
+      - name: Export & upload to TestFlight
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/CAS.xcarchive" \
+            -exportOptionsPlist ios/ExportOptions.plist \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$HOME/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8" \
+            -authenticationKeyID "$APPSTORE_API_KEY_ID" \
+            -authenticationKeyIssuerID "$APPSTORE_API_ISSUER_ID"
+
+      - name: Clean up API key
+        if: always()
+        run: rm -rf ~/private_keys
