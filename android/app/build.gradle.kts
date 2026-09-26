@@ -2,7 +2,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -14,25 +13,9 @@ android {
         minSdk = 24
         targetSdk = 35
         versionCode = 1
-        versionName = "2.0.0"
+        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        // Same values the web app's VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY
-        // build-time env vars carry — sourced from the same GitHub Actions
-        // secrets so both clients point at one Supabase project. The anon key
-        // is safe to embed client-side (every request is still gated by
-        // Postgres RLS using the authenticated user's JWT).
-        buildConfigField(
-            "String",
-            "SUPABASE_URL",
-            "\"${project.findProperty("SUPABASE_URL") ?: System.getenv("SUPABASE_URL") ?: ""}\""
-        )
-        buildConfigField(
-            "String",
-            "SUPABASE_ANON_KEY",
-            "\"${project.findProperty("SUPABASE_ANON_KEY") ?: System.getenv("SUPABASE_ANON_KEY") ?: ""}\""
-        )
     }
 
     signingConfigs {
@@ -56,9 +39,9 @@ android {
                 "proguard-rules.pro"
             )
             // Only applied when CAS_RELEASE_KEYSTORE is actually configured (see
-            // signingConfigs above and RELEASE_SIGNING.md) — otherwise Gradle
-            // falls back to no signing config and the build fails loudly rather
-            // than silently reusing a debug/self-signed certificate.
+            // signingConfigs above and README-release-signing.md) — otherwise
+            // Gradle falls back to no signing config and the build fails loudly
+            // rather than silently reusing a debug/self-signed certificate.
             val keystorePath = System.getenv("CAS_RELEASE_KEYSTORE") ?: project.findProperty("CAS_RELEASE_KEYSTORE") as String?
             if (!keystorePath.isNullOrBlank()) {
                 signingConfig = signingConfigs.getByName("release")
@@ -70,71 +53,25 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = "11"
     }
     buildFeatures {
         compose = true
-        buildConfig = true
-    }
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-            excludes += "/META-INF/DEPENDENCIES"
-        }
-    }
-    testOptions {
-        unitTests {
-            isIncludeAndroidResources = true
-        }
     }
 }
 
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.core.splashscreen)
-
     implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material.icons.extended)
-    implementation(libs.androidx.compose.foundation)
-    debugImplementation(libs.androidx.compose.ui.tooling)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
-
-    implementation(libs.androidx.navigation.compose)
-
-    implementation(libs.androidx.datastore.preferences)
-    implementation(libs.androidx.security.crypto)
-
-    implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.kotlinx.serialization.json)
-
-    implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.okhttp)
-    implementation(libs.ktor.client.content.negotiation)
-    implementation(libs.ktor.serialization.kotlinx.json)
-
-    implementation(platform(libs.supabase.bom))
-    implementation(libs.supabase.postgrest.kt)
-    implementation(libs.supabase.auth.kt)
-
-    implementation(libs.coil.compose)
-
-    testImplementation(libs.junit)
-    testImplementation(libs.kotlinx.coroutines.test)
-
-    androidTestImplementation(libs.androidx.test.ext.junit)
-    androidTestImplementation(libs.androidx.test.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    implementation(libs.androidx.ui)
+    implementation(libs.androidx.ui.graphics)
+    implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.androidx.material3)
+    implementation(libs.androidx.webkit)
 }

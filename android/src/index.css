@@ -1,0 +1,510 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ==========================================================================
+   DEDICATED PRINT STYLESHEET FOR PROFESSIONAL A4 PDF EXPORT & FINANCIAL REPORTS
+   Formats ReportsView, financial data tables, and corporate accounting statements
+   ========================================================================== */
+
+@media print {
+  /* A4 Page Formatting with Strict Printable Margins */
+  @page {
+    size: A4 portrait;
+    margin: 12mm 12mm 14mm 12mm;
+  }
+
+  @page :left {
+    margin-left: 12mm;
+    margin-right: 12mm;
+  }
+
+  @page :right {
+    margin-left: 12mm;
+    margin-right: 12mm;
+  }
+
+  /* Root Document Setup */
+  html,
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 9.5pt !important;
+    line-height: 1.35 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Unconstrain Containers & Application Shell */
+  #root,
+  main,
+  div[class*="min-h-screen"],
+  div[class*="max-w-"],
+  div[class*="space-y-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    float: none !important;
+    position: static !important;
+  }
+
+  /* Suppress All Interactive Controls, Shell Components & Navigation */
+  header,
+  aside,
+  nav,
+  .print-hidden,
+  .no-print,
+  .print\:hidden,
+  [data-print-hide="true"],
+  button,
+  input,
+  select,
+  textarea,
+  [role="combobox"],
+  [role="dialog"],
+  .toast,
+  [aria-live="polite"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Ensure Print-Specific Blocks are Visible */
+  .hidden.print\:block,
+  .print-show-block,
+  .print-header-container,
+  .print-signatory-block {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .hidden.print\:flex {
+    display: flex !important;
+    visibility: visible !important;
+  }
+
+  .hidden.print\:grid {
+    display: grid !important;
+    visibility: visible !important;
+  }
+
+  /* Flatten Cards, Shadows and Background Gradients */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  .bg-slate-900,
+  .bg-slate-950,
+  .dark {
+    background-color: transparent !important;
+    color: #0f172a !important;
+  }
+
+  /* Printable Financial Report Header */
+  .print-header-container {
+    border-bottom: 2pt solid #0f172a !important;
+    padding-bottom: 8pt !important;
+    margin-bottom: 12pt !important;
+  }
+
+  .print-header-container h1 {
+    font-size: 14pt !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.01em !important;
+    color: #0f172a !important;
+    line-height: 1.2 !important;
+    margin: 0 0 2pt 0 !important;
+  }
+
+  /* Financial Data Tables - Pixel-Perfect A4 Architecture */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    border-spacing: 0 !important;
+    font-size: 8.5pt !important;
+    line-height: 1.25 !important;
+    margin-top: 6pt !important;
+    margin-bottom: 10pt !important;
+    page-break-inside: auto;
+  }
+
+  thead {
+    display: table-header-group !important; /* Repeats table header across split pages */
+  }
+
+  tfoot {
+    display: table-footer-group !important;
+  }
+
+  tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  th {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    font-weight: 700 !important;
+    font-size: 7.8pt !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    padding: 4.5pt 5.5pt !important;
+    border: 1px solid #cbd5e1 !important;
+    border-bottom: 1.5pt solid #475569 !important;
+    text-align: left;
+    vertical-align: middle !important;
+  }
+
+  td {
+    padding: 4pt 5.5pt !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #1e293b !important;
+    vertical-align: middle !important;
+    font-size: 8.5pt !important;
+  }
+
+  /* Alternating Zebra Striping for Readability in Print */
+  tbody tr:nth-child(even) td {
+    background-color: #f8fafc !important;
+  }
+
+  tbody tr:nth-child(odd) td {
+    background-color: #ffffff !important;
+  }
+
+  /* Monospace Tabular Figures for All Financial Amounts & Currencies */
+  td.font-mono,
+  th.font-mono,
+  .font-mono,
+  td[class*="text-right"] {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace !important;
+    font-variant-numeric: tabular-nums lining-nums !important;
+  }
+
+  /* Bold Summary Rows & Subtotals */
+  tr.font-bold td,
+  tr[class*="font-bold"] td,
+  tfoot tr td,
+  .financial-subtotal td {
+    font-weight: 700 !important;
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border-top: 1.5pt solid #64748b !important;
+  }
+
+  /* Double Bottom Border for Final Grand Totals (Accounting Standard) */
+  .financial-grand-total td,
+  tfoot tr:last-child td {
+    font-weight: 800 !important;
+    border-top: 1.5pt solid #0f172a !important;
+    border-bottom: 3.5pt double #0f172a !important;
+    background-color: #e2e8f0 !important;
+  }
+
+  /* Alignment Utility Preservation */
+  .text-right,
+  th[class*="text-right"],
+  td[class*="text-right"] {
+    text-align: right !important;
+  }
+
+  .text-center,
+  th[class*="text-center"],
+  td[class*="text-center"] {
+    text-align: center !important;
+  }
+
+  .text-left,
+  th[class*="text-left"],
+  td[class*="text-left"] {
+    text-align: left !important;
+  }
+
+  /* Summary Cards & Metric Boxes */
+  .grid,
+  [class*="grid-cols"],
+  .summary-card,
+  .print-avoid-break {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Badges & Status Chips in Print */
+  span[class*="rounded"],
+  span[class*="badge"] {
+    display: inline-block !important;
+    padding: 1pt 3.5pt !important;
+    font-size: 7pt !important;
+    font-weight: 600 !important;
+    border: 1px solid #94a3b8 !important;
+    border-radius: 2pt !important;
+    background: transparent !important;
+    color: #0f172a !important;
+    text-transform: uppercase !important;
+  }
+
+  /* Page Break Helpers */
+  .page-break-before {
+    break-before: page !important;
+    page-break-before: always !important;
+  }
+
+  .page-break-after {
+    break-after: page !important;
+    page-break-after: always !important;
+  }
+
+  /* Signatory Block at the End of Report */
+  .print-signatory-block {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    margin-top: 20pt !important;
+    padding-top: 10pt !important;
+    border-top: 1pt solid #cbd5e1 !important;
+  }
+}
+
+/* ==========================================================================
+   MOBILE DATA TABLE SPACING & RESPONSIVENESS OPTIMIZATIONS
+   Optimizes cell padding, typography, and touch scrolling for smaller screens
+   ========================================================================== */
+
+/* Enhanced touch scrolling for horizontal data tables */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  overscroll-behavior-x: contain;
+}
+
+/* Custom sleek scrollbar for mobile table containers */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 4px;
+}
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+.dark .overflow-x-auto::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
+}
+
+/* Tablet & Mobile Table Spacing Optimizations (screens <= 768px) */
+@media (max-width: 768px) {
+  table th,
+  table td {
+    padding-top: 0.45rem !important;
+    padding-bottom: 0.45rem !important;
+    padding-left: 0.55rem !important;
+    padding-right: 0.55rem !important;
+    font-size: 0.75rem !important;
+    line-height: 1.15rem !important;
+  }
+
+  /* Compact header typography */
+  table thead th {
+    font-size: 0.6875rem !important;
+    letter-spacing: 0.02em !important;
+    white-space: nowrap !important;
+  }
+
+  /* Compact badges inside table cells */
+  table td span[class*="rounded"] {
+    font-size: 0.625rem !important;
+    padding-left: 0.35rem !important;
+    padding-right: 0.35rem !important;
+    padding-top: 0.1rem !important;
+    padding-bottom: 0.1rem !important;
+  }
+}
+
+/* Compact Smartphone Spacing (screens <= 480px) */
+@media (max-width: 480px) {
+  table th,
+  table td {
+    padding-top: 0.35rem !important;
+    padding-bottom: 0.35rem !important;
+    padding-left: 0.45rem !important;
+    padding-right: 0.45rem !important;
+    font-size: 0.6875rem !important;
+  }
+
+  table thead th {
+    font-size: 0.625rem !important;
+  }
+}
+
+/* Toggleable Ultra-Compact Table Mode for high data-density workflows */
+.compact-tables table th,
+.compact-tables table td {
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+  padding-left: 0.4rem !important;
+  padding-right: 0.4rem !important;
+  font-size: 0.6875rem !important;
+  line-height: 1.1rem !important;
+}
+
+.compact-tables table thead th {
+  font-size: 0.625rem !important;
+  padding-top: 0.3rem !important;
+  padding-bottom: 0.3rem !important;
+}
+
+/* ==========================================================================
+   MOBILE NATIVE APP TOUCH & VIEWPORT OPTIMIZATIONS
+   ========================================================================== */
+html, body {
+  -webkit-tap-highlight-color: transparent;
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+#root {
+  width: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure smooth native-like touch targets */
+button, a, input, select, textarea {
+  touch-action: manipulation;
+}
+
+/* Prevent horizontal overflow globally on mobile devices (fixes hidden right side & scroll lock) */
+/* overflow-y is pinned to visible so html/body stay a single scrolling context —
+   otherwise overflow-x: hidden implicitly computes overflow-y: auto on both
+   elements, which breaks position: sticky headers in WebView. */
+html, body {
+  overflow-x: hidden;
+  overflow-y: visible;
+  max-width: 100vw;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Intelligent horizontal scrolling for tables on mobile */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  max-width: 100%;
+}
+
+/* ==========================================================================
+   RESPONSIVE CSS GRID & VIEWPORT-BASED CONSTRAINT SYSTEM
+   ========================================================================== */
+
+/* Main responsive container constraint that scales fluidly without horizontal overflow */
+.container-responsive {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* Auto-fit responsive card grid with fluid minmax columns preventing small-screen overflow */
+.grid-responsive-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 1rem;
+  width: 100%;
+}
+
+/* Fluid KPI statistics grid that stacks on mobile viewports and flows into columns on tablets/desktops */
+.grid-responsive-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  gap: 0.75rem;
+  width: 100%;
+}
+
+/* Standardized responsive table card wrapper with contained horizontal scrolling */
+.table-responsive-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 0.75rem;
+  position: relative;
+}
+
+.table-responsive-container table {
+  min-width: 100%;
+  width: max-content;
+}
+
+@media (min-width: 768px) {
+  .table-responsive-container table {
+    width: 100%;
+  }
+}
+
+/* ==========================================================================
+   TOUCH ACCESSIBILITY STANDARDS (MIN 48DP / 48PX TARGETS)
+   ========================================================================== */
+
+/* Touch target helper enforcing minimum 48px interactive target */
+.touch-target-min {
+  min-height: 48px;
+  min-width: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Mobile input ergonomics: comfortable touch padding, 16px font size to prevent iOS zoom, smooth focus */
+@media (max-width: 640px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="date"],
+  input[type="password"],
+  input[type="email"],
+  select,
+  textarea {
+    font-size: 16px !important; /* Prevents auto-zoom in mobile Safari / Chrome */
+    padding-top: 0.625rem !important;
+    padding-bottom: 0.625rem !important;
+    min-height: 44px;
+    border-radius: 0.625rem !important;
+  }
+
+  /* Form modal buttons touch comfort */
+  form button[type="submit"],
+  form button[type="button"] {
+    min-height: 44px;
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+}
+
+/* Safe area insets for notches & home bars on mobile devices */
+.safe-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.safe-top {
+  padding-top: max(0.5rem, env(safe-area-inset-top));
+}
+
