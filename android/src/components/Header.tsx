@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, forwardRef } from 'react';
 import {
   Menu,
   Plus,
@@ -91,7 +91,7 @@ const getTypeBadge = (type: 'project' | 'vendor' | 'customer') => {
   );
 };
 
-export const Header: React.FC<HeaderProps> = ({
+export const Header = forwardRef<HTMLElement, HeaderProps>(({
   activeView,
   selectedProjectId,
   selectedCustomerId,
@@ -109,7 +109,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectProject,
   onSelectCustomer,
   onSelectVendor,
-}) => {
+}, ref) => {
   const [isQuickOpen, setIsQuickOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [lastExportStatus, setLastExportStatus] = useState<string | null>(null);
@@ -504,7 +504,10 @@ export const Header: React.FC<HeaderProps> = ({
     canCreateTransfer;
 
   return (
-    <header className="sticky top-0 z-30 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between gap-2 sm:gap-4 transition-colors duration-200 print:hidden min-h-[56px] w-full max-w-full">
+    <header
+      ref={ref}
+      className="fixed top-0 inset-x-0 lg:left-64 z-30 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between gap-2 sm:gap-4 transition-colors duration-200 print:hidden min-h-[56px] max-w-full"
+    >
       {/* Title and Sidebar toggle */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0 max-w-[55%] sm:max-w-none">
         <button
@@ -1194,7 +1197,9 @@ export const Header: React.FC<HeaderProps> = ({
       )}
     </header>
   );
-};
+});
+
+Header.displayName = 'Header';
 
 export default Header;
 
