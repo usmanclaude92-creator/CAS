@@ -376,6 +376,12 @@ html, body {
   margin: 0;
   padding: 0;
   -webkit-overflow-scrolling: touch;
+  /* Explicit single app-wide font: without this, html/body have no
+     font-family of their own and some WebView builds fall back to a
+     serif system default instead of Tailwind's intended sans-serif
+     stack, making headings/labels render in a different typeface than
+     the rest of the UI. */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 #root {
