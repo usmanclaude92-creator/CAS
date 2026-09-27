@@ -170,7 +170,7 @@ export const DashboardFilterBar: React.FC<DashboardFilterBarProps> = ({
               type="button"
               onClick={() => onOpenPurchase(selectedProjectId || undefined)}
               className="inline-flex items-center gap-1 px-3 py-2 min-h-[40px] text-xs font-medium rounded-lg text-white bg-amber-700 hover:bg-amber-600 transition-colors cursor-pointer shadow-2xs touch-target-min"
-              title="Record Vendor Purchase Bill"
+              title="Record Vendor Invoice"
             >
               <Truck className="w-3.5 h-3.5" />
               <span>+ Purchase</span>

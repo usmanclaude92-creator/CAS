@@ -879,7 +879,7 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(({
                     className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700/60 text-slate-700 dark:text-slate-200 font-medium cursor-pointer"
                   >
                     <Truck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                    <span>+ Vendor Purchase Bill</span>
+                    <span>+ Vendor Invoice</span>
                   </button>
                 )}
                 {canCreatePayment && (
