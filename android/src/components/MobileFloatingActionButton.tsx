@@ -63,7 +63,7 @@ export const MobileFloatingActionButton: React.FC<MobileFloatingActionButtonProp
     },
     {
       id: 'purchase',
-      title: 'Vendor Purchase Bill',
+      title: 'Vendor Invoice',
       icon: <Truck className="w-4 h-4 text-white" />,
       gradient: 'from-amber-500 to-amber-600',
       shadow: 'shadow-[0_10px_20px_rgba(217,119,6,0.35)]',

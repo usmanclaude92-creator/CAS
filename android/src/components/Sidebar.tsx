@@ -109,23 +109,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Company Header - Artify Construction Accounting System Logo */}
-        <div className="w-full border-b border-slate-800 bg-[#070c1e] px-4 py-3 flex items-center gap-3 select-none">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-700 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-500/25 shrink-0 border border-cyan-300/30">
-            A
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-sm tracking-wider text-white">ARTIFY</span>
-              <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">CAS</span>
-            </div>
-            <div className="text-[10px] text-cyan-400 font-semibold tracking-wide uppercase truncate">
-              Construction Accounting
-            </div>
-            <div className="text-[9px] text-slate-400 tracking-wider uppercase font-medium">
-              Sultanate of Oman
-            </div>
-          </div>
+        {/* Company Header - Artify Construction Accounting System Logo Image (matches the CAS web app's sidebar header) */}
+        <div className="w-full border-b border-slate-800 bg-slate-900 flex items-center justify-center py-2.5 overflow-hidden shrink-0">
+          <img
+            src="./artify-logo.png"
+            alt="Artify Construction Accounting System"
+            className="w-[90%] h-auto object-contain block select-none bg-transparent"
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (!target.src.endsWith('/image.png')) {
+                target.src = './image.png';
+              }
+            }}
+          />
         </div>
 
         {/* Nav Links */}

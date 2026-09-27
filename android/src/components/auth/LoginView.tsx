@@ -78,7 +78,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
       {/* Main Login Card */}
       <main className="flex-1 flex flex-col items-center justify-start pt-10 sm:pt-14 p-4 sm:p-6">
-        <div className="w-full max-w-md space-y-4">
+        <div className="w-full max-w-md space-y-8">
           {/* Brand Logo Header - 60% of container width, background matching screen */}
           <div className="w-full flex justify-center items-center py-1">
             {/* Light Mode Logo */}
@@ -95,7 +95,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
             />
           </div>
 
-          <div className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl p-6 sm:p-8 space-y-6">
+          <div className="w-full bg-white dark:bg-slate-900 rounded-2xl border border-black/10 dark:border-white/10 shadow-xl p-6 sm:p-8 space-y-6">
           <div className="text-center space-y-1">
             <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
               Sign In to Your Account
