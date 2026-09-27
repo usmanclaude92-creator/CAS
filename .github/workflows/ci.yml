@@ -137,3 +137,35 @@ jobs:
           name: CAS-App-Debug-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
+
+  # ==========================================
+  # iOS app: WKWebView wrapper around the same mobile-tailored web bundle
+  # android/ builds (build-android-web), so both mobile platforms ship one
+  # UI from one web source instead of a second duplicated copy under ios/.
+  # Unsigned Simulator build only — installing on a device, TestFlight, or
+  # App Store submission additionally needs an Apple Developer Program
+  # account and signing certificates/provisioning profiles as repo secrets.
+  # ==========================================
+  build-ios:
+    name: Build iOS App
+    runs-on: macos-latest
+    needs: build-android-web
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Web Build to iOS Resources
+        uses: actions/download-artifact@v4
+        with:
+          name: android-web-dist
+          path: ios/CAS/www
+
+      - name: Build for iOS Simulator (unsigned)
+        run: |
+          xcodebuild build \
+            -project ios/CAS.xcodeproj \
+            -target CAS \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO
