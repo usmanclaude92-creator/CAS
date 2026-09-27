@@ -1333,7 +1333,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <div className={`p-3 rounded-xl border transition-colors ${activePalette.revenue.cardBg} ${activePalette.revenue.cardBorder}`}>
             <span className={`text-[11px] font-medium block ${activePalette.revenue.cardText}`}>Period Revenue</span>
-            <span className="text-base font-bold font-mono text-slate-900 dark:text-slate-100 mt-0.5 block">
+            <span className="text-sm font-bold font-mono text-slate-900 dark:text-slate-100 mt-0.5 block">
               {formatOMR(trendSummary.totalRev)}
             </span>
             <span className="text-[10px] text-slate-500 dark:text-slate-400">Billed client progress</span>
@@ -1341,7 +1341,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <div className={`p-3 rounded-xl border transition-colors ${activePalette.cost.cardBg} ${activePalette.cost.cardBorder}`}>
             <span className={`text-[11px] font-medium block ${activePalette.cost.cardText}`}>Total Project Cost</span>
-            <span className="text-base font-bold font-mono text-slate-900 dark:text-slate-100 mt-0.5 block">
+            <span className="text-sm font-bold font-mono text-slate-900 dark:text-slate-100 mt-0.5 block">
               {formatOMR(trendSummary.totalExp)}
             </span>
             <span className="text-[10px] text-slate-500 dark:text-slate-400">Purchases &amp; site costs</span>
@@ -1349,7 +1349,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <div className={`p-3 rounded-xl border transition-colors ${activePalette.profit.cardBg} ${activePalette.profit.cardBorder}`}>
             <span className={`text-[11px] font-medium block ${activePalette.profit.cardText}`}>Net Operating Profit</span>
-            <span className={`text-base font-bold font-mono mt-0.5 block ${trendSummary.netProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-400'}`}>
+            <span className={`text-sm font-bold font-mono mt-0.5 block ${trendSummary.netProfit >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-400'}`}>
               {formatOMR(trendSummary.netProfit)}
             </span>
             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
@@ -1359,7 +1359,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-700">
             <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Monthly Run Rate</span>
-            <span className="text-base font-bold font-mono text-slate-900 dark:text-slate-100 mt-0.5 block">
+            <span className="text-sm font-bold font-mono text-slate-900 dark:text-slate-100 mt-0.5 block">
               {formatOMR(trendSummary.avgMonthlyRev)}
             </span>
             <span className="text-[10px] text-slate-500 dark:text-slate-400">Avg active month billings</span>
@@ -1367,7 +1367,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-700 col-span-2 sm:col-span-1">
             <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Profitable Months</span>
-            <span className="text-base font-bold font-mono text-slate-900 dark:text-slate-100 mt-0.5 block">
+            <span className="text-sm font-bold font-mono text-slate-900 dark:text-slate-100 mt-0.5 block">
               {trendSummary.profitableMonths} / {monthlyRevenueExpenseTrends.length}
             </span>
             <span className="text-[10px] text-slate-500 dark:text-slate-400">Positive margin periods</span>

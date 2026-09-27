@@ -10,6 +10,7 @@ import { Sidebar, NavView } from './components/Sidebar';
 import { MobileBottomTabBar } from './components/MobileBottomTabBar';
 import { MobileFloatingActionButton } from './components/MobileFloatingActionButton';
 import { PullToRefresh } from './components/PullToRefresh';
+import { useSwipeNavigation } from './hooks/useSwipeNavigation';
 import { Header } from './components/Header';
 import { LoginView } from './components/auth/LoginView';
 
@@ -119,6 +120,32 @@ function AppContent() {
   const [isNewVendorOpen, setIsNewVendorOpen] = useState(false);
   const [isNewBankAccountOpen, setIsNewBankAccountOpen] = useState(false);
   const [isSupabaseSettingsOpen, setIsSupabaseSettingsOpen] = useState(false);
+
+  // Swipe navigation is suppressed while any overlay is open so a swipe
+  // meant for a modal's own content never also opens/closes the drawer
+  // or navigates away underneath it. Declared unconditionally (before the
+  // unauthenticated early return below) since it calls a hook internally.
+  const isAnyModalOpen =
+    isMoneyInOpen ||
+    isMoneyOutOpen ||
+    isClientInvoiceOpen ||
+    isPurchaseOpen ||
+    isExpenseOpen ||
+    isTransferOpen ||
+    isReverseOpen ||
+    isNewProjectOpen ||
+    isNewCustomerOpen ||
+    isNewVendorOpen ||
+    isNewBankAccountOpen ||
+    isSupabaseSettingsOpen;
+
+  const swipeHandlers = useSwipeNavigation({
+    isSidebarOpen,
+    onOpenSidebar: () => setIsSidebarOpen(true),
+    onCloseSidebar: () => setIsSidebarOpen(false),
+    onNavigateHome: () => setActiveView('dashboard'),
+    disabled: isAnyModalOpen,
+  });
 
   // Session Security & Inactivity Timeout
   const [sessionSecurity, setSessionSecurity] = useState<SessionSecurityState>(sessionSecurityService.getState());
@@ -276,7 +303,11 @@ function AppContent() {
   const hasAccessToActiveView = verifyViewPermission(activeView);
 
   return (
-    <div className={`min-h-screen bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex transition-colors duration-200 ${isTableCompact ? 'compact-tables' : ''}`}>
+    <div
+      className={`min-h-screen bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex transition-colors duration-200 ${isTableCompact ? 'compact-tables' : ''}`}
+      onTouchStart={swipeHandlers.onTouchStart}
+      onTouchEnd={swipeHandlers.onTouchEnd}
+    >
       {/* Sidebar Navigation with dynamic RBAC filtering */}
       <Sidebar
         activeView={activeView}

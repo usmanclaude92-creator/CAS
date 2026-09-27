@@ -201,7 +201,7 @@ export const CashFlowProjectionCard: React.FC<CashFlowProjectionCardProps> = ({
           </div>
           <div className="mt-1.5 flex items-baseline justify-between">
             <span
-              className={`text-base font-bold font-mono ${
+              className={`text-sm font-bold font-mono ${
                 projection.periods[0].net >= 0
                   ? 'text-emerald-600 dark:text-emerald-400'
                   : 'text-rose-600 dark:text-rose-400'
@@ -233,7 +233,7 @@ export const CashFlowProjectionCard: React.FC<CashFlowProjectionCardProps> = ({
           </div>
           <div className="mt-1.5 flex items-baseline justify-between">
             <span
-              className={`text-base font-bold font-mono ${
+              className={`text-sm font-bold font-mono ${
                 projection.periods[1].net >= 0
                   ? 'text-emerald-600 dark:text-emerald-400'
                   : 'text-rose-600 dark:text-rose-400'
@@ -265,7 +265,7 @@ export const CashFlowProjectionCard: React.FC<CashFlowProjectionCardProps> = ({
           </div>
           <div className="mt-1.5 flex items-baseline justify-between">
             <span
-              className={`text-base font-bold font-mono ${
+              className={`text-sm font-bold font-mono ${
                 projection.periods[2].net >= 0
                   ? 'text-emerald-600 dark:text-emerald-400'
                   : 'text-rose-600 dark:text-rose-400'
@@ -287,7 +287,7 @@ export const CashFlowProjectionCard: React.FC<CashFlowProjectionCardProps> = ({
             <span className="font-semibold uppercase tracking-wider text-[10px]">Closing Position</span>
             <span className="text-[11px] font-mono">Day 90 Treasury</span>
           </div>
-          <div className="mt-1.5 text-base font-bold font-mono text-indigo-950 dark:text-indigo-200">
+          <div className="mt-1.5 text-sm font-bold font-mono text-indigo-950 dark:text-indigo-200">
             {formatOMR(projection.projectedClosingBalance90d)}
           </div>
           <div className="mt-2 text-[11px] text-indigo-600 dark:text-indigo-400 flex items-center justify-between pt-1.5 border-t border-indigo-100 dark:border-indigo-900/60">
