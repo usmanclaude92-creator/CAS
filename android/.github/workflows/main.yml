@@ -37,10 +37,18 @@ jobs:
         # Explicit here as defense-in-depth: src/services/supabaseClient.ts
         # also falls back to these same values if unset, but a build should
         # never silently rely on that fallback matching the real project.
+        # VITE_ADMIN_API_URL points authService.adminFetch and every AI
+        # service (aiChatService, aiActionsService, etc.) at the CAS web
+        # app's own deployed Express server — this Android build has no
+        # server of its own, so without this the base URL falls back to ''
+        # and every one of those calls silently resolves under the WebView's
+        # own virtual asset origin (https://appassets.androidplatform.net),
+        # which serves no API at all.
         run: npx vite build --base=./
         env:
           VITE_SUPABASE_URL: https://krclqyvsgxrcqojfmyaq.supabase.co
           VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtyY2xxeXZzZ3hyY3FvamZteWFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwOTg3NDAsImV4cCI6MjEwNTY3NDc0MH0.KEV7_vfYPUmdJyRHE89xrC_BPFyQlw7FT-TSsmsMW5c
+          VITE_ADMIN_API_URL: https://cas.artifysols.com
 
       - name: Upload Web Build Artifact
         uses: actions/upload-artifact@v4

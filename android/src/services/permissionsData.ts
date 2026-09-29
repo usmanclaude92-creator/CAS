@@ -129,6 +129,18 @@ export const ALL_PERMISSIONS: Permission[] = [
     name: 'Import Master Data',
     description: 'Bulk import Customers, Vendors, Projects, Bank Accounts and Expense Heads (Super Administrator only)',
   },
+
+  // Knowledge Base (AI Agent RAG — Phase 3, see docs/ai/CAS-AI-PHASE-3.md)
+  { id: 'p88', code: 'knowledge.view', module: 'Knowledge Base', name: 'View Knowledge Base', description: 'Ask the AI Agent knowledge questions answered from published internal documentation' },
+  { id: 'p89', code: 'knowledge.manage', module: 'Knowledge Base', name: 'Manage Knowledge Base', description: 'Create, edit, publish, archive and re-index knowledge documents; view restricted-visibility content' },
+
+  // AI Agent Actions (Phase 5 — see docs/ai/CAS-AI-PHASE-5.md). Note: the
+  // AI Agent's write/action tools are otherwise gated by the SAME
+  // permission a human would need for the equivalent manual action (e.g.
+  // expenses.create, vendors.edit) — these two codes gate the action
+  // MECHANISM itself, not any specific business capability.
+  { id: 'p90', code: 'ai_actions.use', module: 'AI Agent Actions', name: 'Use AI Actions', description: 'Let the AI Agent propose and (after your explicit confirmation where required) execute low/medium/high-risk actions and personal automations — each individual action still requires its own normal permission' },
+  { id: 'p91', code: 'ai_actions.manage', module: 'AI Agent Actions', name: 'Manage AI Actions', description: 'View the full AI action/automation audit trail for every user, manage any user’s automations, and operate the emergency AI-action kill switch' },
 ];
 
 // Grouped permissions for UI display

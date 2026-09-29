@@ -31,6 +31,7 @@ import { exportActiveView, ExportFormat, getActiveViewExportData } from '../serv
 import { formatOMR } from '../utils/formatters';
 import { ThemeToggle } from './ThemeToggle';
 import { HeaderNotifications } from './HeaderNotifications';
+import { AiAgentButton } from './AiAgentButton';
 import { UserProfile } from '../types/auth';
 
 interface HeaderProps {
@@ -449,6 +450,7 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(({
       case 'roles':
       case 'workflow_settings':
       case 'master_import_audit':
+      case 'ai_agent_admin':
         return 'Administration & Setup';
       default:
         return '';
@@ -485,6 +487,8 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(({
         return 'Master Data Import Governance Logs';
       case 'audit':
         return 'Immutable System Audit Trail';
+      case 'ai_agent_admin':
+        return 'AI Agent Administration';
     }
   };
 
@@ -923,6 +927,9 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(({
             )}
           </div>
         )}
+
+        {/* CAS AI Agent */}
+        <AiAgentButton />
 
         {/* In-App Notifications Bell (Hidden on tiny screens to avoid overflow) */}
         {onNavigateView && (
