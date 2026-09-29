@@ -1,5 +1,7 @@
 # CAS AI — Target Architecture (validated against actual code)
 
+> **Phase 1 implementation status (see `CAS-AI-PHASE-1.md` for full detail):** the "AI Gateway" box below is now real code — `src/server/ai/` (types/db/pagination/validation/audit/registry/18 tools) mounted at `/api/ai/*` in `src/server/app.ts`. Both authorization layers described here are implemented exactly as designed: an app-level `callerHasPermission()` pre-check per tool, then execution through a Postgres client scoped to the caller's own JWT (never `service_role`), so RLS applies identically to the human UI. **Not yet built:** the Provider Adapter and everything below it (no LLM call exists yet — `POST /api/ai/chat` accepts one structured `{tool, arguments}` call per request, standing in for what a future model's tool-use turn would send, so the tool layer could be built and tested independently of any provider integration). One structural addition not in the original diagram: `callerHasPermission`/`getCallerContext`/`supabaseAdmin`/`log`/`CallerContext` were extracted out of `app.ts` into a new cycle-free `src/server/authContext.ts`, imported by both `app.ts` and every `ai/**` module — see `CAS-AI-PHASE-1.md` for why.
+
 ## The user's proposed shape, annotated
 
 ```

@@ -2,29 +2,22 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
-import { createClient } from '@supabase/supabase-js';
+import { aiRouter } from './ai/router';
+import {
+  SUPABASE_URL,
+  supabaseAdmin,
+  log,
+  getCallerContext,
+  callerHasPermission,
+  type CallerContext,
+} from './authContext';
 
-// ==========================================
-// SUPABASE ADMIN CLIENT (service_role — server-only, never sent to the browser)
-// ==========================================
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error(
-    '[Server] SUPABASE_URL/VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set for admin user-management endpoints to function. ' +
-      'These are server-only secrets — never prefix SUPABASE_SERVICE_ROLE_KEY with VITE_.'
-  );
-}
-
-const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
-  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } })
-  : null;
-
-function log(level: 'info' | 'warn' | 'error', message: string, meta?: Record<string, unknown>) {
-  const entry = { level, message, time: new Date().toISOString(), ...meta };
-  console[level === 'info' ? 'log' : level](JSON.stringify(entry));
-}
+// Re-exported for API stability — the actual definitions live in
+// ./authContext, which (unlike this file) imports nothing from ./ai/**, so
+// every ai/** module can depend on it without forming a cycle back through
+// app.ts -> ./ai/router -> ./ai/registry -> an ai/tools/*.ts file.
+export { SUPABASE_URL, supabaseAdmin, log, getCallerContext, callerHasPermission };
+export type { CallerContext };
 
 export const app = express();
 
@@ -48,41 +41,6 @@ const adminLimiter = rateLimit({
   legacyHeaders: false,
 });
 app.use('/api/admin', adminLimiter);
-
-// ==========================================
-// CALLER AUTHENTICATION / AUTHORIZATION HELPERS
-// Every admin endpoint independently verifies the caller's Supabase JWT and
-// re-checks their permission server-side — the browser's own claim of
-// "I have this permission" is never trusted.
-// ==========================================
-interface CallerContext {
-  userId: string;
-  email: string;
-  profile: Record<string, any>;
-  role: Record<string, any> | null;
-}
-
-async function getCallerContext(req: express.Request): Promise<CallerContext | null> {
-  if (!supabaseAdmin) return null;
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const token = authHeader.slice('Bearer '.length);
-
-  const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
-  if (userError || !userData.user) return null;
-
-  const { data: profile } = await supabaseAdmin.from('profiles').select('*').eq('id', userData.user.id).maybeSingle();
-  if (!profile || profile.status !== 'active') return null;
-
-  const { data: role } = await supabaseAdmin.from('roles').select('*').eq('code', profile.role_code).maybeSingle();
-
-  return { userId: userData.user.id, email: userData.user.email || profile.email, profile, role: role ?? null };
-}
-
-function callerHasPermission(caller: CallerContext, permissionCode: string): boolean {
-  if (caller.role?.code === 'super_admin') return true;
-  return Boolean(caller.role?.permissions?.includes(permissionCode));
-}
 
 function requireAdmin(permissionCode: string) {
   return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -306,5 +264,13 @@ app.post('/api/admin/demo-requests/:id/approve', requireAdmin('users.create'), a
     return res.status(500).json({ success: false, error: 'Internal server error.' });
   }
 });
+
+// ==========================================
+// AI GATEWAY (Phase 1: read-only tool-call foundation, no LLM)
+// See docs/ai/CAS-AI-PHASE-1.md. Mounted as a peer to the routes above,
+// reusing the same getCallerContext/callerHasPermission this file exports.
+// ==========================================
+const aiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 120, standardHeaders: true, legacyHeaders: false });
+app.use('/api/ai', aiLimiter, aiRouter);
 
 export default app;

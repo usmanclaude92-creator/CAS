@@ -1,5 +1,7 @@
 # CAS AI — Data Flow (target, Phase 1 read-only)
 
+> **Phase 1 implementation status:** the request lifecycle below is the target end state once an LLM is wired in (Phase 2+). What's actually implemented today is steps 3a/3b/3d (minus the model call) and the audit write: `POST /api/ai/chat` takes `{ tool: "<name>", arguments: {...} }` directly (no `question`/`conversationId`/Claude call yet — see `CAS-AI-PHASE-1.md`), runs `getCallerContext` → per-tool `callerHasPermission` → arg validation → the tool handler against an RLS-scoped client → `recordAiToolCall()` (best-effort, non-blocking, exactly as described below) → returns the raw tool result. `GET /api/ai/tools` implements the "build the tool list available to this caller" step (3b) standalone, ahead of the model integration that will consume it. The `ai_tool_calls` table (migration `20260929000000_add_ai_tool_calls.sql`) matches this doc's design (server/`service_role`-write only, no client insert policy) but has not been applied to any live database — no network access from the build sandbox; see `CAS-AI-PHASE-1.md` known limitations.
+
 ## Request lifecycle
 
 ```
