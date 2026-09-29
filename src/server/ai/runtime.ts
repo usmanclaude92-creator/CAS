@@ -15,8 +15,9 @@ import {
   MAX_CONTEXT_MESSAGES,
 } from './conversations';
 import { getProvider, getConfiguredModelName, ProviderError, ProviderConfigError, ProviderTimeoutError } from './providers';
-import type { ProviderMessage, ContentBlock, ToolUseBlock } from './providers/types';
+import type { ProviderMessage, ContentBlock, ToolUseBlock, ImageBlock } from './providers/types';
 import type { ToolResult } from './types';
+import { getOwnedAttachment, fetchAttachmentBytes, markAttachmentUsed, MAX_ATTACHMENTS_PER_MESSAGE } from './attachments';
 
 /**
  * Loop/limit constants — see docs/ai/CAS-AI-PHASE-2.md §Limits. Every one of
@@ -39,6 +40,9 @@ export interface RunChatInput {
   db: SupabaseClient;
   conversationId?: string;
   message: string;
+  /** Ids of temporary attachments (images/PDFs) already uploaded via
+   *  POST /api/ai/attachments — see resolveAttachmentBlocks below. */
+  attachmentIds?: string[];
 }
 
 export type RunChatErrorCategory =
@@ -172,6 +176,51 @@ function extractText(blocks: ContentBlock[]): string {
 }
 
 /**
+ * Loads and validates each attachment id the caller referenced, converting
+ * it into a multimodal content block included ONLY in this turn — never
+ * persisted as binary (conversations.ts stores text only). An attachment
+ * already tied to a DIFFERENT conversation (status='used' there) is
+ * silently skipped, not reused — that's what keeps temporary context
+ * scoped to the conversation/request it was uploaded for. `getOwnedAttachment`
+ * already folds "doesn't exist" / "not owned" / "expired" into the same
+ * null result via RLS, so a bad or foreign id is skipped exactly like a
+ * missing one, never an error that would leak whether it exists.
+ *
+ * The resulting image/document bytes are, from here on, exactly as
+ * untrusted as any tool result — nothing about being "an attachment"
+ * grants them any special trust; see systemPrompt.ts's explicit framing.
+ */
+async function resolveAttachmentBlocks(
+  db: SupabaseClient,
+  caller: CallerContext,
+  attachmentIds: string[],
+  conversationId: string
+): Promise<ContentBlock[]> {
+  const blocks: ContentBlock[] = [];
+  for (const id of attachmentIds.slice(0, MAX_ATTACHMENTS_PER_MESSAGE)) {
+    const attachment = await getOwnedAttachment(db, id);
+    if (!attachment) continue;
+    if (attachment.conversation_id && attachment.conversation_id !== conversationId) continue;
+
+    const bytes = await fetchAttachmentBytes(db, attachment);
+    if (!bytes) {
+      log('warn', '[AI runtime] failed to fetch attachment bytes', { attachmentId: id, userId: caller.userId });
+      continue;
+    }
+
+    const base64 = bytes.toString('base64');
+    if (attachment.kind === 'image') {
+      blocks.push({ type: 'image', mediaType: attachment.mime_type as ImageBlock['mediaType'], data: base64 });
+    } else {
+      blocks.push({ type: 'document', mediaType: 'application/pdf', data: base64, title: attachment.file_name });
+    }
+
+    await markAttachmentUsed(db, id, conversationId);
+  }
+  return blocks;
+}
+
+/**
  * The AI runtime: authenticated chat request -> conversation context ->
  * system instructions -> caller-scoped tool list -> provider call -> tool
  * dispatch loop (bounded) -> final text -> persistence + audit. See
@@ -231,6 +280,17 @@ export async function runAiChat(input: RunChatInput): Promise<RunChatResult> {
     role: m.role,
     content: [{ type: 'text', text: m.content }],
   }));
+
+  if (input.attachmentIds && input.attachmentIds.length > 0) {
+    const attachmentBlocks = await resolveAttachmentBlocks(input.db, input.caller, input.attachmentIds, conversation.id);
+    const lastMessage = providerMessages[providerMessages.length - 1];
+    // Attachments ride along with the user message that just referenced
+    // them — the one appendMessage() persisted above, which is guaranteed
+    // to be the last entry here since it was written before this reload.
+    if (attachmentBlocks.length > 0 && lastMessage?.role === 'user') {
+      lastMessage.content = [...lastMessage.content, ...attachmentBlocks];
+    }
+  }
 
   const toolActivity: ToolActivityEntry[] = [];
   const sourceCitations = new Map<string, KnowledgeSourceCitation>();

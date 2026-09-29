@@ -2,6 +2,8 @@
 
 Implemented on top of the Phase 1 tool gateway and Phase 2 LLM runtime (`docs/ai/CAS-AI-PHASE-1.md`, `docs/ai/CAS-AI-PHASE-2.md`). This document describes what's actually built, not a plan.
 
+> **Phase 4 update:** Voice and multimodal (image/PDF) input are now implemented on top of this RAG pipeline, kept deliberately separate from it — a temporary per-request attachment is never auto-indexed into `knowledge_sources`/`knowledge_chunks`, and `search_knowledge`'s permanent, curated knowledge base is untouched by anything in Phase 4. See `docs/ai/CAS-AI-PHASE-4.md`'s "RAG integration" section.
+
 ## Critical architectural rule (unchanged from Phase 2)
 
 RAG supplies knowledge; it does not supply authority. The server remains authoritative for identity, permissions, data access, retrieval scope, validation, and audit. The LLM is still an untrusted reasoning layer — nothing in this phase changes that. Every design decision below follows directly from it.

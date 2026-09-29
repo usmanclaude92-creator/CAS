@@ -33,7 +33,30 @@ export interface ToolResultBlock {
   isError?: boolean;
 }
 
-export type ContentBlock = TextBlock | ToolUseBlock | ToolResultBlock;
+/**
+ * Phase 4 multimodal input — a user-uploaded image, already validated
+ * server-side (size/MIME/magic-bytes, see src/server/ai/attachments.ts)
+ * before it ever reaches this type. Sent only in the user turn that
+ * referenced it; never persisted as binary (src/server/ai/conversations.ts
+ * stores text only).
+ */
+export interface ImageBlock {
+  type: 'image';
+  mediaType: 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp';
+  data: string; // base64
+}
+
+/** Phase 4 multimodal input — a user-uploaded PDF, passed to the model
+ *  natively (Claude has first-party PDF understanding) rather than through
+ *  a separate text-extraction library. */
+export interface DocumentBlock {
+  type: 'document';
+  mediaType: 'application/pdf';
+  data: string; // base64
+  title?: string;
+}
+
+export type ContentBlock = TextBlock | ToolUseBlock | ToolResultBlock | ImageBlock | DocumentBlock;
 
 export type ConversationRole = 'user' | 'assistant';
 

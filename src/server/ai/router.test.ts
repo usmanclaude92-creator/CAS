@@ -303,6 +303,52 @@ describe('POST /api/ai/chat', () => {
       });
     });
 
+    it('400s when "attachmentIds" is not an array of strings', async () => {
+      mocks.getCallerContext.mockResolvedValue(CALLER);
+      await withServer(async (base) => {
+        const res = await fetch(`${base}/api/ai/chat`, {
+          method: 'POST',
+          headers: { Authorization: 'Bearer x', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: 'what is in this receipt?', attachmentIds: [123, 'att-2'] }),
+        });
+        expect(res.status).toBe(400);
+        expect(mocks.runAiChat).not.toHaveBeenCalled();
+      });
+    });
+
+    it('400s when more than MAX_ATTACHMENTS_PER_MESSAGE ids are given — never lets the client widen the server-side bound', async () => {
+      mocks.getCallerContext.mockResolvedValue(CALLER);
+      await withServer(async (base) => {
+        const res = await fetch(`${base}/api/ai/chat`, {
+          method: 'POST',
+          headers: { Authorization: 'Bearer x', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: 'look at these', attachmentIds: ['a1', 'a2', 'a3', 'a4'] }),
+        });
+        expect(res.status).toBe(400);
+        expect(mocks.runAiChat).not.toHaveBeenCalled();
+      });
+    });
+
+    it('passes attachmentIds through to runAiChat unchanged when well-formed', async () => {
+      mocks.getCallerContext.mockResolvedValue(CALLER);
+      mocks.runAiChat.mockResolvedValue({
+        success: true,
+        conversationId: 'conv-1',
+        reply: 'This looks like a vendor invoice.',
+        toolActivity: [],
+        sources: [],
+      });
+      await withServer(async (base) => {
+        const res = await fetch(`${base}/api/ai/chat`, {
+          method: 'POST',
+          headers: { Authorization: 'Bearer x', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: 'what is this?', attachmentIds: ['att-1', 'att-2'] }),
+        });
+        expect(res.status).toBe(200);
+        expect(mocks.runAiChat).toHaveBeenCalledWith(expect.objectContaining({ attachmentIds: ['att-1', 'att-2'] }));
+      });
+    });
+
     it('never crashes or leaks internals if runAiChat itself throws', async () => {
       mocks.getCallerContext.mockResolvedValue(CALLER);
       mocks.runAiChat.mockRejectedValue(new Error('unexpected internal failure with sensitive detail'));

@@ -63,11 +63,11 @@ export const aiChatService = {
     }
   },
 
-  async sendMessage(message: string, conversationId?: string): Promise<ChatSendResult> {
+  async sendMessage(message: string, conversationId?: string, attachmentIds?: string[]): Promise<ChatSendResult> {
     try {
       const res = await aiFetch('/api/ai/chat', {
         method: 'POST',
-        body: JSON.stringify({ message, conversationId }),
+        body: JSON.stringify({ message, conversationId, attachmentIds }),
       });
       const body = await res.json().catch(() => null);
       if (!body || typeof body.success !== 'boolean') {

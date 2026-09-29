@@ -1,8 +1,10 @@
 # CAS AI — Phase 2: LLM Integration + Secure AI Agent Runtime
 
-Implemented on top of the Phase 1 read-only tool gateway (`docs/ai/CAS-AI-PHASE-1.md`). Read-only scope unchanged: no AI write tools, no voice, no autonomous behavior. This document describes what's actually built, not a plan.
+Implemented on top of the Phase 1 read-only tool gateway (`docs/ai/CAS-AI-PHASE-1.md`). Read-only scope unchanged: no AI write tools, no autonomous behavior. This document describes what's actually built, not a plan.
 
 > **Phase 3 update:** RAG/knowledge retrieval — listed here as out of scope at the time this doc was written — is now implemented as a 19th tool (`search_knowledge`) behind the exact same registry/permission/execution pipeline described below. See `docs/ai/CAS-AI-PHASE-3.md`.
+
+> **Phase 4 update:** Voice (speech-to-text/text-to-speech) and multimodal (image/PDF) input — listed here as out of scope at the time this doc was written — are now implemented as additional input/output modalities on top of this exact runtime: a transcript enters `POST /api/ai/chat` exactly like typed text, and an attachment becomes an ordinary content block on the current turn. Neither is a new security boundary. See `docs/ai/CAS-AI-PHASE-4.md`.
 
 ## LLM architecture
 

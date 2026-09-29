@@ -4,6 +4,8 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { aiRouter } from './ai/router';
 import { knowledgeAdminRouter } from './ai/knowledgeAdminRouter';
+import { voiceRouter } from './ai/voiceRouter';
+import { attachmentsRouter } from './ai/attachmentsRouter';
 import {
   SUPABASE_URL,
   supabaseAdmin,
@@ -281,5 +283,28 @@ app.use('/api/ai', aiLimiter, aiRouter);
 // aiLimiter rather than a second rate-limit mechanism.
 // ==========================================
 app.use('/api/ai/knowledge', aiLimiter, knowledgeAdminRouter);
+
+// ==========================================
+// VOICE (Phase 4 — see docs/ai/CAS-AI-PHASE-4.md)
+// Separate, stricter limiters than aiLimiter: audio transcription and
+// speech synthesis are materially more expensive per-request than a JSON
+// tool call, and each needs its own ceiling per the Phase 4 directive
+// (transcription abuse and TTS generation abuse are distinct risks).
+// ==========================================
+const voiceTranscribeLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false });
+const voiceSynthesizeLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });
+app.use('/api/ai/voice/transcribe', voiceTranscribeLimiter);
+app.use('/api/ai/voice/synthesize', voiceSynthesizeLimiter);
+app.use('/api/ai/voice', voiceRouter);
+
+// ==========================================
+// ATTACHMENTS (Phase 4 — see docs/ai/CAS-AI-PHASE-4.md)
+// Temporary, per-user multimodal context (images/PDFs) for the AI Agent —
+// never permanent storage, never auto-indexed into Phase 3's knowledge
+// base. Its own limiter: file uploads are expensive and abuse-prone in a
+// different way than a JSON request.
+// ==========================================
+const attachmentsLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });
+app.use('/api/ai/attachments', attachmentsLimiter, attachmentsRouter);
 
 export default app;
