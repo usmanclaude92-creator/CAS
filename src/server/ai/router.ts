@@ -3,6 +3,8 @@ import { getCallerContext, callerHasPermission, log } from '../authContext';
 import { getTool, listToolsForCaller } from './registry';
 import { createCallerScopedClient } from './db';
 import { recordAiToolCall } from './audit';
+import { getConversation, listRecentMessages } from './conversations';
+import { runAiChat, MAX_USER_MESSAGE_LENGTH } from './runtime';
 import type { ToolResult } from './types';
 
 export const aiRouter = express.Router();
@@ -20,19 +22,34 @@ aiRouter.get('/tools', async (req, res) => {
   return res.status(200).json({ success: true, tools: listToolsForCaller(caller) });
 });
 
+const RUN_CHAT_ERROR_STATUS: Record<string, number> = {
+  invalid_request: 400,
+  conversation_not_found: 404,
+  provider_config: 503,
+  provider_timeout: 504,
+  provider_failure: 502,
+  internal_error: 500,
+};
+
 /**
- * POST /api/ai/chat — Phase 1 gateway/test endpoint. Despite the name, this
- * does NOT call an LLM (see docs/ai/CAS-AI-PHASE-1.md §Known limitations) —
- * it accepts a single structured tool call, exactly as a future model's
- * tool-use turn would, so the tool layer can be built and tested completely
- * independently of any provider integration.
+ * POST /api/ai/chat — dual contract, both auth-gated identically:
  *
- * Body: { "tool": "<registered tool name>", "arguments": { ... } }
+ * 1. Phase 1 (unchanged): { "tool": "<registered tool name>", "arguments": {...} }
+ *    Direct, single tool dispatch with no LLM involved — exactly as a
+ *    future model's tool-use turn would call a tool. Kept as-is so nothing
+ *    depending on this contract (including router.test.ts) breaks.
  *
- * There is no other way to reach a tool's data: no field on this body is
- * ever interpreted as SQL, a table name, or a column name — only the fixed
- * `tool` name (looked up in the registry) and the tool's own typed,
- * validated `arguments`.
+ * 2. Phase 2 (new): { "message": "<user text>", "conversationId"?: "<uuid>" }
+ *    Runs the real AI runtime (src/server/ai/runtime.ts): loads/creates the
+ *    conversation, calls the configured LLM provider with only the tools
+ *    this caller holds permission for, dispatches any tool_use turns
+ *    through the exact same tool registry/permission/validation path as
+ *    contract 1, and returns the model's final natural-language reply.
+ *
+ * Neither path ever accepts SQL, a table name, or a column name from the
+ * request — only a registered tool name (contract 1) or free-text chat
+ * content that can only ever reach the database through that same tool
+ * registry (contract 2).
  */
 aiRouter.post('/chat', async (req, res) => {
   const startedAt = Date.now();
@@ -43,9 +60,45 @@ aiRouter.post('/chat', async (req, res) => {
   }
 
   const body = req.body && typeof req.body === 'object' ? req.body : {};
+
+  if (typeof body.message === 'string') {
+    if (body.message.length > MAX_USER_MESSAGE_LENGTH) {
+      return res.status(400).json({ success: false, error: `Message exceeds the ${MAX_USER_MESSAGE_LENGTH}-character limit.` });
+    }
+    const conversationId = typeof body.conversationId === 'string' ? body.conversationId : undefined;
+
+    let db;
+    try {
+      // See the try/catch below the legacy path for why this is inside,
+      // not before, the try (createCallerScopedClient can throw synchronously).
+      db = createCallerScopedClient(caller.jwt);
+    } catch (err: any) {
+      log('error', '[AI Gateway] failed to create caller-scoped client', { error: err?.message });
+      return res.status(500).json({ success: false, error: 'Internal server error.' });
+    }
+
+    let result;
+    try {
+      result = await runAiChat({ caller, db, conversationId, message: body.message });
+    } catch (err: any) {
+      log('error', '[AI Gateway] runAiChat threw', { error: err?.message });
+      return res.status(500).json({ success: false, error: 'Internal error processing your request.' });
+    }
+
+    if (result.success === false) {
+      return res.status(RUN_CHAT_ERROR_STATUS[result.category] ?? 500).json({ success: false, error: result.error });
+    }
+    return res.status(200).json({
+      success: true,
+      conversationId: result.conversationId,
+      reply: result.reply,
+      toolActivity: result.toolActivity,
+    });
+  }
+
   const toolName = typeof body.tool === 'string' ? body.tool : undefined;
   if (!toolName) {
-    return res.status(400).json({ success: false, error: 'Request body must include a "tool" name.' });
+    return res.status(400).json({ success: false, error: 'Request body must include either "tool" (direct tool call) or "message" (chat).' });
   }
 
   const tool = getTool(toolName);
@@ -93,4 +146,39 @@ aiRouter.post('/chat', async (req, res) => {
   // 401/400/403. A tool-level "no matching record" is a normal answer to a
   // well-formed, authorized request, not a transport-level error.
   return res.status(200).json(result);
+});
+
+/**
+ * GET /api/ai/conversations/:id/messages — lets the chat UI restore a
+ * conversation's history (e.g. after a page reload). RLS on ai_messages, via
+ * ai_conversations' own ownership policy, means a caller can never fetch
+ * another user's conversation by guessing/changing the id: getConversation
+ * returns null for both "doesn't exist" and "not yours," and both are
+ * reported identically below — never confirm another user's conversation exists.
+ */
+aiRouter.get('/conversations/:id/messages', async (req, res) => {
+  const caller = await getCallerContext(req);
+  if (!caller) {
+    return res.status(401).json({ success: false, error: 'Unauthorized: invalid or missing session.' });
+  }
+
+  let db;
+  try {
+    db = createCallerScopedClient(caller.jwt);
+  } catch (err: any) {
+    log('error', '[AI Gateway] failed to create caller-scoped client', { error: err?.message });
+    return res.status(500).json({ success: false, error: 'Internal server error.' });
+  }
+
+  const conversation = await getConversation(db, req.params.id);
+  if (!conversation) {
+    return res.status(404).json({ success: false, error: 'Conversation not found.' });
+  }
+
+  const messages = await listRecentMessages(db, conversation.id);
+  return res.status(200).json({
+    success: true,
+    conversationId: conversation.id,
+    messages: messages.map((m) => ({ role: m.role, content: m.content, createdAt: m.created_at })),
+  });
 });

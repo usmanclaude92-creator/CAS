@@ -26,6 +26,10 @@ export interface AiToolCallRecord {
   success: boolean;
   errorMessage?: string;
   durationMs: number;
+  /** Correlates this tool call with the Phase 2 conversation/turn it
+   *  happened during (see supabase/migrations/20260929010000_add_ai_conversations.sql).
+   *  Absent for Phase 1's raw {tool,arguments} dispatch, which has no conversation. */
+  conversationId?: string;
 }
 
 export async function recordAiToolCall(record: AiToolCallRecord): Promise<void> {
@@ -42,6 +46,7 @@ export async function recordAiToolCall(record: AiToolCallRecord): Promise<void> 
       success: record.success,
       error_message: record.errorMessage ?? null,
       duration_ms: record.durationMs,
+      conversation_id: record.conversationId ?? null,
     });
     if (error) {
       // Table may not exist yet in this environment until the migration in
