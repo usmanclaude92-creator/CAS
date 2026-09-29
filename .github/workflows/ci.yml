@@ -47,9 +47,13 @@ jobs:
   # ==========================================
   # Android app: WebView wrapper around its own bundled web build (see
   # android/ — a self-contained copy of the CAS-App project, not the root
-  # web app above). Mirrors android/.github/workflows/main.yml, which
-  # GitHub does not run directly since only top-level .github/workflows/
-  # files are picked up.
+  # web app above). This used to also exist, unreachably, at
+  # android/.github/workflows/main.yml — a leftover from when android/ was
+  # its own separate repository, before being folded into this monorepo.
+  # GitHub Actions only scans the repository root's .github/workflows/, so
+  # that copy never ran a single time after the merge; it has been removed
+  # to avoid the exact confusion it caused (editing it does nothing — this
+  # is the only copy that actually runs).
   # ==========================================
   build-android-web:
     name: Build Android Web Bundle
@@ -78,10 +82,19 @@ jobs:
 
       - name: Build web bundle with relative base paths
         working-directory: android
+        # VITE_ADMIN_API_URL points authService.adminFetch and every AI
+        # service (aiChatService, aiActionsService, etc.) at the CAS web
+        # app's own deployed Express server — this Android build has no
+        # server of its own, so without this the base URL falls back to ''
+        # and every one of those calls silently resolves under the
+        # WebView's own virtual asset origin
+        # (https://appassets.androidplatform.net), which serves no API at
+        # all.
         run: npx vite build --base=./
         env:
           VITE_SUPABASE_URL: https://krclqyvsgxrcqojfmyaq.supabase.co
           VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtyY2xxeXZzZ3hyY3FvamZteWFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwOTg3NDAsImV4cCI6MjEwNTY3NDc0MH0.KEV7_vfYPUmdJyRHE89xrC_BPFyQlw7FT-TSsmsMW5c
+          VITE_ADMIN_API_URL: https://cas.artifysols.com
 
       - name: Upload Android Web Build Artifact
         uses: actions/upload-artifact@v4
