@@ -18,6 +18,10 @@ import { getProvider, getConfiguredModelName, ProviderError, ProviderConfigError
 import type { ProviderMessage, ContentBlock, ToolUseBlock, ImageBlock } from './providers/types';
 import type { ToolResult } from './types';
 import { getOwnedAttachment, fetchAttachmentBytes, markAttachmentUsed, MAX_ATTACHMENTS_PER_MESSAGE } from './attachments';
+import { getActionTool, listActionToolsForCaller } from './actionRegistry';
+import { toProviderActionToolSchema } from './actionToolSchemas';
+import { executeActionToolCall } from './actions/dispatch';
+import type { PendingActionSummary } from './actions/types';
 
 /**
  * Loop/limit constants — see docs/ai/CAS-AI-PHASE-2.md §Limits. Every one of
@@ -28,6 +32,12 @@ import { getOwnedAttachment, fetchAttachmentBytes, markAttachmentUsed, MAX_ATTAC
  */
 export const MAX_USER_MESSAGE_LENGTH = 4000;
 export const MAX_TOOL_CALLS_PER_REQUEST = 8;
+/** A tighter, separate cap on ACTION tool calls specifically (proposals +
+ *  immediate low-risk executions combined) within one request — actions are
+ *  higher-stakes than a read, so a runaway/adversarial model turn gets a
+ *  narrower budget for them even though MAX_TOOL_CALLS_PER_REQUEST already
+ *  bounds the total. Phase 5 directive §19. */
+export const MAX_ACTION_CALLS_PER_REQUEST = 3;
 export const MAX_MODEL_TURNS = 6;
 export const PROVIDER_TIMEOUT_MS = 30_000;
 export const TOOL_EXECUTION_TIMEOUT_MS = 15_000;
@@ -66,7 +76,18 @@ export interface KnowledgeSourceCitation {
 }
 
 export type RunChatResult =
-  | { success: true; conversationId: string; reply: string; toolActivity: ToolActivityEntry[]; sources: KnowledgeSourceCitation[] }
+  | {
+      success: true;
+      conversationId: string;
+      reply: string;
+      toolActivity: ToolActivityEntry[];
+      sources: KnowledgeSourceCitation[];
+      /** Set when this turn proposed a medium/high-risk action awaiting the
+       *  user's explicit confirmation — see docs/ai/CAS-AI-PHASE-5.md. Built
+       *  entirely server-side from the action tool's own buildPreview()
+       *  output, never from the model's text. */
+      pendingAction?: PendingActionSummary;
+    }
   | { success: false; category: RunChatErrorCategory; error: string };
 
 const KNOWLEDGE_TOOL_NAME = 'search_knowledge';
@@ -272,8 +293,12 @@ export async function runAiChat(input: RunChatInput): Promise<RunChatResult> {
   }
 
   const availableTools = listToolsForCaller(input.caller);
-  const system = buildSystemPrompt(availableTools);
-  const toolSchemas = availableTools.map((t) => toProviderToolSchema(t.name, t.description));
+  const availableActionTools = listActionToolsForCaller(input.caller);
+  const system = buildSystemPrompt(availableTools, availableActionTools);
+  const toolSchemas = [
+    ...availableTools.map((t) => toProviderToolSchema(t.name, t.description)),
+    ...availableActionTools.map((t) => toProviderActionToolSchema(t.name, t.description)),
+  ];
 
   const history = await listRecentMessages(input.db, conversation.id, MAX_CONTEXT_MESSAGES);
   const providerMessages: ProviderMessage[] = history.map((m) => ({
@@ -296,6 +321,8 @@ export async function runAiChat(input: RunChatInput): Promise<RunChatResult> {
   const sourceCitations = new Map<string, KnowledgeSourceCitation>();
   const deadline = Date.now() + MAX_TOTAL_RUNTIME_MS;
   let toolCallCount = 0;
+  let actionCallCount = 0;
+  let pendingActionSummary: PendingActionSummary | undefined;
   let finalText = '';
   let limited = false;
   let endedNaturally = false;
@@ -360,6 +387,35 @@ export async function runAiChat(input: RunChatInput): Promise<RunChatResult> {
     const resultBlocks: ContentBlock[] = [];
     for (const block of toolUseBlocks) {
       toolCallCount++;
+      const actionTool = getActionTool(block.name);
+
+      if (actionTool) {
+        // A separate, tighter budget for ACTION calls specifically (Phase 5
+        // directive §19) — checked per-call so a mix of read + action calls
+        // in one turn only limits the action ones, not the whole turn.
+        if (actionCallCount >= MAX_ACTION_CALLS_PER_REQUEST) {
+          resultBlocks.push({
+            type: 'tool_result',
+            toolUseId: block.id,
+            content: JSON.stringify({ success: false, error: 'Action limit reached for this request.' }),
+            isError: true,
+          });
+          toolActivity.push({ label: 'Action limit reached' });
+          continue;
+        }
+        actionCallCount++;
+        const outcome = await executeActionToolCall(input.caller, input.db, block.name, block.input, conversation.id);
+        resultBlocks.push({
+          type: 'tool_result',
+          toolUseId: block.id,
+          content: JSON.stringify(outcome.toolResultPayload).slice(0, MAX_TOOL_RESULT_CHARS),
+          isError: outcome.isError,
+        });
+        toolActivity.push({ label: outcome.activityLabel });
+        if (outcome.pendingAction) pendingActionSummary = outcome.pendingAction;
+        continue;
+      }
+
       const result = await executeToolCall(input.caller, input.db, block, conversation.id);
       resultBlocks.push({
         type: 'tool_result',
@@ -407,5 +463,6 @@ export async function runAiChat(input: RunChatInput): Promise<RunChatResult> {
     reply: finalText,
     toolActivity,
     sources: Array.from(sourceCitations.values()),
+    pendingAction: pendingActionSummary,
   };
 }

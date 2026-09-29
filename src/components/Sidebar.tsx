@@ -13,6 +13,7 @@ import {
   Clock,
   Settings,
   Handshake,
+  Sparkles,
 } from 'lucide-react';
 import { authService } from '../services/authService';
 
@@ -33,7 +34,8 @@ export type NavView =
   | 'roles'
   | 'workflow_settings'
   | 'master_import_audit'
-  | 'audit';
+  | 'audit'
+  | 'ai_agent_admin';
 
 interface SidebarProps {
   activeView: NavView;
@@ -77,6 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'reports', label: 'Financial Reports', icon: FileBarChart, permission: 'reports.view', section: 'main' },
     { id: 'masters', label: 'Business Masters', icon: Layers, permission: 'settings.view', section: 'masters' },
     { id: 'audit', label: 'Immutable Audit Log', icon: ShieldAlert, permission: 'audit.view', section: 'audit' },
+    { id: 'ai_agent_admin', label: 'AI Agent Administration', icon: Sparkles, permission: 'ai_actions.manage', section: 'audit' },
   ];
 
   // Filter based on user permissions

@@ -6,6 +6,9 @@ import { aiRouter } from './ai/router';
 import { knowledgeAdminRouter } from './ai/knowledgeAdminRouter';
 import { voiceRouter } from './ai/voiceRouter';
 import { attachmentsRouter } from './ai/attachmentsRouter';
+import { actionsRouter } from './ai/actionsRouter';
+import { automationsRouter } from './ai/automationsRouter';
+import { aiAdminRouter } from './ai/aiAdminRouter';
 import {
   SUPABASE_URL,
   supabaseAdmin,
@@ -306,5 +309,25 @@ app.use('/api/ai/voice', voiceRouter);
 // ==========================================
 const attachmentsLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });
 app.use('/api/ai/attachments', attachmentsLimiter, attachmentsRouter);
+
+// ==========================================
+// CONTROLLED ACTIONS + AUTOMATION (Phase 5 — see docs/ai/CAS-AI-PHASE-5.md)
+// Confirmation protocol (actionsRouter) and personal scheduled reminders
+// (automationsRouter) each get their own limiter, distinct from aiLimiter,
+// for the same reason voice/attachments do: a burst here shouldn't starve
+// ordinary chat traffic or vice versa. GET /api/ai/automations/run-due
+// (Vercel Cron's entry point) lives inside automationsRouter and is gated
+// by CRON_SECRET, not a user session — the rate limiter below still
+// applies to it, but generously enough (120/15min) that a legitimate
+// hourly-or-slower cron schedule is never at risk of being throttled; the
+// secret comparison is the real gate, not this limiter.
+// ==========================================
+const aiActionsLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 60, standardHeaders: true, legacyHeaders: false });
+app.use('/api/ai/actions', aiActionsLimiter, actionsRouter);
+app.use('/api/ai/automations', aiActionsLimiter, automationsRouter);
+// Reuses adminLimiter (defined above, already governing /api/admin) — this
+// is the same class of surface (a small set of privileged administrators),
+// not ordinary AI traffic.
+app.use('/api/ai/admin', adminLimiter, aiAdminRouter);
 
 export default app;

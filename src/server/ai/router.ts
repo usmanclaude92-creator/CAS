@@ -106,6 +106,7 @@ aiRouter.post('/chat', async (req, res) => {
       reply: result.reply,
       toolActivity: result.toolActivity,
       sources: result.sources,
+      pendingAction: result.pendingAction,
     });
   }
 

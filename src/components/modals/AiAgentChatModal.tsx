@@ -16,14 +16,30 @@ import {
   Image as ImageIcon,
   Volume2,
   VolumeX,
+  ShieldAlert,
+  ShieldCheck,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
-import { aiChatService, type KnowledgeSourceCitation } from '../../services/aiChatService';
+import { aiChatService, type KnowledgeSourceCitation, type PendingAiActionSummary } from '../../services/aiChatService';
 import { aiVoiceService } from '../../services/aiVoiceService';
 import { aiAttachmentService, type UploadedAttachment } from '../../services/aiAttachmentService';
+import { aiActionsService } from '../../services/aiActionsService';
 
 interface MessageAttachmentSummary {
   fileName: string;
   kind: 'image' | 'document';
+}
+
+/** A proposed action attached to one assistant turn — see
+ *  docs/ai/CAS-AI-PHASE-5.md §Confirmation protocol. `uiStatus` is purely
+ *  client-side presentation state; the actual outcome always comes back
+ *  from aiActionsService (the server), never assumed client-side. */
+type PendingActionUiStatus = 'awaiting' | 'confirming' | 'rejecting' | 'completed' | 'failed' | 'rejected';
+interface PendingActionUiState extends PendingAiActionSummary {
+  uiStatus: PendingActionUiStatus;
+  resultSummary?: string;
+  errorMessage?: string;
 }
 
 interface ChatMessage {
@@ -39,6 +55,9 @@ interface ChatMessage {
   /** Cosmetic only (client-side) — what was attached to this user turn.
    *  The server only ever sees/acts on the attachment ids, not this list. */
   attachments?: MessageAttachmentSummary[];
+  /** Set when this assistant turn proposed a medium/high-risk action still
+   *  awaiting (or since resolved by) the user's explicit confirmation. */
+  pendingAction?: PendingActionUiState;
 }
 
 interface AiAgentChatModalProps {
@@ -86,6 +105,25 @@ function formatSeconds(total: number): string {
   const s = total % 60;
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
+
+/** A short, generic human summary of an executed action's server-returned
+ *  data — never fabricated, only ever describing fields the server itself
+ *  sent back for this specific action. */
+function summarizeActionResult(data: unknown): string {
+  if (data && typeof data === 'object') {
+    const d = data as Record<string, unknown>;
+    if (typeof d.documentRef === 'string') return `Recorded as ${d.documentRef}.`;
+    if (typeof d.title === 'string') return `"${d.title}" created.`;
+    if (typeof d.name === 'string') return `${d.name} updated.`;
+  }
+  return 'Done.';
+}
+
+const RISK_BADGE_CLASSES: Record<string, string> = {
+  low: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+  medium: 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400',
+  high: 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400',
+};
 
 /**
  * Professional enterprise-assistant chat popup — read-only, CAS-data-only.
@@ -251,8 +289,40 @@ export const AiAgentChatModal: React.FC<AiAgentChatModalProps> = ({ onClose }) =
         content: result.reply,
         toolActivity: result.toolActivity.map((t) => t.label),
         sources: result.sources,
+        pendingAction: result.pendingAction ? { ...result.pendingAction, uiStatus: 'awaiting' } : undefined,
       },
     ]);
+  };
+
+  // --- Controlled actions (Phase 5) ---------------------------------------
+  // The ONLY thing that can ever execute a medium/high-risk action is the
+  // user clicking Confirm here, which calls the real confirm endpoint with
+  // the server-generated confirmationId — never anything typed in chat.
+
+  const updatePendingAction = (messageId: string, patch: Partial<PendingActionUiState>) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === messageId && m.pendingAction ? { ...m, pendingAction: { ...m.pendingAction, ...patch } } : m))
+    );
+  };
+
+  const handleConfirmAction = async (messageId: string, confirmationId: string) => {
+    updatePendingAction(messageId, { uiStatus: 'confirming' });
+    const result = await aiActionsService.confirm(confirmationId);
+    if (result.success === false) {
+      updatePendingAction(messageId, { uiStatus: 'failed', errorMessage: result.error });
+      return;
+    }
+    updatePendingAction(messageId, { uiStatus: 'completed', resultSummary: summarizeActionResult(result.data) });
+  };
+
+  const handleRejectAction = async (messageId: string, confirmationId: string) => {
+    updatePendingAction(messageId, { uiStatus: 'rejecting' });
+    const result = await aiActionsService.reject(confirmationId);
+    if (result.success === false) {
+      updatePendingAction(messageId, { uiStatus: 'awaiting', errorMessage: result.error });
+      return;
+    }
+    updatePendingAction(messageId, { uiStatus: 'rejected' });
   };
 
   const handleRetry = () => {
@@ -546,6 +616,89 @@ export const AiAgentChatModal: React.FC<AiAgentChatModalProps> = ({ onClose }) =
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {/* Action confirmation card — Phase 5. Every field here comes
+                  straight from the server's own buildPreview() output
+                  (see src/server/ai/actions/types.ts); nothing is inferred
+                  from the model's text. */}
+              {m.role === 'assistant' && m.pendingAction && (
+                <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
+                  <div className="px-2.5 py-1.5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-1.5">
+                      <ShieldAlert className="w-3 h-3 text-slate-400" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Action Requested</span>
+                    </div>
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full capitalize ${RISK_BADGE_CLASSES[m.pendingAction.riskLevel]}`}>
+                      {m.pendingAction.riskLevel} risk
+                    </span>
+                  </div>
+                  <div className="px-2.5 py-2 space-y-1.5">
+                    <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-100">{m.pendingAction.preview.summary}</p>
+                    <dl className="space-y-0.5">
+                      {m.pendingAction.preview.fields.map((f, i) => (
+                        <div key={i} className="flex gap-1.5 text-[11px]">
+                          <dt className="text-slate-400 dark:text-slate-500 shrink-0">{f.label}:</dt>
+                          <dd className="text-slate-700 dark:text-slate-200 truncate">{f.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                    {m.pendingAction.preview.warnings?.map((w, i) => (
+                      <p key={i} className="text-[10px] text-amber-700 dark:text-amber-400 flex items-start gap-1">
+                        <ShieldAlert className="w-3 h-3 shrink-0 mt-0.5" />
+                        <span>{w}</span>
+                      </p>
+                    ))}
+
+                    {m.pendingAction.uiStatus === 'awaiting' && (
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => void handleConfirmAction(m.id, m.pendingAction!.confirmationId)}
+                          className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold cursor-pointer transition-colors"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          Confirm
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleRejectAction(m.id, m.pendingAction!.confirmationId)}
+                          className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-[11px] font-semibold cursor-pointer transition-colors"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                    {(m.pendingAction.uiStatus === 'confirming' || m.pendingAction.uiStatus === 'rejecting') && (
+                      <div className="flex items-center gap-1.5 pt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        {m.pendingAction.uiStatus === 'confirming' ? 'Executing…' : 'Declining…'}
+                      </div>
+                    )}
+                    {m.pendingAction.uiStatus === 'completed' && (
+                      <div className="flex items-center gap-1.5 pt-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        {m.pendingAction.resultSummary ?? 'Completed.'}
+                      </div>
+                    )}
+                    {m.pendingAction.uiStatus === 'rejected' && (
+                      <div className="flex items-center gap-1.5 pt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                        <XCircle className="w-3.5 h-3.5" />
+                        Declined — no changes were made.
+                      </div>
+                    )}
+                    {m.pendingAction.uiStatus === 'failed' && (
+                      <div className="space-y-0.5 pt-1">
+                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-rose-700 dark:text-rose-400">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          {m.pendingAction.errorMessage ?? 'This action could not be completed.'}
+                        </div>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500">This confirmation can&rsquo;t be reused — ask again to propose it fresh.</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

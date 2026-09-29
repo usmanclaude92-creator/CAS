@@ -2,6 +2,8 @@
 
 Implemented on top of the Phase 1 tool gateway, Phase 2 LLM runtime, and Phase 3 RAG/knowledge base (`docs/ai/CAS-AI-PHASE-1.md`, `docs/ai/CAS-AI-PHASE-2.md`, `docs/ai/CAS-AI-PHASE-3.md`). This document describes what's actually built, not a plan.
 
+> **Phase 5 update:** Controlled write/action tools (create/update, financial actions, automation) are now implemented on top of voice/multimodal, as a structurally SEPARATE tool registry from every read tool described here — a spoken or attached-image request can still only ever reach a Phase 5 action tool through the exact same permission/confirmation gate a typed request would. See `docs/ai/CAS-AI-PHASE-5.md`.
+
 ## Critical architectural rule (unchanged from Phase 2/3, restated for this phase)
 
 Voice and multimodal input expand what the AI can understand; they do not expand what the AI is authorized to do. The server remains authoritative for identity, authorization, data access, tool execution, validation, audit, and security. A spoken message becomes plain text before it ever reaches the runtime — the same runtime, same permission checks, same tool registry as typed text. An attached image or PDF becomes an ordinary (untrusted) content block on the current turn — never a new grant, never persisted knowledge, never a second way to reach CAS data. Every design decision below follows directly from this.

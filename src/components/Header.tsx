@@ -435,6 +435,8 @@ export const Header: React.FC<HeaderProps> = ({
         return 'Master Data Import Governance Logs';
       case 'audit':
         return 'Immutable System Audit Trail';
+      case 'ai_agent_admin':
+        return 'AI Agent Administration';
     }
   };
 

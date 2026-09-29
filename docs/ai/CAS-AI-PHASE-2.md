@@ -6,6 +6,8 @@ Implemented on top of the Phase 1 read-only tool gateway (`docs/ai/CAS-AI-PHASE-
 
 > **Phase 4 update:** Voice (speech-to-text/text-to-speech) and multimodal (image/PDF) input — listed here as out of scope at the time this doc was written — are now implemented as additional input/output modalities on top of this exact runtime: a transcript enters `POST /api/ai/chat` exactly like typed text, and an attachment becomes an ordinary content block on the current turn. Neither is a new security boundary. See `docs/ai/CAS-AI-PHASE-4.md`.
 
+> **Phase 5 update:** The runtime's tool-use loop (described below) now dispatches a `tool_use` block to either the read-tool registry (this doc, unchanged) or a structurally separate ACTION-tool registry, based on which one the name resolves in — see `docs/ai/CAS-AI-PHASE-5.md`. Read-only behavior described in this document is completely unchanged; a caller with no `ai_actions.*` permission experiences no difference at all.
+
 ## LLM architecture
 
 ```

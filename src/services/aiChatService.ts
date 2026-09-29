@@ -20,8 +20,35 @@ export interface KnowledgeSourceCitation {
   title: string;
 }
 
+/** Real server-built preview only — see src/server/ai/actions/types.ts's
+ *  PendingActionSummary, which this mirrors field-for-field. Never
+ *  constructed client-side; a confirmation exists only because
+ *  runtime.ts's action dispatch actually created one. */
+export interface PendingAiActionSummary {
+  confirmationId: string;
+  toolName: string;
+  riskLevel: 'low' | 'medium' | 'high';
+  category: string;
+  preview: {
+    summary: string;
+    entityType: string;
+    fields: { label: string; value: string }[];
+    financialImpact?: { amount: number; currency: string; direction: 'debit' | 'credit' | 'none' };
+    irreversible: boolean;
+    warnings?: string[];
+  };
+  expiresAt: string;
+}
+
 export type ChatSendResult =
-  | { success: true; conversationId: string; reply: string; toolActivity: ToolActivityEntry[]; sources: KnowledgeSourceCitation[] }
+  | {
+      success: true;
+      conversationId: string;
+      reply: string;
+      toolActivity: ToolActivityEntry[];
+      sources: KnowledgeSourceCitation[];
+      pendingAction?: PendingAiActionSummary;
+    }
   | { success: false; error: string };
 
 export interface AiChatMessage {
@@ -82,6 +109,7 @@ export const aiChatService = {
         reply: body.reply,
         toolActivity: body.toolActivity ?? [],
         sources: body.sources ?? [],
+        pendingAction: body.pendingAction ?? undefined,
       };
     } catch (err: any) {
       return { success: false, error: err?.message === 'No active session.' ? 'Your session has expired. Please sign in again.' : 'Could not reach the AI Agent. Please check your connection and try again.' };
