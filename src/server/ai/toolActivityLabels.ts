@@ -23,6 +23,7 @@ const LABELS: Record<string, string> = {
   get_bank_accounts: 'Checking bank accounts…',
   get_bank_transactions: 'Checking bank transactions…',
   get_cash_position: 'Checking cash position…',
+  search_knowledge: 'Searching CAS knowledge base…',
 };
 
 export function toolActivityLabel(toolName: string): string {

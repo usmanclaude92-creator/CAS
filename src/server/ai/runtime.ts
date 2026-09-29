@@ -53,9 +53,19 @@ export interface ToolActivityEntry {
   label: string;
 }
 
+/** Real provenance only — populated exclusively from what
+ *  search_knowledge's own tool result actually returned (see the
+ *  KNOWLEDGE_TOOL_NAME handling below), never inferred or fabricated. */
+export interface KnowledgeSourceCitation {
+  sourceId: string;
+  title: string;
+}
+
 export type RunChatResult =
-  | { success: true; conversationId: string; reply: string; toolActivity: ToolActivityEntry[] }
+  | { success: true; conversationId: string; reply: string; toolActivity: ToolActivityEntry[]; sources: KnowledgeSourceCitation[] }
   | { success: false; category: RunChatErrorCategory; error: string };
+
+const KNOWLEDGE_TOOL_NAME = 'search_knowledge';
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -223,6 +233,7 @@ export async function runAiChat(input: RunChatInput): Promise<RunChatResult> {
   }));
 
   const toolActivity: ToolActivityEntry[] = [];
+  const sourceCitations = new Map<string, KnowledgeSourceCitation>();
   const deadline = Date.now() + MAX_TOTAL_RUNTIME_MS;
   let toolCallCount = 0;
   let finalText = '';
@@ -297,6 +308,17 @@ export async function runAiChat(input: RunChatInput): Promise<RunChatResult> {
         isError: result.success === false,
       });
       toolActivity.push({ label: toolActivityLabel(block.name) });
+
+      // Real provenance only: pulled straight from search_knowledge's own
+      // successful result data, never inferred from the model's final text
+      // — the UI can only ever show a source the tool actually returned.
+      if (block.name === KNOWLEDGE_TOOL_NAME && result.success) {
+        for (const item of result.data as any[]) {
+          if (item?.sourceId && item?.sourceTitle && !sourceCitations.has(item.sourceId)) {
+            sourceCitations.set(item.sourceId, { sourceId: item.sourceId, title: item.sourceTitle });
+          }
+        }
+      }
     }
     providerMessages.push({ role: 'user', content: resultBlocks });
   }
@@ -319,5 +341,11 @@ export async function runAiChat(input: RunChatInput): Promise<RunChatResult> {
   });
   await touchConversation(input.db, conversation.id);
 
-  return { success: true, conversationId: conversation.id, reply: finalText, toolActivity };
+  return {
+    success: true,
+    conversationId: conversation.id,
+    reply: finalText,
+    toolActivity,
+    sources: Array.from(sourceCitations.values()),
+  };
 }

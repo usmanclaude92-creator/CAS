@@ -7,6 +7,7 @@ import { getVendors, getVendorDetails, getVendorBalance } from './tools/vendors'
 import { getInvoices, getInvoiceDetails } from './tools/invoices';
 import { getReceivables, getPayables, getReceipts, getVendorPayments, getExpenses } from './tools/financial';
 import { getBankAccounts, getBankTransactions, getCashPosition } from './tools/treasury';
+import { searchKnowledgeTool } from './tools/knowledge';
 
 /**
  * The ONLY way AI tool data can be reached — no raw SQL, no table/column
@@ -36,6 +37,7 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = Object.fromEntries(
     getBankAccounts,
     getBankTransactions,
     getCashPosition,
+    searchKnowledgeTool,
   ].map((tool) => [tool.name, tool])
 );
 

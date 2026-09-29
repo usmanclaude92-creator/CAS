@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { aiRouter } from './ai/router';
+import { knowledgeAdminRouter } from './ai/knowledgeAdminRouter';
 import {
   SUPABASE_URL,
   supabaseAdmin,
@@ -272,5 +273,13 @@ app.post('/api/admin/demo-requests/:id/approve', requireAdmin('users.create'), a
 // ==========================================
 const aiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 120, standardHeaders: true, legacyHeaders: false });
 app.use('/api/ai', aiLimiter, aiRouter);
+
+// ==========================================
+// KNOWLEDGE BASE ADMINISTRATION (Phase 3: RAG — see docs/ai/CAS-AI-PHASE-3.md)
+// Authorized application/admin operation (knowledge.manage), not an AI
+// action — no tool exposes any of this to the LLM. Reuses the same
+// aiLimiter rather than a second rate-limit mechanism.
+// ==========================================
+app.use('/api/ai/knowledge', aiLimiter, knowledgeAdminRouter);
 
 export default app;

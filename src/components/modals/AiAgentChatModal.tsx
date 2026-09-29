@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, X, Send, Loader2, AlertTriangle, RotateCcw, Bot, User } from 'lucide-react';
-import { aiChatService } from '../../services/aiChatService';
+import { Sparkles, X, Send, Loader2, AlertTriangle, RotateCcw, Bot, User, BookOpen } from 'lucide-react';
+import { aiChatService, type KnowledgeSourceCitation } from '../../services/aiChatService';
 
 interface ChatMessage {
   id: string;
@@ -8,6 +8,10 @@ interface ChatMessage {
   content: string;
   toolActivity?: string[];
   isError?: boolean;
+  /** Real provenance only, exactly as the server returned it — never
+   *  fabricated here. Empty/omitted when the reply didn't use knowledge
+   *  retrieval. */
+  sources?: KnowledgeSourceCitation[];
 }
 
 interface AiAgentChatModalProps {
@@ -124,6 +128,7 @@ export const AiAgentChatModal: React.FC<AiAgentChatModalProps> = ({ onClose }) =
         role: 'assistant',
         content: result.reply,
         toolActivity: result.toolActivity.map((t) => t.label),
+        sources: result.sources,
       },
     ]);
   };
@@ -209,14 +214,33 @@ export const AiAgentChatModal: React.FC<AiAgentChatModalProps> = ({ onClose }) =
                 <Bot className="w-3.5 h-3.5" />
               </div>
             )}
-            <div
-              className={`max-w-[80%] rounded-2xl px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap ${
-                m.role === 'user'
-                  ? 'bg-blue-600 text-white rounded-br-sm'
-                  : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-bl-sm'
-              }`}
-            >
-              {m.content}
+            <div className="max-w-[80%] flex flex-col gap-1">
+              <div
+                className={`rounded-2xl px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap ${
+                  m.role === 'user'
+                    ? 'bg-blue-600 text-white rounded-br-sm'
+                    : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-bl-sm'
+                }`}
+              >
+                {m.content}
+              </div>
+              {/* Sources — only ever the real provenance the server
+                  returned for this exact reply, never invented here. */}
+              {m.role === 'assistant' && m.sources && m.sources.length > 0 && (
+                <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 px-2.5 py-1.5">
+                  <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
+                    <BookOpen className="w-3 h-3" />
+                    Sources
+                  </div>
+                  <ul className="space-y-0.5">
+                    {m.sources.map((s) => (
+                      <li key={s.sourceId} className="text-[11px] text-slate-600 dark:text-slate-300 truncate">
+                        {s.title}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
             {m.role === 'user' && (
               <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5">

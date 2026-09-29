@@ -12,8 +12,16 @@ export interface ToolActivityEntry {
   label: string;
 }
 
+/** Real provenance only, as returned by the server (see
+ *  src/server/ai/runtime.ts's KnowledgeSourceCitation) — never fabricated
+ *  client-side. */
+export interface KnowledgeSourceCitation {
+  sourceId: string;
+  title: string;
+}
+
 export type ChatSendResult =
-  | { success: true; conversationId: string; reply: string; toolActivity: ToolActivityEntry[] }
+  | { success: true; conversationId: string; reply: string; toolActivity: ToolActivityEntry[]; sources: KnowledgeSourceCitation[] }
   | { success: false; error: string };
 
 export interface AiChatMessage {
@@ -73,6 +81,7 @@ export const aiChatService = {
         conversationId: body.conversationId,
         reply: body.reply,
         toolActivity: body.toolActivity ?? [],
+        sources: body.sources ?? [],
       };
     } catch (err: any) {
       return { success: false, error: err?.message === 'No active session.' ? 'Your session has expired. Please sign in again.' : 'Could not reach the AI Agent. Please check your connection and try again.' };

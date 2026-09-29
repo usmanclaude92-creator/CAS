@@ -254,13 +254,14 @@ describe('POST /api/ai/chat', () => {
       });
     });
 
-    it('returns 200 with reply/conversationId/toolActivity on success', async () => {
+    it('returns 200 with reply/conversationId/toolActivity/sources on success', async () => {
       mocks.getCallerContext.mockResolvedValue(CALLER);
       mocks.runAiChat.mockResolvedValue({
         success: true,
         conversationId: 'conv-1',
         reply: 'Your outstanding balance is 100.',
         toolActivity: [{ label: 'Checking vendor balance…' }],
+        sources: [{ sourceId: 'src-1', title: 'CAS Accounting Workflow' }],
       });
       await withServer(async (base) => {
         const res = await fetch(`${base}/api/ai/chat`, {
@@ -275,6 +276,7 @@ describe('POST /api/ai/chat', () => {
           conversationId: 'conv-1',
           reply: 'Your outstanding balance is 100.',
           toolActivity: [{ label: 'Checking vendor balance…' }],
+          sources: [{ sourceId: 'src-1', title: 'CAS Accounting Workflow' }],
         });
       });
     });

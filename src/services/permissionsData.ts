@@ -177,6 +177,10 @@ export const ALL_PERMISSIONS: Permission[] = [
   { id: 'p89', code: 'business_partners.create', module: 'Business Partners', name: 'Create Business Partners', description: 'Register new business partner records' },
   { id: 'p90', code: 'business_partners.edit', module: 'Business Partners', name: 'Edit Business Partners', description: 'Update business partner details' },
   { id: 'p91', code: 'business_partners.export', module: 'Business Partners', name: 'Export Business Partners', description: 'Export business partner records and balances' },
+
+  // Knowledge Base (AI Agent RAG — Phase 3, see docs/ai/CAS-AI-PHASE-3.md)
+  { id: 'p92', code: 'knowledge.view', module: 'Knowledge Base', name: 'View Knowledge Base', description: 'Ask the AI Agent knowledge questions answered from published internal documentation' },
+  { id: 'p93', code: 'knowledge.manage', module: 'Knowledge Base', name: 'Manage Knowledge Base', description: 'Create, edit, publish, archive and re-index knowledge documents; view restricted-visibility content' },
 ];
 
 // Grouped permissions for UI display
@@ -226,7 +230,7 @@ export const DEFAULT_ROLES: Role[] = [
     description: 'Responsible for accounting operations, financial review, approvals, financial reports, receivables, payables, and treasury.',
     isSystem: true,
     permissions: [
-      'dashboard.view',
+      'dashboard.view', 'knowledge.view',
       'projects.view', 'projects.export',
       'customers.view', 'customers.create', 'customers.edit', 'customers.export',
       'vendors.view', 'vendors.create', 'vendors.edit', 'vendors.export',
@@ -252,7 +256,7 @@ export const DEFAULT_ROLES: Role[] = [
     description: 'Daily accounting entries, invoices, purchases, expenses, receipts, payments, transfers, and general ledger maintenance.',
     isSystem: true,
     permissions: [
-      'dashboard.view',
+      'dashboard.view', 'knowledge.view',
       'projects.view',
       'customers.view', 'customers.create', 'customers.edit',
       'vendors.view', 'vendors.create', 'vendors.edit',
@@ -277,7 +281,7 @@ export const DEFAULT_ROLES: Role[] = [
     description: 'Responsible for customers, client invoices/IPC, receipts (Receipt from Client), customer ledgers, and payment history.',
     isSystem: true,
     permissions: [
-      'dashboard.view',
+      'dashboard.view', 'knowledge.view',
       'customers.view', 'customers.create', 'customers.edit', 'customers.export',
       'invoices.view', 'invoices.create', 'invoices.edit', 'invoices.submit', 'invoices.export',
       'money_in.view', 'money_in.create', 'money_in.edit', 'money_in.submit', 'money_in.export',
@@ -293,7 +297,7 @@ export const DEFAULT_ROLES: Role[] = [
     description: 'Responsible for vendors, purchases, vendor payments (Payment to Vendors), vendor ledgers, and payable aging.',
     isSystem: true,
     permissions: [
-      'dashboard.view',
+      'dashboard.view', 'knowledge.view',
       'vendors.view', 'vendors.create', 'vendors.edit', 'vendors.export',
       'purchases.view', 'purchases.create', 'purchases.edit', 'purchases.submit', 'purchases.export',
       'money_out.view', 'money_out.create', 'money_out.edit', 'money_out.submit', 'money_out.export',
@@ -309,7 +313,7 @@ export const DEFAULT_ROLES: Role[] = [
     description: 'Manages commercial bank accounts, cash in hand, petty cash, receipts, payments, and inter-account transfers.',
     isSystem: true,
     permissions: [
-      'dashboard.view',
+      'dashboard.view', 'knowledge.view',
       'treasury.view', 'bank_accounts.view', 'cash.view', 'petty_cash.view',
       'money_in.view', 'money_in.create',
       'money_out.view', 'money_out.create',
@@ -327,7 +331,7 @@ export const DEFAULT_ROLES: Role[] = [
     description: 'Manages invoices, purchases, direct expenses, and financial tracking for explicitly assigned projects only.',
     isSystem: true,
     permissions: [
-      'dashboard.view',
+      'dashboard.view', 'knowledge.view',
       'projects.view',
       'invoices.view', 'invoices.create', 'invoices.edit', 'invoices.submit',
       'purchases.view', 'purchases.create', 'purchases.edit', 'purchases.submit',
@@ -344,7 +348,7 @@ export const DEFAULT_ROLES: Role[] = [
     description: 'Read-only access across enabled modules. Cannot create, edit, delete, approve, post, reverse, or import.',
     isSystem: true,
     permissions: [
-      'dashboard.view',
+      'dashboard.view', 'knowledge.view',
       'projects.view',
       'customers.view',
       'vendors.view',

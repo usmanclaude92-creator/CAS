@@ -58,6 +58,15 @@ export const TOOL_SCHEMAS: Record<string, Record<string, unknown>> = {
   get_bank_accounts: { type: 'object', properties: {} },
   get_bank_transactions: { type: 'object', properties: { accountId: uuidProp }, required: ['accountId'] },
   get_cash_position: { type: 'object', properties: {} },
+
+  search_knowledge: {
+    type: 'object',
+    properties: {
+      query: { type: 'string', description: 'A natural-language question about CAS documentation, workflows, or accounting concepts.' },
+      ...pagingProps,
+    },
+    required: ['query'],
+  },
 };
 
 export function toolSchemaFor(name: string): Record<string, unknown> {
