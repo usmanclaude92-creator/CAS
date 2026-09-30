@@ -31,7 +31,6 @@ import { exportActiveView, ExportFormat, getActiveViewExportData } from '../serv
 import { formatOMR } from '../utils/formatters';
 import { ThemeToggle } from './ThemeToggle';
 import { HeaderNotifications } from './HeaderNotifications';
-import { AiAgentButton } from './AiAgentButton';
 import { UserProfile } from '../types/auth';
 
 interface HeaderProps {
@@ -927,9 +926,6 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(({
             )}
           </div>
         )}
-
-        {/* CAS AI Agent */}
-        <AiAgentButton />
 
         {/* In-App Notifications Bell (Hidden on tiny screens to avoid overflow) */}
         {onNavigateView && (

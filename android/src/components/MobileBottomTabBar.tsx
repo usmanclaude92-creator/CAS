@@ -20,9 +20,11 @@ import {
   ArrowUpRight,
   FileText,
   ArrowRightLeft,
+  Sparkles,
 } from 'lucide-react';
 import { NavView } from './Sidebar';
 import { authService } from '../services/authService';
+import { AiAgentChatModal } from './modals/AiAgentChatModal';
 
 interface MobileBottomTabBarProps {
   activeView: NavView;
@@ -64,6 +66,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
   });
 
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
+  const [isAiAgentOpen, setIsAiAgentOpen] = useState(false);
 
   // Auto-collapse on scroll down, expand on scroll up
   useEffect(() => {
@@ -192,6 +195,9 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
 
   return (
     <>
+      {/* CAS AI Agent chat popup — opened from the raised center tab above */}
+      {isAiAgentOpen && <AiAgentChatModal onClose={() => setIsAiAgentOpen(false)} />}
+
       {/* 1. COLLAPSED FLOATING PILL (Shown when user collapses navigation for maximum table space) */}
       <div
         className={`fixed bottom-3 left-1/2 -translate-x-1/2 z-40 lg:hidden print:hidden transition-all duration-300 pointer-events-auto ${
@@ -237,7 +243,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
       >
         <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] pb-[max(0.375rem,env(safe-area-inset-bottom))]">
           {/* Tab Navigation Items (48px min touch targets, Material 3 Pill Design) */}
-          <nav className="grid grid-cols-4 items-center px-2 py-1 gap-1">
+          <nav className="grid grid-cols-5 items-center px-2 py-1 gap-1">
             {/* Tab 1: Dashboard */}
             <button
               type="button"
@@ -297,6 +303,25 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
                 }`}
               >
                 Approvals
+              </span>
+            </button>
+
+            {/* Tab (center): CAS AI Agent — raised out of the bar so it reads
+                as "assistant", not another data-view shortcut. Shown to
+                every authenticated user regardless of tool permissions (see
+                docs/ai/CAS-AI-PHASE-2.md's system prompt) — even a caller
+                with no data access still gets an honest answer. */}
+            <button
+              type="button"
+              onClick={() => setIsAiAgentOpen(true)}
+              aria-label="Open CAS AI Agent"
+              className="flex flex-col items-center justify-center py-1 px-1 min-h-[48px] rounded-xl cursor-pointer group active:scale-95"
+            >
+              <div className="w-12 h-12 -mt-5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center shadow-[0_6px_16px_rgba(5,150,105,0.45)] ring-4 ring-white dark:ring-slate-900 transition-all group-active:scale-95">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] mt-0.5 tracking-tight leading-none font-medium text-emerald-600 dark:text-emerald-400">
+                AI Agent
               </span>
             </button>
 
