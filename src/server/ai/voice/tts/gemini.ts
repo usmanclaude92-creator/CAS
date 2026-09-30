@@ -3,14 +3,15 @@ import { TtsConfigError, TtsError, TtsInvalidResponseError, TtsTimeoutError } fr
 
 /**
  * Gemini's native speech generation — same generateContent endpoint as
- * chat/STT, with responseModalities:["AUDIO"] and a prebuilt voice. Unlike
- * OpenAI's TTS endpoint (which returns a ready-to-play mp3), Gemini returns
- * raw headerless 16-bit PCM, which no browser <audio> element can play
- * directly — pcmToWav() below wraps it in a minimal WAV container before it
- * ever reaches the response the client turns into a Blob URL (see
- * src/services/aiVoiceService.ts).
+ * chat/STT, with responseModalities:["AUDIO"] and a prebuilt voice.
+ * gemini-3.8-flash-tts (verified live 2026-09-30) returns a complete,
+ * self-contained audio/wav file — but the older gemini-2.5-*-preview-tts
+ * models (still selectable via TTS_MODEL) return raw headerless 16-bit PCM,
+ * which no browser <audio> element can play directly. synthesizeResult()
+ * below detects which shape came back and only wraps with pcmToWav() when
+ * the data isn't already a real container.
  */
-export const DEFAULT_GEMINI_TTS_MODEL = 'gemini-2.5-flash-preview-tts';
+export const DEFAULT_GEMINI_TTS_MODEL = 'gemini-3.8-flash-tts';
 export const DEFAULT_GEMINI_TTS_VOICE = 'Kore';
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -39,11 +40,18 @@ export function pcmToWav(pcm: Buffer, sampleRate: number, channels = 1, bitsPerS
   return Buffer.concat([header, pcm]);
 }
 
-/** Gemini's inlineData.mimeType for audio looks like "audio/L16;rate=24000"
- *  — pulls the sample rate out, defaulting if the field is ever missing. */
+/** A preview-model mimeType like "audio/L16;rate=24000" — pulls the sample
+ *  rate out, defaulting if the field is ever missing. */
 function parseSampleRate(mimeType: string | undefined): number {
   const match = mimeType?.match(/rate=(\d+)/);
   return match ? parseInt(match[1], 10) : DEFAULT_SAMPLE_RATE;
+}
+
+/** True for a mimeType that already names a self-contained, browser-playable
+ *  container (wav/mpeg/ogg/...) — anything else (raw "audio/L16" PCM, or no
+ *  mimeType at all) needs pcmToWav() before a browser can play it. */
+function isContainerFormat(mimeType: string | undefined): boolean {
+  return !!mimeType && /^audio\/(wav|wave|x-wav|mpeg|mp3|ogg|webm)\b/i.test(mimeType);
 }
 
 export class GeminiTtsProvider implements TextToSpeechProvider {
@@ -104,13 +112,20 @@ export class GeminiTtsProvider implements TextToSpeechProvider {
       throw new TtsInvalidResponseError('Text-to-speech provider returned no audio.');
     }
 
-    const pcm = Buffer.from(inlineData.data, 'base64');
-    if (pcm.length === 0) {
+    const bytes = Buffer.from(inlineData.data, 'base64');
+    if (bytes.length === 0) {
       throw new TtsInvalidResponseError('Text-to-speech provider returned no audio.');
     }
 
+    if (isContainerFormat(inlineData.mimeType)) {
+      // The current stable TTS model already returns a complete file (e.g.
+      // audio/wav) — wrapping it again would corrupt it with a second header.
+      const mimeType = inlineData.mimeType!.split(';')[0].toLowerCase();
+      return { audio: bytes, mimeType: mimeType === 'audio/mp3' ? 'audio/mpeg' : mimeType };
+    }
+
     const sampleRate = parseSampleRate(inlineData.mimeType);
-    return { audio: pcmToWav(pcm, sampleRate), mimeType: 'audio/wav' };
+    return { audio: pcmToWav(bytes, sampleRate), mimeType: 'audio/wav' };
   }
 }
 
