@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useAskArtifyLogoSrc } from '../../utils/askArtifyLogo';
 import {
   X,
   Send,
@@ -138,6 +139,7 @@ const RISK_BADGE_CLASSES: Record<string, string> = {
  * attachments are optional, never blocking.
  */
 export const AiAgentChatModal: React.FC<AiAgentChatModalProps> = ({ onClose }) => {
+  const logoSrc = useAskArtifyLogoSrc();
   const [conversationId, setConversationId] = useState<string | undefined>(() => loadStoredConversationId());
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -514,7 +516,7 @@ export const AiAgentChatModal: React.FC<AiAgentChatModalProps> = ({ onClose }) =
       <div className="shrink-0 px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-emerald-600 text-white">
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-7 h-7 rounded-full overflow-hidden shrink-0">
-            <img src="./ask-artify-logo.png" alt="" className="w-full h-full object-cover" />
+            <img src={logoSrc} alt="" className="w-full h-full object-cover" />
           </div>
           <div className="min-w-0">
             <div className="text-sm font-bold truncate">Ask Artify</div>
@@ -548,7 +550,7 @@ export const AiAgentChatModal: React.FC<AiAgentChatModalProps> = ({ onClose }) =
         {messages.length === 0 && !isSending && (
           <div className="h-full flex flex-col items-center justify-center text-center px-6 py-10">
             <div className="w-12 h-12 rounded-2xl overflow-hidden mb-3">
-              <img src="./ask-artify-logo.png" alt="" className="w-full h-full object-cover" />
+              <img src={logoSrc} alt="" className="w-full h-full object-cover" />
             </div>
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Ask about your CAS data</p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-[240px]">

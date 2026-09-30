@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { aiAdminService, type AiActionAuditRow, type AiPendingActionRow, type AiRuntimeSettings } from '../../services/aiAdminService';
 import { aiAutomationsService, type AiAutomation } from '../../services/aiAutomationsService';
+import { useAskArtifyLogoSrc } from '../../utils/askArtifyLogo';
 
 type Tab = 'kill_switch' | 'actions' | 'pending' | 'automations';
 
@@ -42,6 +43,7 @@ const RISK_BADGE: Record<string, string> = {
  * here is a client-side-only toggle.
  */
 export const AiAgentAdminView: React.FC = () => {
+  const logoSrc = useAskArtifyLogoSrc();
   const [activeTab, setActiveTab] = useState<Tab>('kill_switch');
 
   return (
@@ -49,7 +51,7 @@ export const AiAgentAdminView: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-            <img src="/ask-artify-logo.png" alt="" className="w-6 h-6 rounded-full object-cover" />
+            <img src={logoSrc} alt="" className="w-6 h-6 rounded-full object-cover" />
             <span>Ask Artify Administration</span>
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
