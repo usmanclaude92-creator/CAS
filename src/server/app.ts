@@ -21,6 +21,18 @@ export type { CallerContext };
 
 export const app = express();
 
+// Vercel's edge network sits in front of every request and adds its own
+// X-Forwarded-For header — Express's default ('trust proxy' off) treats
+// that as a potential spoofing attempt and express-rate-limit throws
+// (ERR_ERL_UNEXPECTED_X_FORWARDED_FOR) rather than silently trusting a
+// header it can't safely attribute. '1' tells Express to trust exactly one
+// hop of reverse proxy, matching Vercel's real topology (client -> Vercel
+// edge -> this function) — not `true`, which would trust an arbitrary
+// chain and let a client forge its own X-Forwarded-For to dodge rate
+// limits. Every rate-limited route in this file was unreachable in
+// production until this was set.
+app.set('trust proxy', 1);
+
 // ==========================================
 // SECURITY MIDDLEWARE
 // ==========================================
