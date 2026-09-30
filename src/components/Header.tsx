@@ -31,7 +31,6 @@ import { formatOMR } from '../utils/formatters';
 import { ThemeToggle } from './ThemeToggle';
 import { TableDensityToggle } from './TableDensityToggle';
 import { HeaderNotifications } from './HeaderNotifications';
-import { AiAgentButton } from './AiAgentButton';
 import { UserProfile } from '../types/auth';
 
 interface HeaderProps {
@@ -861,9 +860,6 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
         )}
-
-        {/* Ask Artify (read-only assistant, Phase 2) */}
-        <AiAgentButton />
 
         {/* In-App Notifications Bell */}
         {onNavigateView && (

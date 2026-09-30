@@ -28,6 +28,7 @@ import {} from './components/views/WorkflowSettingsView';
 import { MasterImportAuditView } from './components/views/MasterImportAuditView';
 import { AuditLogView } from './components/views/AuditLogView';
 import { AiAgentAdminView } from './components/views/AiAgentAdminView';
+import { AiAgentButton } from './components/AiAgentButton';
 
 // Modals
 import { MoneyInModal } from './components/modals/MoneyInModal';
@@ -732,6 +733,9 @@ function AppContent() {
         onExtendSession={handleExtendSession}
         onLogoutNow={handleLogout}
       />
+
+      {/* Ask Artify — app-wide floating action button, bottom-right corner */}
+      <AiAgentButton />
     </div>
   );
 }
