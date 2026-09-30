@@ -14,6 +14,7 @@ import {
   Sliders,
   LogOut,
   Sparkles,
+  BookOpen,
 } from 'lucide-react';
 import { authService } from '../services/authService';
 
@@ -41,7 +42,8 @@ export type NavView =
   | 'workflow_settings'
   | 'master_import_audit'
   | 'audit'
-  | 'ai_agent_admin';
+  | 'ai_agent_admin'
+  | 'knowledge_admin';
 
 interface SidebarProps {
   activeView: NavView;
@@ -87,6 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'system_config', label: 'System Configuration', icon: Sliders, permission: 'settings.view', section: 'system' },
     { id: 'audit', label: 'Immutable Audit Log', icon: ShieldAlert, permission: 'audit.view', section: 'system' },
     { id: 'ai_agent_admin', label: 'Ask Artify Administration', icon: Sparkles, permission: 'ai_actions.manage', section: 'system' },
+    { id: 'knowledge_admin', label: 'Knowledge Base', icon: BookOpen, permission: 'knowledge.manage', section: 'system' },
   ];
 
   // Filter based on user permissions

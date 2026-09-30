@@ -9,5 +9,5 @@ import { useTheme } from '../context/ThemeContext';
  */
 export function useAskArtifyLogoSrc(): string {
   const { effectiveTheme } = useTheme();
-  return effectiveTheme === 'dark' ? '/ask-artify-logo-dark.png' : '/ask-artify-logo-light.png';
+  return effectiveTheme === 'dark' ? '/ask-artify-logo-light.png' : '/ask-artify-logo-dark.png';
 }

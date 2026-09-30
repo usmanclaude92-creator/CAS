@@ -31,6 +31,7 @@ import {} from './components/views/WorkflowSettingsView';
 import { MasterImportAuditView } from './components/views/MasterImportAuditView';
 import { AuditLogView } from './components/views/AuditLogView';
 import { AiAgentAdminView } from './components/views/AiAgentAdminView';
+import { KnowledgeBaseAdminView } from './components/views/KnowledgeBaseAdminView';
 
 // Modals
 import { MoneyInModal } from './components/modals/MoneyInModal';
@@ -298,6 +299,8 @@ function AppContent() {
         return authService.hasPermission('audit.view');
       case 'ai_agent_admin':
         return authService.hasPermission('ai_actions.manage');
+      case 'knowledge_admin':
+        return authService.hasPermission('knowledge.manage');
       default:
         return true;
     }
@@ -563,6 +566,8 @@ function AppContent() {
               {activeView === 'audit' && <AuditLogView />}
 
               {activeView === 'ai_agent_admin' && <AiAgentAdminView />}
+
+              {activeView === 'knowledge_admin' && <KnowledgeBaseAdminView />}
             </>
           )}
         </main>
