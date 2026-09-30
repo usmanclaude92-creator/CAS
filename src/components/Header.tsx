@@ -724,15 +724,29 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       )}
 
-      {/* Row 2 controls: Density Toggle, Theme Toggle, Export Data, Quick Transaction. Below
-          sm this is its own full-width row (order-2, after the title/search/bell/avatar row),
-          spread edge-to-edge; sm+ reverts to sitting inline with everything else, unchanged. */}
-      <div className="flex items-center w-full sm:w-auto justify-between sm:justify-start order-2 sm:order-none gap-1.5 sm:gap-3 shrink-0">
+      {/* Row 2 controls: Density Toggle, Search, Export Data, Quick Transaction. Below sm
+          this is its own full-width row (order-2, after the title/theme/bell/avatar row),
+          spread edge-to-edge and flowing right-to-left; sm+ reverts to sitting inline with
+          everything else in its original left-to-right order, unchanged. */}
+      <div className="flex flex-row-reverse sm:flex-row items-center w-full sm:w-auto justify-between sm:justify-start order-2 sm:order-none gap-1.5 sm:gap-3 shrink-0">
         {/* Table Row Spacing Density Toggle (Comfortable vs Compact) */}
         <TableDensityToggle variant="header" />
 
-        {/* Global Dark / Light Theme Toggle */}
-        <ThemeToggle variant="simple" />
+        {/* Mobile-only search trigger — opens the full-screen popup below.
+            The desktop inline bar (hidden below sm) covers sm+ instead. Swapped
+            into this row (from the title row) in place of the theme toggle. */}
+        <button
+          type="button"
+          onClick={() => {
+            setIsMobileSearchOpen(true);
+            setIsSearchOpen(true);
+          }}
+          className="sm:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer shrink-0"
+          aria-label="Open search"
+          title="Search projects, vendors, customers"
+        >
+          <Search className="w-4 h-4 text-slate-700 dark:text-slate-200" />
+        </button>
 
         {/* Export Data Button with CSV / Excel / PDF Options for Active View Table */}
         <div className="relative" ref={exportMenuRef}>
@@ -935,26 +949,14 @@ export const Header: React.FC<HeaderProps> = ({
         )}
       </div>
 
-      {/* Row 1 right side: search, notifications, account — sits opposite the
+      {/* Row 1 right side: theme, notifications, account — sits opposite the
           title on the same top row below sm (order-1, before the row-2
-          controls above); sm+ reverts to sitting inline after them, unchanged. */}
-      <div className="flex items-center order-1 sm:order-none gap-1.5 sm:gap-3 shrink-0">
-        {/* Mobile-only search trigger — opens the full-screen popup above.
-            The desktop inline bar (hidden below sm) covers sm+ instead.
-            Placed here (before the bell/avatar) so the mobile/tablet header
-            reads search, then notifications, then account, left to right. */}
-        <button
-          type="button"
-          onClick={() => {
-            setIsMobileSearchOpen(true);
-            setIsSearchOpen(true);
-          }}
-          className="sm:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer shrink-0"
-          aria-label="Open search"
-          title="Search projects, vendors, customers"
-        >
-          <Search className="w-4 h-4 text-slate-700 dark:text-slate-200" />
-        </button>
+          controls above), flowing right-to-left; sm+ reverts to sitting
+          inline after them in original left-to-right order, unchanged. */}
+      <div className="flex flex-row-reverse sm:flex-row items-center order-1 sm:order-none gap-1.5 sm:gap-3 shrink-0">
+        {/* Global Dark / Light Theme Toggle — swapped into this row (from the
+            row-2 toolbar) in place of the search trigger. */}
+        <ThemeToggle variant="simple" />
 
         {/* In-App Notifications Bell */}
         {onNavigateView && (
