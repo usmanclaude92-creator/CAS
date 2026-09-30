@@ -229,7 +229,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
               </span>
             )}
 
-            <div className="w-px h-3.5 bg-slate-700 mx-0.5" />
+            <div className="w-px h-3.5 bg-slate-700 mx-3" />
 
             <span className="flex items-center gap-1 text-[11px] text-indigo-300 font-medium">
               <span>Show Nav</span>
@@ -246,7 +246,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
             onClick={() => setIsAiAgentOpen(true)}
             aria-label="Open Ask Artify"
             title="Ask Artify"
-            className="absolute left-1/2 -top-5 -translate-x-1/2 z-10 w-10 h-10 rounded-full overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.35)] ring-4 ring-slate-900 dark:ring-slate-800 cursor-pointer active:scale-95 transition-all"
+            className="absolute left-1/2 -top-[24.5px] -translate-x-1/2 z-10 w-[49px] h-[49px] rounded-full overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.35)] ring-4 ring-slate-900 dark:ring-slate-800 cursor-pointer active:scale-95 transition-all"
           >
             <img src="./ask-artify-logo-dark.png" alt="" className="w-full h-full object-cover" />
           </button>
@@ -264,20 +264,23 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
               straddle the bar's top edge exactly half above / half on it,
               independent of the grid row's own padding. The grid below
               keeps an empty placeholder in this same column so the other
-              four tabs stay evenly spaced. */}
-          <button
-            type="button"
-            onClick={() => setIsAiAgentOpen(true)}
-            aria-label="Open Ask Artify"
-            className="absolute left-1/2 -top-7 -translate-x-1/2 z-10 flex flex-col items-center cursor-pointer group active:scale-95"
-          >
-            <div className="w-14 h-14 rounded-full overflow-hidden shadow-[0_6px_16px_rgba(5,150,105,0.45)] ring-4 ring-white dark:ring-slate-900 transition-all group-active:scale-95">
-              <img src={logoSrc} alt="" className="w-full h-full object-cover" />
-            </div>
-            <span className="text-[10px] mt-0.5 tracking-tight leading-none font-medium text-emerald-600 dark:text-emerald-400">
-              Ask Artify
-            </span>
-          </button>
+              four tabs stay evenly spaced. Only rendered while the bar is
+              expanded: its negative top offset breaks out of the parent's
+              translate-y-full when collapsed, so it must be unmounted (not
+              just relying on the transform) to avoid peeking through above
+              the collapsed pill. */}
+          {!isCollapsed && (
+            <button
+              type="button"
+              onClick={() => setIsAiAgentOpen(true)}
+              aria-label="Open Ask Artify"
+              className="absolute left-1/2 -top-[33.5px] -translate-x-1/2 z-10 flex flex-col items-center cursor-pointer group active:scale-95"
+            >
+              <div className="w-[67px] h-[67px] rounded-full overflow-hidden shadow-[0_6px_16px_rgba(5,150,105,0.45)] ring-4 ring-white dark:ring-slate-900 transition-all group-active:scale-95">
+                <img src={logoSrc} alt="" className="w-full h-full object-cover" />
+              </div>
+            </button>
+          )}
 
           {/* Tab Navigation Items (48px min touch targets, Material 3 Pill Design) */}
           <nav className="grid grid-cols-5 items-center px-2 py-1 gap-1">
