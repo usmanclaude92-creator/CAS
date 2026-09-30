@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { CallerContext } from '../authContext';
+import type { CallerContext } from '../authContext.js';
 
 /**
  * Everything a tool handler needs to run — never the service_role client.

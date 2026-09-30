@@ -1,9 +1,9 @@
-import type { AiProvider } from './types';
-import { getAnthropicProvider, DEFAULT_ANTHROPIC_MODEL } from './anthropic';
-import { ProviderConfigError } from './errors';
+import type { AiProvider } from './types.js';
+import { getAnthropicProvider, DEFAULT_ANTHROPIC_MODEL } from './anthropic.js';
+import { ProviderConfigError } from './errors.js';
 
-export type { AiProvider, ProviderRequest, ProviderResponse, ProviderMessage, ContentBlock, ToolSchema } from './types';
-export { ProviderError, ProviderConfigError, ProviderTimeoutError, ProviderInvalidResponseError } from './errors';
+export type { AiProvider, ProviderRequest, ProviderResponse, ProviderMessage, ContentBlock, ToolSchema } from './types.js';
+export { ProviderError, ProviderConfigError, ProviderTimeoutError, ProviderInvalidResponseError } from './errors.js';
 
 /**
  * Picks the configured provider by AI_PROVIDER (default "anthropic"). Called

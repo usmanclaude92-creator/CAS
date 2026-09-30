@@ -2,7 +2,7 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
-import { aiRouter } from './ai/router';
+import { aiRouter } from './ai/router.js';
 import {
   SUPABASE_URL,
   supabaseAdmin,
@@ -10,7 +10,7 @@ import {
   getCallerContext,
   callerHasPermission,
   type CallerContext,
-} from './authContext';
+} from './authContext.js';
 
 // Re-exported for API stability — the actual definitions live in
 // ./authContext, which (unlike this file) imports nothing from ./ai/**, so

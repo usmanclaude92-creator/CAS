@@ -1,7 +1,7 @@
-import { addMoney } from '../../../utils/formatters';
-import type { ToolDefinition, ArgValidationResult } from '../types';
-import { asRecord, optionalDate, optionalUuid } from '../validation';
-import { parsePagination } from '../pagination';
+import { addMoney } from '../../../utils/formatters.js';
+import type { ToolDefinition, ArgValidationResult } from '../types.js';
+import { asRecord, optionalDate, optionalUuid } from '../validation.js';
+import { parsePagination } from '../pagination.js';
 
 const AGGREGATE_ROW_CAP = 2000;
 

@@ -1,4 +1,4 @@
-import type { ToolDescriptor } from './types';
+import type { ToolDescriptor } from './types.js';
 
 /**
  * Centralized system instructions for the AI Agent. This is a defense-in-
