@@ -932,17 +932,38 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
+        {/* Mobile-only search trigger — opens the full-screen popup above.
+            The desktop inline bar (hidden below sm) covers sm+ instead.
+            Placed here (before the bell/avatar) so the mobile/tablet header
+            reads search, then notifications, then account, left to right. */}
+        <button
+          type="button"
+          onClick={() => {
+            setIsMobileSearchOpen(true);
+            setIsSearchOpen(true);
+          }}
+          className="sm:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer shrink-0"
+          aria-label="Open search"
+          title="Search projects, vendors, customers"
+        >
+          <Search className="w-4 h-4 text-slate-700 dark:text-slate-200" />
+        </button>
+
         {/* In-App Notifications Bell */}
         {onNavigateView && (
           <HeaderNotifications onNavigateView={onNavigateView} />
         )}
 
-        {/* User Account Switcher Dropdown (Allows reviewers to effortlessly test roles) */}
+        {/* User Account Switcher Dropdown (Allows reviewers to effortlessly test roles).
+            Below sm, this is the header's rightmost item — a bare avatar with
+            no bordered/backgrounded container and no chevron, matching the
+            compact mobile/tablet header; sm+ keeps the original card-style
+            trigger with name, role and chevron unchanged. */}
         <div className="relative" ref={userMenuRef}>
           <button
             type="button"
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className="flex items-center gap-2 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+            className="flex items-center gap-2 p-1 sm:p-1.5 rounded-xl sm:border sm:border-slate-200 dark:sm:border-slate-700 sm:bg-slate-50 dark:sm:bg-slate-800 sm:hover:bg-slate-100 dark:sm:hover:bg-slate-700 transition-colors cursor-pointer"
           >
             <div className="text-right hidden md:block">
               <div className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[140px]">
@@ -955,7 +976,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold">
               <User className="w-4 h-4" />
             </div>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            <ChevronDown className="hidden sm:block w-3.5 h-3.5 text-slate-400" />
           </button>
 
           {isUserMenuOpen && (
@@ -1070,21 +1091,6 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           )}
         </div>
-
-        {/* Mobile-only search trigger — opens the full-screen popup above.
-            The desktop inline bar (hidden below sm) covers sm+ instead. */}
-        <button
-          type="button"
-          onClick={() => {
-            setIsMobileSearchOpen(true);
-            setIsSearchOpen(true);
-          }}
-          className="sm:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer shrink-0"
-          aria-label="Open search"
-          title="Search projects, vendors, customers"
-        >
-          <Search className="w-4 h-4 text-slate-700 dark:text-slate-200" />
-        </button>
       </div>
     </header>
   );
