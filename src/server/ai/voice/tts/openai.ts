@@ -1,5 +1,5 @@
-import type { SynthesizeOptions, SynthesizeResult, TextToSpeechProvider } from './types';
-import { TtsConfigError, TtsError, TtsInvalidResponseError, TtsTimeoutError } from './errors';
+import type { SynthesizeOptions, SynthesizeResult, TextToSpeechProvider } from './types.js';
+import { TtsConfigError, TtsError, TtsInvalidResponseError, TtsTimeoutError } from './errors.js';
 
 /** OpenAI TTS — same rationale as the Whisper STT provider: no first-party
  *  Anthropic TTS API exists; one REST endpoint, plain `fetch`, no SDK. */

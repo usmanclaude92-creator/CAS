@@ -1,6 +1,6 @@
-import type { ToolDefinition, ArgValidationResult } from '../types';
-import { asRecord } from '../validation';
-import { searchKnowledge, DEFAULT_RESULT_LIMIT, MAX_RESULT_LIMIT } from '../rag/retrieval';
+import type { ToolDefinition, ArgValidationResult } from '../types.js';
+import { asRecord } from '../validation.js';
+import { searchKnowledge, DEFAULT_RESULT_LIMIT, MAX_RESULT_LIMIT } from '../rag/retrieval.js';
 
 const MAX_QUERY_LENGTH = 500;
 

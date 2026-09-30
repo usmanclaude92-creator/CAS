@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getEmbeddingProvider } from './embeddings';
+import { getEmbeddingProvider } from './embeddings/index.js';
 
 /**
  * The ONLY way the AI Agent's knowledge tool reaches vector/keyword search.

@@ -1,9 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
-import type { AttachmentKind } from './validation';
+import type { AttachmentKind } from './validation.js';
 
-export { validateAttachmentUpload, MAX_IMAGE_BYTES, MAX_DOCUMENT_BYTES, MAX_ATTACHMENTS_PER_MESSAGE } from './validation';
-export type { AttachmentKind, AttachmentValidationResult } from './validation';
+export { validateAttachmentUpload, MAX_IMAGE_BYTES, MAX_DOCUMENT_BYTES, MAX_ATTACHMENTS_PER_MESSAGE } from './validation.js';
+export type { AttachmentKind, AttachmentValidationResult } from './validation.js';
 
 /**
  * Temporary AI attachment storage — every call here runs through the

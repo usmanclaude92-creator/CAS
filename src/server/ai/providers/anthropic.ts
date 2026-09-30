@@ -6,8 +6,8 @@ import type {
   ProviderResponse,
   ProviderStopReason,
   SendMessageOptions,
-} from './types';
-import { ProviderConfigError, ProviderInvalidResponseError, ProviderTimeoutError, ProviderError } from './errors';
+} from './types.js';
+import { ProviderConfigError, ProviderInvalidResponseError, ProviderTimeoutError, ProviderError } from './errors.js';
 
 export const DEFAULT_ANTHROPIC_MODEL = 'claude-sonnet-5-5';
 

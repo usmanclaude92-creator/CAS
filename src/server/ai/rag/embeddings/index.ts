@@ -1,15 +1,15 @@
-import type { EmbeddingProvider } from './types';
-import { getVoyageEmbeddingProvider, DEFAULT_VOYAGE_MODEL, VOYAGE_DIMENSIONS } from './voyage';
-import { EmbeddingConfigError } from './errors';
+import type { EmbeddingProvider } from './types.js';
+import { getVoyageEmbeddingProvider, DEFAULT_VOYAGE_MODEL, VOYAGE_DIMENSIONS } from './voyage.js';
+import { EmbeddingConfigError } from './errors.js';
 
-export type { EmbeddingProvider, EmbedOptions, EmbeddingInputType } from './types';
+export type { EmbeddingProvider, EmbedOptions, EmbeddingInputType } from './types.js';
 export {
   EmbeddingError,
   EmbeddingConfigError,
   EmbeddingTimeoutError,
   EmbeddingInvalidResponseError,
   EmbeddingDimensionMismatchError,
-} from './errors';
+} from './errors.js';
 
 /** Picks the configured embedding provider by EMBEDDING_PROVIDER (default
  *  "voyage"). Called per-request, never at module-evaluation time. */

@@ -1,5 +1,5 @@
-import type { ActionToolDefinition } from '../types';
-import { asRecord, requireString } from '../../validation';
+import type { ActionToolDefinition } from '../types.js';
+import { asRecord, requireString } from '../../validation.js';
 
 interface CreateReminderArgs {
   title: string;

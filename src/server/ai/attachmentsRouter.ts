@@ -1,8 +1,8 @@
 import express from 'express';
 import multer from 'multer';
-import { getCallerContext, log } from '../authContext';
-import { createCallerScopedClient } from './db';
-import { validateAttachmentUpload, MAX_DOCUMENT_BYTES, storeAttachment } from './attachments';
+import { getCallerContext, log } from '../authContext.js';
+import { createCallerScopedClient } from './db.js';
+import { validateAttachmentUpload, MAX_DOCUMENT_BYTES, storeAttachment } from './attachments/index.js';
 
 /**
  * POST /api/ai/attachments — uploads a temporary multimodal attachment

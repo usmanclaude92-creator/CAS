@@ -2,13 +2,13 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
-import { aiRouter } from './ai/router';
-import { knowledgeAdminRouter } from './ai/knowledgeAdminRouter';
-import { voiceRouter } from './ai/voiceRouter';
-import { attachmentsRouter } from './ai/attachmentsRouter';
-import { actionsRouter } from './ai/actionsRouter';
-import { automationsRouter } from './ai/automationsRouter';
-import { aiAdminRouter } from './ai/aiAdminRouter';
+import { aiRouter } from './ai/router.js';
+import { knowledgeAdminRouter } from './ai/knowledgeAdminRouter.js';
+import { voiceRouter } from './ai/voiceRouter.js';
+import { attachmentsRouter } from './ai/attachmentsRouter.js';
+import { actionsRouter } from './ai/actionsRouter.js';
+import { automationsRouter } from './ai/automationsRouter.js';
+import { aiAdminRouter } from './ai/aiAdminRouter.js';
 import {
   SUPABASE_URL,
   supabaseAdmin,
@@ -16,7 +16,7 @@ import {
   getCallerContext,
   callerHasPermission,
   type CallerContext,
-} from './authContext';
+} from './authContext.js';
 
 // Re-exported for API stability — the actual definitions live in
 // ./authContext, which (unlike this file) imports nothing from ./ai/**, so

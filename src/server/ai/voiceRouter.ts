@@ -1,10 +1,10 @@
 import express from 'express';
 import multer from 'multer';
-import { getCallerContext, log } from '../authContext';
-import { getSttProvider, SttConfigError, SttTimeoutError, SttError } from './voice/stt';
-import { getTtsProvider, TtsConfigError, TtsTimeoutError, TtsError } from './voice/tts';
-import { validateAudioUpload, MAX_AUDIO_BYTES } from './voice/validation';
-import { asRecord } from './validation';
+import { getCallerContext, log } from '../authContext.js';
+import { getSttProvider, SttConfigError, SttTimeoutError, SttError } from './voice/stt/index.js';
+import { getTtsProvider, TtsConfigError, TtsTimeoutError, TtsError } from './voice/tts/index.js';
+import { validateAudioUpload, MAX_AUDIO_BYTES } from './voice/validation.js';
+import { asRecord } from './validation.js';
 
 /**
  * Voice endpoints. Deliberately NOT a new authorization path: /transcribe

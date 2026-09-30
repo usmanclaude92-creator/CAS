@@ -1,8 +1,8 @@
-import { callerHasPermission, type CallerContext } from '../authContext';
-import type { ActionToolDefinition, ActionToolDescriptor } from './actions/types';
-import { createReminderTool } from './actions/tools/reminders';
-import { updateVendorContactInfoTool } from './actions/tools/vendors';
-import { createDirectExpenseTool } from './actions/tools/expenses';
+import { callerHasPermission, type CallerContext } from '../authContext.js';
+import type { ActionToolDefinition, ActionToolDescriptor } from './actions/types.js';
+import { createReminderTool } from './actions/tools/reminders.js';
+import { updateVendorContactInfoTool } from './actions/tools/vendors.js';
+import { createDirectExpenseTool } from './actions/tools/expenses.js';
 
 /**
  * The ACTION tool registry — deliberately a SEPARATE object from

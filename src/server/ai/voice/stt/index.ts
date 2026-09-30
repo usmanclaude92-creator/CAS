@@ -1,9 +1,9 @@
-import type { SpeechToTextProvider } from './types';
-import { getOpenAiSttProvider, DEFAULT_WHISPER_MODEL } from './openai';
-import { SttConfigError } from './errors';
+import type { SpeechToTextProvider } from './types.js';
+import { getOpenAiSttProvider, DEFAULT_WHISPER_MODEL } from './openai.js';
+import { SttConfigError } from './errors.js';
 
-export type { SpeechToTextProvider, TranscribeOptions, TranscribeResult } from './types';
-export { SttError, SttConfigError, SttTimeoutError, SttInvalidResponseError, SttUnsupportedFormatError } from './errors';
+export type { SpeechToTextProvider, TranscribeOptions, TranscribeResult } from './types.js';
+export { SttError, SttConfigError, SttTimeoutError, SttInvalidResponseError, SttUnsupportedFormatError } from './errors.js';
 
 /** Picks the configured STT provider by STT_PROVIDER (default "openai").
  *  Called per-request, never at module-evaluation time. */

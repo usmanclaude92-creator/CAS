@@ -1,5 +1,5 @@
-import type { ActionToolDefinition, ActionPreviewField } from '../types';
-import { asRecord, requireUuid, optionalString } from '../../validation';
+import type { ActionToolDefinition, ActionPreviewField } from '../types.js';
+import { asRecord, requireUuid, optionalString } from '../../validation.js';
 
 interface UpdateVendorContactArgs {
   vendorId: string;

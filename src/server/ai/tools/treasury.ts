@@ -1,7 +1,7 @@
-import { addMoney } from '../../../utils/formatters';
-import { callerHasPermission } from '../../authContext';
-import type { ToolDefinition, ArgValidationResult } from '../types';
-import { asRecord, requireUuid } from '../validation';
+import { addMoney } from '../../../utils/formatters.js';
+import { callerHasPermission } from '../../authContext.js';
+import type { ToolDefinition, ArgValidationResult } from '../types.js';
+import { asRecord, requireUuid } from '../validation.js';
 
 const TRANSACTION_ROW_CAP = 500;
 

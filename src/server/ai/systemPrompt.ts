@@ -1,5 +1,5 @@
-import type { ToolDescriptor } from './types';
-import type { ActionToolDescriptor } from './actions/types';
+import type { ToolDescriptor } from './types.js';
+import type { ActionToolDescriptor } from './actions/types.js';
 
 /**
  * Centralized system instructions for the AI Agent. This is a defense-in-

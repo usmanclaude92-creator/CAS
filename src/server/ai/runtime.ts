@@ -1,11 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { CallerContext } from '../authContext';
-import { callerHasPermission, log } from '../authContext';
-import { getTool, listToolsForCaller } from './registry';
-import { recordAiToolCall } from './audit';
-import { buildSystemPrompt } from './systemPrompt';
-import { toProviderToolSchema } from './toolSchemas';
-import { toolActivityLabel } from './toolActivityLabels';
+import type { CallerContext } from '../authContext.js';
+import { callerHasPermission, log } from '../authContext.js';
+import { getTool, listToolsForCaller } from './registry.js';
+import { recordAiToolCall } from './audit.js';
+import { buildSystemPrompt } from './systemPrompt.js';
+import { toProviderToolSchema } from './toolSchemas.js';
+import { toolActivityLabel } from './toolActivityLabels.js';
 import {
   createConversation,
   getConversation,
@@ -13,15 +13,15 @@ import {
   appendMessage,
   touchConversation,
   MAX_CONTEXT_MESSAGES,
-} from './conversations';
-import { getProvider, getConfiguredModelName, ProviderError, ProviderConfigError, ProviderTimeoutError } from './providers';
-import type { ProviderMessage, ContentBlock, ToolUseBlock, ImageBlock } from './providers/types';
-import type { ToolResult } from './types';
-import { getOwnedAttachment, fetchAttachmentBytes, markAttachmentUsed, MAX_ATTACHMENTS_PER_MESSAGE } from './attachments';
-import { getActionTool, listActionToolsForCaller } from './actionRegistry';
-import { toProviderActionToolSchema } from './actionToolSchemas';
-import { executeActionToolCall } from './actions/dispatch';
-import type { PendingActionSummary } from './actions/types';
+} from './conversations.js';
+import { getProvider, getConfiguredModelName, ProviderError, ProviderConfigError, ProviderTimeoutError } from './providers/index.js';
+import type { ProviderMessage, ContentBlock, ToolUseBlock, ImageBlock } from './providers/types.js';
+import type { ToolResult } from './types.js';
+import { getOwnedAttachment, fetchAttachmentBytes, markAttachmentUsed, MAX_ATTACHMENTS_PER_MESSAGE } from './attachments/index.js';
+import { getActionTool, listActionToolsForCaller } from './actionRegistry.js';
+import { toProviderActionToolSchema } from './actionToolSchemas.js';
+import { executeActionToolCall } from './actions/dispatch.js';
+import type { PendingActionSummary } from './actions/types.js';
 
 /**
  * Loop/limit constants — see docs/ai/CAS-AI-PHASE-2.md §Limits. Every one of

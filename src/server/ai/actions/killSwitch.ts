@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { supabaseAdmin, log } from '../../authContext';
+import { supabaseAdmin, log } from '../../authContext.js';
 
 /**
  * The server-side-enforced emergency AI-action kill switch (Phase 5

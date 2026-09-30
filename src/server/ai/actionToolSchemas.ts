@@ -1,5 +1,5 @@
-import type { ToolSchema } from './providers/types';
-import { ACTION_TOOL_REGISTRY } from './actionRegistry';
+import type { ToolSchema } from './providers/types.js';
+import { ACTION_TOOL_REGISTRY } from './actionRegistry.js';
 
 /**
  * JSON-Schema descriptions of each ACTION tool's arguments, for advertising

@@ -1,8 +1,8 @@
 import express from 'express';
-import { getCallerContext, log } from '../authContext';
-import { createCallerScopedClient } from './db';
-import { getOwnedPendingAction, claimPendingActionForExecution, markRejected, recordExecutionOutcome } from './actions/confirmations';
-import { executeConfirmedAction } from './actions/dispatch';
+import { getCallerContext, log } from '../authContext.js';
+import { createCallerScopedClient } from './db.js';
+import { getOwnedPendingAction, claimPendingActionForExecution, markRejected, recordExecutionOutcome } from './actions/confirmations.js';
+import { executeConfirmedAction } from './actions/dispatch.js';
 
 /**
  * The confirmation protocol's HTTP surface (Phase 5 — see

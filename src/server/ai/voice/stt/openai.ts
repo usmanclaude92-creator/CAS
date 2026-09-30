@@ -1,5 +1,5 @@
-import type { SpeechToTextProvider, TranscribeOptions, TranscribeResult } from './types';
-import { SttConfigError, SttError, SttInvalidResponseError, SttTimeoutError } from './errors';
+import type { SpeechToTextProvider, TranscribeOptions, TranscribeResult } from './types.js';
+import { SttConfigError, SttError, SttInvalidResponseError, SttTimeoutError } from './errors.js';
 
 /**
  * OpenAI Whisper — no first-party Anthropic speech-to-text API exists, so

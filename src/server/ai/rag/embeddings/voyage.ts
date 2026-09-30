@@ -1,11 +1,11 @@
-import type { EmbedOptions, EmbeddingProvider } from './types';
+import type { EmbedOptions, EmbeddingProvider } from './types.js';
 import {
   EmbeddingConfigError,
   EmbeddingDimensionMismatchError,
   EmbeddingError,
   EmbeddingInvalidResponseError,
   EmbeddingTimeoutError,
-} from './errors';
+} from './errors.js';
 
 /**
  * Voyage AI — Anthropic's recommended embedding partner (no first-party

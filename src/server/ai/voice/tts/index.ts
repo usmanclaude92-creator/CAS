@@ -1,9 +1,9 @@
-import type { TextToSpeechProvider } from './types';
-import { getOpenAiTtsProvider, DEFAULT_TTS_MODEL } from './openai';
-import { TtsConfigError } from './errors';
+import type { TextToSpeechProvider } from './types.js';
+import { getOpenAiTtsProvider, DEFAULT_TTS_MODEL } from './openai.js';
+import { TtsConfigError } from './errors.js';
 
-export type { TextToSpeechProvider, SynthesizeOptions, SynthesizeResult } from './types';
-export { TtsError, TtsConfigError, TtsTimeoutError, TtsInvalidResponseError } from './errors';
+export type { TextToSpeechProvider, SynthesizeOptions, SynthesizeResult } from './types.js';
+export { TtsError, TtsConfigError, TtsTimeoutError, TtsInvalidResponseError } from './errors.js';
 
 export function getTtsProvider(): TextToSpeechProvider {
   const name = (process.env.TTS_PROVIDER || 'openai').trim().toLowerCase();

@@ -1,6 +1,6 @@
-import type { ActionToolDefinition, ActionPreviewField } from '../types';
-import { asRecord, requireUuid, requireString, requireDate, requireEnum, requireAmount, optionalString } from '../../validation';
-import { generateAiActionRef } from '../refs';
+import type { ActionToolDefinition, ActionPreviewField } from '../types.js';
+import { asRecord, requireUuid, requireString, requireDate, requireEnum, requireAmount, optionalString } from '../../validation.js';
+import { generateAiActionRef } from '../refs.js';
 
 const PAID_FROM_VALUES = ['bank', 'cash', 'petty_cash'] as const;
 type PaidFrom = (typeof PAID_FROM_VALUES)[number];

@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { ActionCategory, ActionPreviewResult, ActionRiskLevel } from './types';
+import type { ActionCategory, ActionPreviewResult, ActionRiskLevel } from './types.js';
 
 /**
  * The confirmation protocol's server-side state machine — see

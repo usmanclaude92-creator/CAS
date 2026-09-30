@@ -1,11 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { callerHasPermission, log, type CallerContext } from '../../authContext';
-import { getActionTool } from '../actionRegistry';
-import { actionToolActivityLabel } from '../actionToolActivityLabels';
-import type { ActionCategory, ActionRiskLevel, ActionToolExecutionContext, PendingActionSummary } from './types';
-import { createPendingAction, fingerprintArgs, type PendingActionRow } from './confirmations';
-import { recordAiAction, newCorrelationId, type AiActionAuditStatus } from './audit';
-import { isActionToolAvailable } from './killSwitch';
+import { callerHasPermission, log, type CallerContext } from '../../authContext.js';
+import { getActionTool } from '../actionRegistry.js';
+import { actionToolActivityLabel } from '../actionToolActivityLabels.js';
+import type { ActionCategory, ActionRiskLevel, ActionToolExecutionContext, PendingActionSummary } from './types.js';
+import { createPendingAction, fingerprintArgs, type PendingActionRow } from './confirmations.js';
+import { recordAiAction, newCorrelationId, type AiActionAuditStatus } from './audit.js';
+import { isActionToolAvailable } from './killSwitch.js';
 
 /**
  * The action-tool execution engine — everything a proposed OR confirmed

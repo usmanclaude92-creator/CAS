@@ -1,8 +1,8 @@
 import express from 'express';
-import { getCallerContext, callerHasPermission, log } from '../authContext';
-import { createCallerScopedClient } from './db';
-import { asRecord, optionalString, optionalEnum } from './validation';
-import { indexKnowledgeSource } from './rag/ingestion';
+import { getCallerContext, callerHasPermission, log } from '../authContext.js';
+import { createCallerScopedClient } from './db.js';
+import { asRecord, optionalString, optionalEnum } from './validation.js';
+import { indexKnowledgeSource } from './rag/ingestion.js';
 
 /**
  * Knowledge Base administration — create/edit/publish/archive/re-index.

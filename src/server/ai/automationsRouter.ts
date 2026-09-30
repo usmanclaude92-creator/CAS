@@ -1,8 +1,8 @@
 import express from 'express';
-import { getCallerContext, callerHasPermission, supabaseAdmin, log, type CallerContext } from '../authContext';
-import { createCallerScopedClient } from './db';
-import { asRecord, requireString } from './validation';
-import { areAutomationsEnabled } from './actions/killSwitch';
+import { getCallerContext, callerHasPermission, supabaseAdmin, log, type CallerContext } from '../authContext.js';
+import { createCallerScopedClient } from './db.js';
+import { asRecord, requireString } from './validation.js';
+import { areAutomationsEnabled } from './actions/killSwitch.js';
 
 /**
  * Controlled automation (Phase 5 directive §17). Deliberately restricted to

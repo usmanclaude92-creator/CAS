@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { chunkText } from './chunking';
-import { getEmbeddingProvider, EmbeddingError } from './embeddings';
-import type { EmbeddingProvider } from './embeddings';
+import { chunkText } from './chunking.js';
+import { getEmbeddingProvider, EmbeddingError } from './embeddings/index.js';
+import type { EmbeddingProvider } from './embeddings/index.js';
 
 /**
  * Server-side ingestion/indexing pipeline. The browser never indexes

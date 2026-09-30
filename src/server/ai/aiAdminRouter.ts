@@ -1,7 +1,7 @@
 import express from 'express';
-import { getCallerContext, callerHasPermission, supabaseAdmin, log, type CallerContext } from '../authContext';
-import { createCallerScopedClient } from './db';
-import { adminRevokePendingAction } from './actions/confirmations';
+import { getCallerContext, callerHasPermission, supabaseAdmin, log, type CallerContext } from '../authContext.js';
+import { createCallerScopedClient } from './db.js';
+import { adminRevokePendingAction } from './actions/confirmations.js';
 
 /**
  * Human oversight surface for the AI action subsystem (Phase 5 directive

@@ -1,8 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { CallerContext } from '../../authContext';
-import type { ArgValidationResult } from '../types';
+import type { CallerContext } from '../../authContext.js';
+import type { ArgValidationResult } from '../types.js';
 
-export type { ArgValidationResult } from '../types';
+export type { ArgValidationResult } from '../types.js';
 
 /**
  * A separate class of tool from the Phase 1-4 READ registry (./registry.ts,

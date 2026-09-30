@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
-import { supabaseAdmin, log, type CallerContext } from '../../authContext';
-import type { ActionCategory, ActionRiskLevel } from './types';
+import { supabaseAdmin, log, type CallerContext } from '../../authContext.js';
+import type { ActionCategory, ActionRiskLevel } from './types.js';
 
 /**
  * The AI subsystem's OWN action audit trail — independently queryable from
