@@ -520,7 +520,6 @@ export const AiAgentChatModal: React.FC<AiAgentChatModalProps> = ({ onClose }) =
           </div>
           <div className="min-w-0">
             <div className="text-sm font-bold truncate">Ask Artify</div>
-            <div className="text-[10px] text-emerald-100 truncate">Read-only · answers from your CAS data</div>
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
@@ -850,7 +849,7 @@ export const AiAgentChatModal: React.FC<AiAgentChatModalProps> = ({ onClose }) =
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about balances, invoices, projects…"
+            placeholder="Type, speak or attach your query..."
             rows={1}
             maxLength={MAX_MESSAGE_LENGTH}
             disabled={isSending}
