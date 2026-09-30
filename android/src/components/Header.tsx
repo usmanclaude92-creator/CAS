@@ -450,6 +450,7 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(({
       case 'workflow_settings':
       case 'master_import_audit':
       case 'ai_agent_admin':
+      case 'knowledge_admin':
         return 'Administration & Setup';
       default:
         return '';
@@ -488,6 +489,8 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(({
         return 'Immutable System Audit Trail';
       case 'ai_agent_admin':
         return 'Ask Artify Administration';
+      case 'knowledge_admin':
+        return 'Knowledge Base';
     }
   };
 

@@ -83,6 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectVendor,
 }) => {
   const [isQuickOpen, setIsQuickOpen] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [lastExportStatus, setLastExportStatus] = useState<string | null>(null);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -100,6 +101,7 @@ export const Header: React.FC<HeaderProps> = ({
   const userMenuRef = useRef<HTMLDivElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const mobileSearchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const reload = () => {
@@ -356,8 +358,15 @@ export const Header: React.FC<HeaderProps> = ({
     setSelectedIndex(0);
   }, [searchQuery, searchCategory]);
 
+  // Auto-focus the popup's own input once it mounts (it's only rendered
+  // while open, so this can't fight with the desktop bar's input for the ref).
+  useEffect(() => {
+    if (isMobileSearchOpen) mobileSearchInputRef.current?.focus();
+  }, [isMobileSearchOpen]);
+
   const handleSelectItem = (item: SearchResultItem) => {
     setIsSearchOpen(false);
+    setIsMobileSearchOpen(false);
     setSearchQuery('');
     if (item.type === 'project') {
       if (onSelectProject) {
@@ -398,9 +407,135 @@ export const Header: React.FC<HeaderProps> = ({
       }
     } else if (e.key === 'Escape') {
       setIsSearchOpen(false);
+      setIsMobileSearchOpen(false);
       searchInputRef.current?.blur();
     }
   };
+
+  // Shared between the desktop inline dropdown and the mobile full-screen
+  // popup so the two stay in sync instead of drifting as separate copies.
+  const renderSearchResultsBody = () => (
+    <>
+      {/* Category Filter Tabs */}
+      <div className="flex items-center gap-1.5 p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-900/90 text-xs shrink-0">
+        {[
+          { id: 'all', label: 'All', count: categoryCounts.all },
+          { id: 'projects', label: 'Projects', count: categoryCounts.projects },
+          { id: 'vendors', label: 'Vendors', count: categoryCounts.vendors },
+          { id: 'customers', label: 'Customers', count: categoryCounts.customers },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setSearchCategory(tab.id as any)}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+              searchCategory === tab.id
+                ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold shadow-2xs'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800'
+            }`}
+          >
+            <span>{tab.label}</span>
+            <span
+              className={`text-[10px] px-1 rounded-full ${
+                searchCategory === tab.id
+                  ? 'bg-white/20 dark:bg-black/10 text-white dark:text-slate-900'
+                  : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+              }`}
+            >
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Results List */}
+      <div className="flex-1 overflow-y-auto p-1.5 divide-y divide-slate-100 dark:divide-slate-800/60">
+        {filteredResults.length === 0 ? (
+          <div className="p-8 text-center">
+            <Search className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+            <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+              No results found for &ldquo;{searchQuery}&rdquo;
+            </p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+              Try searching with a different keyword, code, or contact name.
+            </p>
+          </div>
+        ) : (
+          <>
+            {!searchQuery && (
+              <div className="px-2.5 py-1 text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">
+                Quick Access Directory
+              </div>
+            )}
+
+            {filteredResults.map((item, idx) => {
+              const isSelected = idx === selectedIndex;
+              return (
+                <div
+                  key={`${item.type}-${item.id}`}
+                  onClick={() => handleSelectItem(item)}
+                  onMouseEnter={() => setSelectedIndex(idx)}
+                  className={`w-full px-3 py-2.5 rounded-lg text-left flex items-center justify-between gap-3 transition-colors cursor-pointer ${
+                    isSelected
+                      ? 'bg-blue-50/80 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100'
+                      : 'hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-800 dark:text-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    {/* Icon per type */}
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                        item.type === 'project'
+                          ? 'bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/60'
+                          : item.type === 'customer'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/60'
+                          : 'bg-amber-50 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/60'
+                      }`}
+                    >
+                      {item.type === 'project' && <Building2 className="w-4 h-4" />}
+                      {item.type === 'customer' && <Users className="w-4 h-4" />}
+                      {item.type === 'vendor' && <Truck className="w-4 h-4" />}
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold truncate">{item.title}</span>
+                        <span className="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                          {item.code}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                        {item.subtitle}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${
+                        item.type === 'project'
+                          ? 'bg-indigo-100/70 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300'
+                          : item.type === 'customer'
+                          ? 'bg-emerald-100/70 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
+                          : 'bg-amber-100/70 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300'
+                      }`}
+                    >
+                      {item.type}
+                    </span>
+                    <ArrowRight
+                      className={`w-3.5 h-3.5 transition-transform ${
+                        isSelected ? 'text-blue-600 dark:text-blue-400 translate-x-0.5' : 'text-slate-300 dark:text-slate-600'
+                      }`}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
+      </div>
+    </>
+  );
 
   const getTitle = () => {
     switch (activeView) {
@@ -481,8 +616,10 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Center: Global Search Bar */}
-      <div className="order-3 w-full sm:order-none sm:w-auto flex-1 min-w-0 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-0 sm:mx-3 relative" ref={searchContainerRef}>
+      {/* Center: Global Search Bar — hidden below sm; mobile gets its own
+          icon-triggered full-screen popup (below) instead of squeezing this
+          bar into the header row. */}
+      <div className="hidden sm:block sm:w-auto flex-1 min-w-0 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-0 sm:mx-3 relative" ref={searchContainerRef}>
         <div
           className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all ${
             isSearchOpen
@@ -527,133 +664,65 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Search Results Dropdown */}
         {isSearchOpen && (
           <div className="absolute left-0 right-0 top-full mt-2 bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 z-50 overflow-hidden max-h-[75vh] sm:max-h-[460px] flex flex-col animate-in fade-in">
-            {/* Category Filter Tabs */}
-            <div className="flex items-center gap-1.5 p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-900/90 text-xs">
-              {[
-                { id: 'all', label: 'All', count: categoryCounts.all },
-                { id: 'projects', label: 'Projects', count: categoryCounts.projects },
-                { id: 'vendors', label: 'Vendors', count: categoryCounts.vendors },
-                { id: 'customers', label: 'Customers', count: categoryCounts.customers },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setSearchCategory(tab.id as any)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1 ${
-                    searchCategory === tab.id
-                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold shadow-2xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                  <span
-                    className={`text-[10px] px-1 rounded-full ${
-                      searchCategory === tab.id
-                        ? 'bg-white/20 dark:bg-black/10 text-white dark:text-slate-900'
-                        : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-                    }`}
-                  >
-                    {tab.count}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {/* Results List */}
-            <div className="flex-1 overflow-y-auto p-1.5 divide-y divide-slate-100 dark:divide-slate-800/60">
-              {filteredResults.length === 0 ? (
-                <div className="p-8 text-center">
-                  <Search className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
-                  <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                    No results found for &ldquo;{searchQuery}&rdquo;
-                  </p>
-                  <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                    Try searching with a different keyword, code, or contact name.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {!searchQuery && (
-                    <div className="px-2.5 py-1 text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">
-                      Quick Access Directory
-                    </div>
-                  )}
-
-                  {filteredResults.map((item, idx) => {
-                    const isSelected = idx === selectedIndex;
-                    return (
-                      <div
-                        key={`${item.type}-${item.id}`}
-                        onClick={() => handleSelectItem(item)}
-                        onMouseEnter={() => setSelectedIndex(idx)}
-                        className={`w-full px-3 py-2.5 rounded-lg text-left flex items-center justify-between gap-3 transition-colors cursor-pointer ${
-                          isSelected
-                            ? 'bg-blue-50/80 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100'
-                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-800 dark:text-slate-200'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          {/* Icon per type */}
-                          <div
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                              item.type === 'project'
-                                ? 'bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/60'
-                                : item.type === 'customer'
-                                ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/60'
-                                : 'bg-amber-50 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/60'
-                            }`}
-                          >
-                            {item.type === 'project' && <Building2 className="w-4 h-4" />}
-                            {item.type === 'customer' && <Users className="w-4 h-4" />}
-                            {item.type === 'vendor' && <Truck className="w-4 h-4" />}
-                          </div>
-
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold truncate">{item.title}</span>
-                              <span className="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                                {item.code}
-                              </span>
-                            </div>
-                            <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                              {item.subtitle}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span
-                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${
-                              item.type === 'project'
-                                ? 'bg-indigo-100/70 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300'
-                                : item.type === 'customer'
-                                ? 'bg-emerald-100/70 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
-                                : 'bg-amber-100/70 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300'
-                            }`}
-                          >
-                            {item.type}
-                          </span>
-                          <ArrowRight
-                            className={`w-3.5 h-3.5 transition-transform ${
-                              isSelected ? 'text-blue-600 dark:text-blue-400 translate-x-0.5' : 'text-slate-300 dark:text-slate-600'
-                            }`}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </>
-              )}
-            </div>
+            {renderSearchResultsBody()}
 
             {/* Keyboard guidance footer */}
-            <div className="px-3.5 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-[10px] text-slate-400 dark:text-slate-500 flex items-center justify-between">
+            <div className="px-3.5 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-[10px] text-slate-400 dark:text-slate-500 flex items-center justify-between shrink-0">
               <span>Use &uarr; &darr; to navigate &bull; ↵ to select</span>
               <span>ESC to close</span>
             </div>
           </div>
         )}
       </div>
+
+      {/* Mobile Search Popup — a lens icon (in the right controls, sm:hidden
+          below) opens this full-screen overlay instead of squeezing the
+          desktop dropdown's inline bar into the mobile header row. */}
+      {isMobileSearchOpen && (
+        <div className="sm:hidden fixed inset-0 z-50 bg-white dark:bg-slate-900 flex flex-col animate-in fade-in">
+          <div className="shrink-0 flex items-center gap-2 px-3 py-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl border border-blue-500 ring-2 ring-blue-500/20 bg-white dark:bg-slate-900">
+              <Search className="w-4 h-4 text-slate-400 shrink-0" />
+              <input
+                ref={mobileSearchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleInputKeyDown}
+                placeholder="Search projects, vendors, customers..."
+                className="w-full bg-transparent text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none"
+                aria-label="Global search projects, vendors, customers"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    mobileSearchInputRef.current?.focus();
+                  }}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer shrink-0"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileSearchOpen(false);
+                setIsSearchOpen(false);
+                setSearchQuery('');
+              }}
+              className="shrink-0 p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              aria-label="Close search"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {renderSearchResultsBody()}
+        </div>
+      )}
 
       {/* Right controls: Density Toggle, Theme Toggle, Export Data, Quick Transaction, User Switcher */}
       <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
@@ -1001,6 +1070,21 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           )}
         </div>
+
+        {/* Mobile-only search trigger — opens the full-screen popup above.
+            The desktop inline bar (hidden below sm) covers sm+ instead. */}
+        <button
+          type="button"
+          onClick={() => {
+            setIsMobileSearchOpen(true);
+            setIsSearchOpen(true);
+          }}
+          className="sm:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer shrink-0"
+          aria-label="Open search"
+          title="Search projects, vendors, customers"
+        >
+          <Search className="w-4 h-4 text-slate-700 dark:text-slate-200" />
+        </button>
       </div>
     </header>
   );
