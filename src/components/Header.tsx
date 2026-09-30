@@ -726,9 +726,9 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Row 2 controls: Density Toggle, Search, Export Data, Quick Transaction. Below sm
           this is its own full-width row (order-2, after the title/theme/bell/avatar row),
-          spread edge-to-edge and flowing right-to-left; sm+ reverts to sitting inline with
-          everything else in its original left-to-right order, unchanged. */}
-      <div className="flex flex-row-reverse sm:flex-row items-center w-full sm:w-auto justify-between sm:justify-start order-2 sm:order-none gap-1.5 sm:gap-3 shrink-0">
+          right-aligned as a cluster; sm+ reverts to sitting inline with everything else in
+          its original left-to-right order, unchanged. */}
+      <div className="flex items-center w-full sm:w-auto justify-end sm:justify-start order-2 sm:order-none gap-1.5 sm:gap-3 shrink-0">
         {/* Table Row Spacing Density Toggle (Comfortable vs Compact) */}
         <TableDensityToggle variant="header" />
 
@@ -949,11 +949,11 @@ export const Header: React.FC<HeaderProps> = ({
         )}
       </div>
 
-      {/* Row 1 right side: theme, notifications, account — sits opposite the
-          title on the same top row below sm (order-1, before the row-2
-          controls above), flowing right-to-left; sm+ reverts to sitting
-          inline after them in original left-to-right order, unchanged. */}
-      <div className="flex flex-row-reverse sm:flex-row items-center order-1 sm:order-none gap-1.5 sm:gap-3 shrink-0">
+      {/* Row 1 right side: theme, notifications, account — right-aligned,
+          sitting opposite the title on the same top row below sm (order-1,
+          before the row-2 controls above); sm+ reverts to sitting inline
+          after them in the same order, unchanged. */}
+      <div className="flex items-center order-1 sm:order-none gap-1.5 sm:gap-3 shrink-0">
         {/* Global Dark / Light Theme Toggle — swapped into this row (from the
             row-2 toolbar) in place of the search trigger. */}
         <ThemeToggle variant="simple" />
