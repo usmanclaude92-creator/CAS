@@ -436,6 +436,8 @@ export const Header: React.FC<HeaderProps> = ({
         return 'Immutable System Audit Trail';
       case 'ai_agent_admin':
         return 'Ask Artify Administration';
+      case 'knowledge_admin':
+        return 'Knowledge Base';
     }
   };
 
