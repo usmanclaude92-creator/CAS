@@ -1,6 +1,6 @@
-import type { ToolDefinition, ArgValidationResult } from '../types';
-import { asRecord, optionalDate, optionalEnum, optionalUuid, requireUuid } from '../validation';
-import { parsePagination } from '../pagination';
+import type { ToolDefinition, ArgValidationResult } from '../types.js';
+import { asRecord, optionalDate, optionalEnum, optionalUuid, requireUuid } from '../validation.js';
+import { parsePagination } from '../pagination.js';
 
 const INVOICE_STATUSES = ['draft', 'submitted', 'approved', 'rejected', 'posted', 'reversed'] as const;
 

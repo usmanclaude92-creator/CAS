@@ -1,7 +1,7 @@
-import { addMoney } from '../../../utils/formatters';
-import type { ToolDefinition, ArgValidationResult } from '../types';
-import { asRecord, optionalString, requireUuid } from '../validation';
-import { parsePagination } from '../pagination';
+import { addMoney } from '../../../utils/formatters.js';
+import type { ToolDefinition, ArgValidationResult } from '../types.js';
+import { asRecord, optionalString, requireUuid } from '../validation.js';
+import { parsePagination } from '../pagination.js';
 
 /** Rows beyond this are not summed for get_project_summary — a documented
  *  Phase 1 limitation (see docs/ai/CAS-AI-PHASE-1.md); revisit with a

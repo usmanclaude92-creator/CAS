@@ -1,5 +1,5 @@
-import type { ToolSchema } from './providers/types';
-import { TOOL_REGISTRY } from './registry';
+import type { ToolSchema } from './providers/types.js';
+import { TOOL_REGISTRY } from './registry.js';
 
 /**
  * JSON-Schema descriptions of each tool's arguments, for advertising to the

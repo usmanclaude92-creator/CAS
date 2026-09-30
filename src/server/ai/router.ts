@@ -1,11 +1,11 @@
 import express from 'express';
-import { getCallerContext, callerHasPermission, log } from '../authContext';
-import { getTool, listToolsForCaller } from './registry';
-import { createCallerScopedClient } from './db';
-import { recordAiToolCall } from './audit';
-import { getConversation, listRecentMessages } from './conversations';
-import { runAiChat, MAX_USER_MESSAGE_LENGTH } from './runtime';
-import type { ToolResult } from './types';
+import { getCallerContext, callerHasPermission, log } from '../authContext.js';
+import { getTool, listToolsForCaller } from './registry.js';
+import { createCallerScopedClient } from './db.js';
+import { recordAiToolCall } from './audit.js';
+import { getConversation, listRecentMessages } from './conversations.js';
+import { runAiChat, MAX_USER_MESSAGE_LENGTH } from './runtime.js';
+import type { ToolResult } from './types.js';
 
 export const aiRouter = express.Router();
 

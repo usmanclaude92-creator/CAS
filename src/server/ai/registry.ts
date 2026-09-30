@@ -1,12 +1,12 @@
-import { callerHasPermission, type CallerContext } from '../authContext';
-import type { ToolDefinition, ToolDescriptor } from './types';
+import { callerHasPermission, type CallerContext } from '../authContext.js';
+import type { ToolDefinition, ToolDescriptor } from './types.js';
 
-import { getProjects, getProjectSummary } from './tools/projects';
-import { getClients, getClientDetails, getClientBalance } from './tools/customers';
-import { getVendors, getVendorDetails, getVendorBalance } from './tools/vendors';
-import { getInvoices, getInvoiceDetails } from './tools/invoices';
-import { getReceivables, getPayables, getReceipts, getVendorPayments, getExpenses } from './tools/financial';
-import { getBankAccounts, getBankTransactions, getCashPosition } from './tools/treasury';
+import { getProjects, getProjectSummary } from './tools/projects.js';
+import { getClients, getClientDetails, getClientBalance } from './tools/customers.js';
+import { getVendors, getVendorDetails, getVendorBalance } from './tools/vendors.js';
+import { getInvoices, getInvoiceDetails } from './tools/invoices.js';
+import { getReceivables, getPayables, getReceipts, getVendorPayments, getExpenses } from './tools/financial.js';
+import { getBankAccounts, getBankTransactions, getCashPosition } from './tools/treasury.js';
 
 /**
  * The ONLY way AI tool data can be reached — no raw SQL, no table/column

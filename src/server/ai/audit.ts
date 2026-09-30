@@ -1,4 +1,4 @@
-import { supabaseAdmin, log, type CallerContext } from '../authContext';
+import { supabaseAdmin, log, type CallerContext } from '../authContext.js';
 
 /**
  * Records one AI tool call BEFORE the result is returned to whatever caller
