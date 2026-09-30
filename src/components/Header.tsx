@@ -724,8 +724,10 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       )}
 
-      {/* Right controls: Density Toggle, Theme Toggle, Export Data, Quick Transaction, User Switcher */}
-      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+      {/* Row 2 controls: Density Toggle, Theme Toggle, Export Data, Quick Transaction. Below
+          sm this is its own full-width row (order-2, after the title/search/bell/avatar row),
+          spread edge-to-edge; sm+ reverts to sitting inline with everything else, unchanged. */}
+      <div className="flex items-center w-full sm:w-auto justify-between sm:justify-start order-2 sm:order-none gap-1.5 sm:gap-3 shrink-0">
         {/* Table Row Spacing Density Toggle (Comfortable vs Compact) */}
         <TableDensityToggle variant="header" />
 
@@ -931,7 +933,12 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
         )}
+      </div>
 
+      {/* Row 1 right side: search, notifications, account — sits opposite the
+          title on the same top row below sm (order-1, before the row-2
+          controls above); sm+ reverts to sitting inline after them, unchanged. */}
+      <div className="flex items-center order-1 sm:order-none gap-1.5 sm:gap-3 shrink-0">
         {/* Mobile-only search trigger — opens the full-screen popup above.
             The desktop inline bar (hidden below sm) covers sm+ instead.
             Placed here (before the bell/avatar) so the mobile/tablet header
