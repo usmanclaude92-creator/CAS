@@ -95,6 +95,46 @@ describe('GeminiProvider — request/response conversion', () => {
     expect(typeof (result.content[0] as any).id).toBe('string');
   });
 
+  it('captures a functionCall\'s thoughtSignature into providerMetadata, and replays it on the next turn', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({
+        candidates: [
+          {
+            content: { parts: [{ functionCall: { name: 'get_vendor_balance', args: { vendorId: 'v1' } }, thoughtSignature: 'sig-123' }] },
+            finishReason: 'STOP',
+          },
+        ],
+      })
+    );
+    const provider = new GeminiProvider('test-key', 'test-model');
+    const first = await provider.sendMessage(
+      { system: 'sys', messages: [{ role: 'user', content: [{ type: 'text', text: 'balance?' }] }], tools: [], maxTokens: 100 },
+      { timeoutMs: 1000 }
+    );
+    const toolUse = first.content[0] as any;
+    expect(toolUse.providerMetadata).toBe('sig-123');
+
+    mockFetch.mockResolvedValueOnce(jsonResponse({ candidates: [{ content: { parts: [{ text: 'done' }] }, finishReason: 'STOP' }] }));
+    await provider.sendMessage(
+      {
+        system: 'sys',
+        messages: [
+          { role: 'user', content: [{ type: 'text', text: 'balance?' }] },
+          { role: 'assistant', content: [toolUse] },
+          { role: 'user', content: [{ type: 'tool_result', toolUseId: toolUse.id, content: '{"balance":100}' }] },
+        ],
+        tools: [],
+        maxTokens: 100,
+      },
+      { timeoutMs: 1000 }
+    );
+    const secondBody = JSON.parse(mockFetch.mock.calls[1][1].body);
+    expect(secondBody.contents[1].parts[0]).toEqual({
+      functionCall: { name: 'get_vendor_balance', args: { vendorId: 'v1' } },
+      thoughtSignature: 'sig-123',
+    });
+  });
+
   it('resolves the original function name for a tool_result by scanning back through prior tool_use blocks', async () => {
     mockFetch.mockResolvedValue(jsonResponse({ candidates: [{ content: { parts: [{ text: 'done' }] }, finishReason: 'STOP' }] }));
 

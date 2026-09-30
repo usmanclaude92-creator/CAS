@@ -23,6 +23,16 @@ export interface ToolUseBlock {
   id: string;
   name: string;
   input: unknown;
+  /**
+   * Opaque, provider-specific round-trip data a provider needs replayed
+   * verbatim on this same block's next turn — runtime.ts never reads or
+   * interprets this, it only carries it through the in-memory tool loop
+   * (never persisted to the DB; conversation history stores final text
+   * only). Gemini's "thinking" models use this for their required
+   * thought_signature (a missing one is a hard 400, not a soft
+   * degradation) — see providers/gemini.ts. Unused by Anthropic.
+   */
+  providerMetadata?: unknown;
 }
 
 export interface ToolResultBlock {

@@ -7,7 +7,10 @@ import { SttConfigError, SttError, SttInvalidResponseError, SttTimeoutError } fr
  * data alongside a transcription instruction. Plain `fetch`, no SDK — same
  * rationale as every other single-endpoint provider in this codebase.
  */
-export const DEFAULT_GEMINI_STT_MODEL = 'gemini-2.5-flash';
+// gemini-2.5-flash was retired; gemini-3.5-transcribe is a dedicated,
+// purpose-built transcription model (verified available for this API key
+// 2026-09-30) rather than a general chat model repurposed for STT.
+export const DEFAULT_GEMINI_STT_MODEL = 'gemini-3.5-transcribe';
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const DEFAULT_TIMEOUT_MS = 30_000;
 

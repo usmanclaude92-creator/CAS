@@ -34,7 +34,7 @@ describe('GeminiTtsProvider', () => {
     };
   }
 
-  it('synthesizes text into a playable WAV container, not raw PCM', async () => {
+  it('wraps raw PCM (preview-model response) into a playable WAV container', async () => {
     const pcm = Buffer.from([9, 9, 9, 9]);
     global.fetch = vi.fn().mockResolvedValue(fakePcmResponse(pcm.toString('base64'))) as any;
     const provider = new GeminiTtsProvider('key', 'tts-model', 'Kore');
@@ -42,6 +42,25 @@ describe('GeminiTtsProvider', () => {
     expect(result.mimeType).toBe('audio/wav');
     expect(result.audio.toString('ascii', 0, 4)).toBe('RIFF');
     expect(result.audio.subarray(44)).toEqual(pcm);
+  });
+
+  it('passes through an already-complete audio/wav response unmodified, never double-wrapping it', async () => {
+    // A real RIFF/WAVE file — the stable model returns this shape directly.
+    const realWav = Buffer.concat([Buffer.from('RIFF\x00\x00\x00\x00WAVEfmt ', 'ascii'), Buffer.from([1, 2, 3, 4])]);
+    global.fetch = vi.fn().mockResolvedValue(fakePcmResponse(realWav.toString('base64'), 'audio/wav')) as any;
+    const provider = new GeminiTtsProvider('key', 'tts-model', 'Kore');
+    const result = await provider.synthesize('hello');
+    expect(result.mimeType).toBe('audio/wav');
+    expect(result.audio).toEqual(realWav);
+  });
+
+  it('passes through an audio/mpeg response unmodified with a normalized mime type', async () => {
+    const fakeMp3 = Buffer.from([1, 2, 3, 4]);
+    global.fetch = vi.fn().mockResolvedValue(fakePcmResponse(fakeMp3.toString('base64'), 'audio/mp3')) as any;
+    const provider = new GeminiTtsProvider('key', 'tts-model', 'Kore');
+    const result = await provider.synthesize('hello');
+    expect(result.mimeType).toBe('audio/mpeg');
+    expect(result.audio).toEqual(fakeMp3);
   });
 
   it('reads the sample rate out of the returned mimeType', async () => {

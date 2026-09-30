@@ -10,7 +10,10 @@ import type {
 } from './types.js';
 import { ProviderConfigError, ProviderInvalidResponseError, ProviderTimeoutError, ProviderError } from './errors.js';
 
-export const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
+// gemini-2.5-flash was retired ("no longer available to new users" — HTTP 404
+// from Google's own API, confirmed live 2026-09-30); gemini-3.8-flash is
+// Google's own recommended replacement as of that same response.
+export const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
@@ -24,6 +27,16 @@ interface GeminiPart {
   functionCall?: { name: string; args: unknown };
   functionResponse?: { name: string; response: unknown };
   inlineData?: { mimeType: string; data: string };
+  /**
+   * Required on a "thinking" model's (e.g. gemini-3.8-flash) functionCall
+   * part — Gemini rejects the next turn with HTTP 400 if a prior
+   * functionCall is replayed without the exact thought_signature it was
+   * issued with (confirmed live 2026-09-30; see
+   * https://ai.google.dev/gemini-api/docs/thought-signatures). Carried
+   * through our own ToolUseBlock.providerMetadata (see ./types.ts) purely
+   * so it can be replayed here, never interpreted by runtime.ts.
+   */
+  thoughtSignature?: string;
 }
 
 interface GeminiContentEntry {
@@ -63,7 +76,12 @@ function toGeminiContents(messages: ProviderMessage[]): GeminiContentEntry[] {
     role: m.role === 'assistant' ? 'model' : 'user',
     parts: m.content.map((block): GeminiPart => {
       if (block.type === 'text') return { text: block.text };
-      if (block.type === 'tool_use') return { functionCall: { name: block.name, args: block.input } };
+      if (block.type === 'tool_use') {
+        return {
+          functionCall: { name: block.name, args: block.input },
+          thoughtSignature: block.providerMetadata as string | undefined,
+        };
+      }
       if (block.type === 'image') return { inlineData: { mimeType: block.mediaType, data: block.data } };
       if (block.type === 'document') {
         // Gemini's native document understanding — same inline-base64 path
@@ -94,6 +112,7 @@ function fromGeminiParts(parts: GeminiPart[] | undefined): ContentBlock[] {
         id: randomToolUseId(),
         name: part.functionCall.name,
         input: part.functionCall.args ?? {},
+        providerMetadata: part.thoughtSignature,
       });
     }
     // Other Gemini part shapes (inline audio/image in a model turn, etc.) are
