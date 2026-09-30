@@ -179,6 +179,46 @@ describe('GeminiProvider — request/response conversion', () => {
     );
   });
 
+  it('retries once on a 503 (transient overload) and succeeds if the retry works', async () => {
+    vi.useFakeTimers();
+    try {
+      mockFetch
+        .mockResolvedValueOnce(jsonResponse({ error: { code: 503, status: 'UNAVAILABLE' } }, false, 503))
+        .mockResolvedValueOnce(jsonResponse({ candidates: [{ content: { parts: [{ text: 'ok' }] }, finishReason: 'STOP' }] }));
+
+      const provider = new GeminiProvider('test-key', 'test-model');
+      const resultPromise = provider.sendMessage(
+        { system: 'sys', messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }], tools: [], maxTokens: 100 },
+        { timeoutMs: 1000 }
+      );
+      await vi.advanceTimersByTimeAsync(1000);
+      const result = await resultPromise;
+
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(result.content).toEqual([{ type: 'text', text: 'ok' }]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('throws ProviderInvalidResponseError when the retry also fails', async () => {
+    vi.useFakeTimers();
+    try {
+      mockFetch.mockResolvedValue(jsonResponse({}, false, 503));
+      const provider = new GeminiProvider('test-key', 'test-model');
+      const resultPromise = provider.sendMessage(
+        { system: 'sys', messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }], tools: [], maxTokens: 100 },
+        { timeoutMs: 1000 }
+      );
+      const assertion = expect(resultPromise).rejects.toBeInstanceOf(ProviderInvalidResponseError);
+      await vi.advanceTimersByTimeAsync(1000);
+      await assertion;
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('throws ProviderTimeoutError when the request is aborted', async () => {
     mockFetch.mockImplementation(() => {
       const err: any = new Error('aborted');
