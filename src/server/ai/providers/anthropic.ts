@@ -26,6 +26,21 @@ function toAnthropicContent(blocks: ContentBlock[]): Anthropic.Messages.ContentB
     if (block.type === 'tool_use') {
       return { type: 'tool_use', id: block.id, name: block.name, input: block.input };
     }
+    if (block.type === 'image') {
+      // Claude's native vision input — the image has already been
+      // validated server-side (size/MIME/magic-bytes) before it ever
+      // reaches this conversion; see src/server/ai/attachments.ts.
+      return { type: 'image', source: { type: 'base64', media_type: block.mediaType, data: block.data } };
+    }
+    if (block.type === 'document') {
+      // Claude's native PDF understanding — no separate text-extraction
+      // library needed; see docs/ai/CAS-AI-PHASE-4.md.
+      return {
+        type: 'document',
+        source: { type: 'base64', media_type: block.mediaType, data: block.data },
+        title: block.title ?? null,
+      };
+    }
     return {
       type: 'tool_result',
       tool_use_id: block.toolUseId,

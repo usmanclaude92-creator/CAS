@@ -3,6 +3,13 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- AI Agent voice input (Phase 4) — the WebView only ever surfaces the
+         OS mic prompt via WebChromeClient.onPermissionRequest (see
+         MainActivity.kt); this manifest entry is what makes that grantable
+         at all. Declared, never implied: absence of this line would make
+         getUserMedia() fail silently instead of prompting. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
    <application
         android:allowBackup="false"

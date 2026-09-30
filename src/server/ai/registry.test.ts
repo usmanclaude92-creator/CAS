@@ -22,10 +22,12 @@ describe('TOOL_REGISTRY', () => {
     }
   });
 
-  it('contains no write-shaped tool names — Phase 1 is read-only by construction, not just by policy', () => {
+  it('contains no write-shaped tool names — every tool is read-only by construction, not just by policy', () => {
     for (const name of Object.keys(TOOL_REGISTRY)) {
       expect(name).not.toMatch(/^(create|update|delete|post|approve|reverse|submit)_/);
-      expect(name.startsWith('get_')).toBe(true);
+      // get_* (Phase 1 structured-data tools) or search_* (Phase 3 knowledge
+      // retrieval) — both unambiguously read-only verbs; nothing else.
+      expect(name).toMatch(/^(get|search)_/);
     }
   });
 

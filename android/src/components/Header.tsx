@@ -449,6 +449,7 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(({
       case 'roles':
       case 'workflow_settings':
       case 'master_import_audit':
+      case 'ai_agent_admin':
         return 'Administration & Setup';
       default:
         return '';
@@ -485,6 +486,8 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(({
         return 'Master Data Import Governance Logs';
       case 'audit':
         return 'Immutable System Audit Trail';
+      case 'ai_agent_admin':
+        return 'Ask Artify Administration';
     }
   };
 

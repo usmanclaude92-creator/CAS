@@ -15,8 +15,13 @@ import {
   MAX_CONTEXT_MESSAGES,
 } from './conversations.js';
 import { getProvider, getConfiguredModelName, ProviderError, ProviderConfigError, ProviderTimeoutError } from './providers/index.js';
-import type { ProviderMessage, ContentBlock, ToolUseBlock } from './providers/types.js';
+import type { ProviderMessage, ContentBlock, ToolUseBlock, ImageBlock } from './providers/types.js';
 import type { ToolResult } from './types.js';
+import { getOwnedAttachment, fetchAttachmentBytes, markAttachmentUsed, MAX_ATTACHMENTS_PER_MESSAGE } from './attachments/index.js';
+import { getActionTool, listActionToolsForCaller } from './actionRegistry.js';
+import { toProviderActionToolSchema } from './actionToolSchemas.js';
+import { executeActionToolCall } from './actions/dispatch.js';
+import type { PendingActionSummary } from './actions/types.js';
 
 /**
  * Loop/limit constants — see docs/ai/CAS-AI-PHASE-2.md §Limits. Every one of
@@ -27,6 +32,12 @@ import type { ToolResult } from './types.js';
  */
 export const MAX_USER_MESSAGE_LENGTH = 4000;
 export const MAX_TOOL_CALLS_PER_REQUEST = 8;
+/** A tighter, separate cap on ACTION tool calls specifically (proposals +
+ *  immediate low-risk executions combined) within one request — actions are
+ *  higher-stakes than a read, so a runaway/adversarial model turn gets a
+ *  narrower budget for them even though MAX_TOOL_CALLS_PER_REQUEST already
+ *  bounds the total. Phase 5 directive §19. */
+export const MAX_ACTION_CALLS_PER_REQUEST = 3;
 export const MAX_MODEL_TURNS = 6;
 export const PROVIDER_TIMEOUT_MS = 30_000;
 export const TOOL_EXECUTION_TIMEOUT_MS = 15_000;
@@ -39,6 +50,9 @@ export interface RunChatInput {
   db: SupabaseClient;
   conversationId?: string;
   message: string;
+  /** Ids of temporary attachments (images/PDFs) already uploaded via
+   *  POST /api/ai/attachments — see resolveAttachmentBlocks below. */
+  attachmentIds?: string[];
 }
 
 export type RunChatErrorCategory =
@@ -53,9 +67,30 @@ export interface ToolActivityEntry {
   label: string;
 }
 
+/** Real provenance only — populated exclusively from what
+ *  search_knowledge's own tool result actually returned (see the
+ *  KNOWLEDGE_TOOL_NAME handling below), never inferred or fabricated. */
+export interface KnowledgeSourceCitation {
+  sourceId: string;
+  title: string;
+}
+
 export type RunChatResult =
-  | { success: true; conversationId: string; reply: string; toolActivity: ToolActivityEntry[] }
+  | {
+      success: true;
+      conversationId: string;
+      reply: string;
+      toolActivity: ToolActivityEntry[];
+      sources: KnowledgeSourceCitation[];
+      /** Set when this turn proposed a medium/high-risk action awaiting the
+       *  user's explicit confirmation — see docs/ai/CAS-AI-PHASE-5.md. Built
+       *  entirely server-side from the action tool's own buildPreview()
+       *  output, never from the model's text. */
+      pendingAction?: PendingActionSummary;
+    }
   | { success: false; category: RunChatErrorCategory; error: string };
+
+const KNOWLEDGE_TOOL_NAME = 'search_knowledge';
 
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -162,6 +197,51 @@ function extractText(blocks: ContentBlock[]): string {
 }
 
 /**
+ * Loads and validates each attachment id the caller referenced, converting
+ * it into a multimodal content block included ONLY in this turn — never
+ * persisted as binary (conversations.ts stores text only). An attachment
+ * already tied to a DIFFERENT conversation (status='used' there) is
+ * silently skipped, not reused — that's what keeps temporary context
+ * scoped to the conversation/request it was uploaded for. `getOwnedAttachment`
+ * already folds "doesn't exist" / "not owned" / "expired" into the same
+ * null result via RLS, so a bad or foreign id is skipped exactly like a
+ * missing one, never an error that would leak whether it exists.
+ *
+ * The resulting image/document bytes are, from here on, exactly as
+ * untrusted as any tool result — nothing about being "an attachment"
+ * grants them any special trust; see systemPrompt.ts's explicit framing.
+ */
+async function resolveAttachmentBlocks(
+  db: SupabaseClient,
+  caller: CallerContext,
+  attachmentIds: string[],
+  conversationId: string
+): Promise<ContentBlock[]> {
+  const blocks: ContentBlock[] = [];
+  for (const id of attachmentIds.slice(0, MAX_ATTACHMENTS_PER_MESSAGE)) {
+    const attachment = await getOwnedAttachment(db, id);
+    if (!attachment) continue;
+    if (attachment.conversation_id && attachment.conversation_id !== conversationId) continue;
+
+    const bytes = await fetchAttachmentBytes(db, attachment);
+    if (!bytes) {
+      log('warn', '[AI runtime] failed to fetch attachment bytes', { attachmentId: id, userId: caller.userId });
+      continue;
+    }
+
+    const base64 = bytes.toString('base64');
+    if (attachment.kind === 'image') {
+      blocks.push({ type: 'image', mediaType: attachment.mime_type as ImageBlock['mediaType'], data: base64 });
+    } else {
+      blocks.push({ type: 'document', mediaType: 'application/pdf', data: base64, title: attachment.file_name });
+    }
+
+    await markAttachmentUsed(db, id, conversationId);
+  }
+  return blocks;
+}
+
+/**
  * The AI runtime: authenticated chat request -> conversation context ->
  * system instructions -> caller-scoped tool list -> provider call -> tool
  * dispatch loop (bounded) -> final text -> persistence + audit. See
@@ -213,8 +293,12 @@ export async function runAiChat(input: RunChatInput): Promise<RunChatResult> {
   }
 
   const availableTools = listToolsForCaller(input.caller);
-  const system = buildSystemPrompt(availableTools);
-  const toolSchemas = availableTools.map((t) => toProviderToolSchema(t.name, t.description));
+  const availableActionTools = listActionToolsForCaller(input.caller);
+  const system = buildSystemPrompt(availableTools, availableActionTools);
+  const toolSchemas = [
+    ...availableTools.map((t) => toProviderToolSchema(t.name, t.description)),
+    ...availableActionTools.map((t) => toProviderActionToolSchema(t.name, t.description)),
+  ];
 
   const history = await listRecentMessages(input.db, conversation.id, MAX_CONTEXT_MESSAGES);
   const providerMessages: ProviderMessage[] = history.map((m) => ({
@@ -222,9 +306,23 @@ export async function runAiChat(input: RunChatInput): Promise<RunChatResult> {
     content: [{ type: 'text', text: m.content }],
   }));
 
+  if (input.attachmentIds && input.attachmentIds.length > 0) {
+    const attachmentBlocks = await resolveAttachmentBlocks(input.db, input.caller, input.attachmentIds, conversation.id);
+    const lastMessage = providerMessages[providerMessages.length - 1];
+    // Attachments ride along with the user message that just referenced
+    // them — the one appendMessage() persisted above, which is guaranteed
+    // to be the last entry here since it was written before this reload.
+    if (attachmentBlocks.length > 0 && lastMessage?.role === 'user') {
+      lastMessage.content = [...lastMessage.content, ...attachmentBlocks];
+    }
+  }
+
   const toolActivity: ToolActivityEntry[] = [];
+  const sourceCitations = new Map<string, KnowledgeSourceCitation>();
   const deadline = Date.now() + MAX_TOTAL_RUNTIME_MS;
   let toolCallCount = 0;
+  let actionCallCount = 0;
+  let pendingActionSummary: PendingActionSummary | undefined;
   let finalText = '';
   let limited = false;
   let endedNaturally = false;
@@ -289,6 +387,35 @@ export async function runAiChat(input: RunChatInput): Promise<RunChatResult> {
     const resultBlocks: ContentBlock[] = [];
     for (const block of toolUseBlocks) {
       toolCallCount++;
+      const actionTool = getActionTool(block.name);
+
+      if (actionTool) {
+        // A separate, tighter budget for ACTION calls specifically (Phase 5
+        // directive §19) — checked per-call so a mix of read + action calls
+        // in one turn only limits the action ones, not the whole turn.
+        if (actionCallCount >= MAX_ACTION_CALLS_PER_REQUEST) {
+          resultBlocks.push({
+            type: 'tool_result',
+            toolUseId: block.id,
+            content: JSON.stringify({ success: false, error: 'Action limit reached for this request.' }),
+            isError: true,
+          });
+          toolActivity.push({ label: 'Action limit reached' });
+          continue;
+        }
+        actionCallCount++;
+        const outcome = await executeActionToolCall(input.caller, input.db, block.name, block.input, conversation.id);
+        resultBlocks.push({
+          type: 'tool_result',
+          toolUseId: block.id,
+          content: JSON.stringify(outcome.toolResultPayload).slice(0, MAX_TOOL_RESULT_CHARS),
+          isError: outcome.isError,
+        });
+        toolActivity.push({ label: outcome.activityLabel });
+        if (outcome.pendingAction) pendingActionSummary = outcome.pendingAction;
+        continue;
+      }
+
       const result = await executeToolCall(input.caller, input.db, block, conversation.id);
       resultBlocks.push({
         type: 'tool_result',
@@ -297,6 +424,17 @@ export async function runAiChat(input: RunChatInput): Promise<RunChatResult> {
         isError: result.success === false,
       });
       toolActivity.push({ label: toolActivityLabel(block.name) });
+
+      // Real provenance only: pulled straight from search_knowledge's own
+      // successful result data, never inferred from the model's final text
+      // — the UI can only ever show a source the tool actually returned.
+      if (block.name === KNOWLEDGE_TOOL_NAME && result.success) {
+        for (const item of result.data as any[]) {
+          if (item?.sourceId && item?.sourceTitle && !sourceCitations.has(item.sourceId)) {
+            sourceCitations.set(item.sourceId, { sourceId: item.sourceId, title: item.sourceTitle });
+          }
+        }
+      }
     }
     providerMessages.push({ role: 'user', content: resultBlocks });
   }
@@ -319,5 +457,12 @@ export async function runAiChat(input: RunChatInput): Promise<RunChatResult> {
   });
   await touchConversation(input.db, conversation.id);
 
-  return { success: true, conversationId: conversation.id, reply: finalText, toolActivity };
+  return {
+    success: true,
+    conversationId: conversation.id,
+    reply: finalText,
+    toolActivity,
+    sources: Array.from(sourceCitations.values()),
+    pendingAction: pendingActionSummary,
+  };
 }

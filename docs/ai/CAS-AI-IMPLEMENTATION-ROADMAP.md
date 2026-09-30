@@ -1,5 +1,7 @@
 # CAS AI — Implementation Roadmap & Phase-1 Entry Criteria
 
+> **Status: all 5 phases below are now implemented.** This document is kept as-written (a Phase-0 planning snapshot) for historical context — see `docs/ai/CAS-AI-PHASE-1.md` through `CAS-AI-PHASE-5.md` for what was actually built, which followed this phase order closely but is authoritative over any detail here where the two differ.
+
 ## Testing & deployment baseline (as found)
 
 - **Tests:** 7 files total. Six are CSV-import validators (`src/utils/{transfer,moneyIn,moneyOut,directExpense,clientInvoice,purchase}ImportValidation.test.ts`) plus one formatter suite (`src/utils/formatters.test.ts`, duplicated in `android/src/utils/`). **Zero tests** for `authService.ts`, `accountingService.ts`, `src/server/app.ts`, or any RLS policy/RPC. No integration or E2E tests found anywhere in the repo.

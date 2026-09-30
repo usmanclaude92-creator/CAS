@@ -31,7 +31,6 @@ import { formatOMR } from '../utils/formatters';
 import { ThemeToggle } from './ThemeToggle';
 import { TableDensityToggle } from './TableDensityToggle';
 import { HeaderNotifications } from './HeaderNotifications';
-import { AiAgentButton } from './AiAgentButton';
 import { UserProfile } from '../types/auth';
 
 interface HeaderProps {
@@ -435,6 +434,8 @@ export const Header: React.FC<HeaderProps> = ({
         return 'Master Data Import Governance Logs';
       case 'audit':
         return 'Immutable System Audit Trail';
+      case 'ai_agent_admin':
+        return 'Ask Artify Administration';
     }
   };
 
@@ -859,9 +860,6 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
         )}
-
-        {/* CAS AI Agent (read-only assistant, Phase 2) */}
-        <AiAgentButton />
 
         {/* In-App Notifications Bell */}
         {onNavigateView && (

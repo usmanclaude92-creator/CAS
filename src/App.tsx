@@ -27,6 +27,8 @@ import {} from './components/views/RolesView';
 import {} from './components/views/WorkflowSettingsView';
 import { MasterImportAuditView } from './components/views/MasterImportAuditView';
 import { AuditLogView } from './components/views/AuditLogView';
+import { AiAgentAdminView } from './components/views/AiAgentAdminView';
+import { AiAgentButton } from './components/AiAgentButton';
 
 // Modals
 import { MoneyInModal } from './components/modals/MoneyInModal';
@@ -367,6 +369,8 @@ function AppContent() {
         return authService.hasPermission('audit.view') || authService.isSuperAdmin();
       case 'audit':
         return authService.hasPermission('audit.view');
+      case 'ai_agent_admin':
+        return authService.hasPermission('ai_actions.manage');
       default:
         return true;
     }
@@ -616,6 +620,8 @@ function AppContent() {
               {activeView === 'master_import_audit' && <MasterImportAuditView />}
 
               {activeView === 'audit' && <AuditLogView />}
+
+              {activeView === 'ai_agent_admin' && <AiAgentAdminView />}
             </>
           )}
         </main>
@@ -727,6 +733,9 @@ function AppContent() {
         onExtendSession={handleExtendSession}
         onLogoutNow={handleLogout}
       />
+
+      {/* Ask Artify — app-wide floating action button, bottom-right corner */}
+      <AiAgentButton />
     </div>
   );
 }

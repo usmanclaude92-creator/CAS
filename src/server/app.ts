@@ -3,6 +3,12 @@ import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import { aiRouter } from './ai/router.js';
+import { knowledgeAdminRouter } from './ai/knowledgeAdminRouter.js';
+import { voiceRouter } from './ai/voiceRouter.js';
+import { attachmentsRouter } from './ai/attachmentsRouter.js';
+import { actionsRouter } from './ai/actionsRouter.js';
+import { automationsRouter } from './ai/automationsRouter.js';
+import { aiAdminRouter } from './ai/aiAdminRouter.js';
 import {
   SUPABASE_URL,
   supabaseAdmin,
@@ -284,5 +290,56 @@ app.post('/api/admin/demo-requests/:id/approve', requireAdmin('users.create'), a
 // ==========================================
 const aiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 120, standardHeaders: true, legacyHeaders: false });
 app.use('/api/ai', aiLimiter, aiRouter);
+
+// ==========================================
+// KNOWLEDGE BASE ADMINISTRATION (Phase 3: RAG — see docs/ai/CAS-AI-PHASE-3.md)
+// Authorized application/admin operation (knowledge.manage), not an AI
+// action — no tool exposes any of this to the LLM. Reuses the same
+// aiLimiter rather than a second rate-limit mechanism.
+// ==========================================
+app.use('/api/ai/knowledge', aiLimiter, knowledgeAdminRouter);
+
+// ==========================================
+// VOICE (Phase 4 — see docs/ai/CAS-AI-PHASE-4.md)
+// Separate, stricter limiters than aiLimiter: audio transcription and
+// speech synthesis are materially more expensive per-request than a JSON
+// tool call, and each needs its own ceiling per the Phase 4 directive
+// (transcription abuse and TTS generation abuse are distinct risks).
+// ==========================================
+const voiceTranscribeLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false });
+const voiceSynthesizeLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });
+app.use('/api/ai/voice/transcribe', voiceTranscribeLimiter);
+app.use('/api/ai/voice/synthesize', voiceSynthesizeLimiter);
+app.use('/api/ai/voice', voiceRouter);
+
+// ==========================================
+// ATTACHMENTS (Phase 4 — see docs/ai/CAS-AI-PHASE-4.md)
+// Temporary, per-user multimodal context (images/PDFs) for the AI Agent —
+// never permanent storage, never auto-indexed into Phase 3's knowledge
+// base. Its own limiter: file uploads are expensive and abuse-prone in a
+// different way than a JSON request.
+// ==========================================
+const attachmentsLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false });
+app.use('/api/ai/attachments', attachmentsLimiter, attachmentsRouter);
+
+// ==========================================
+// CONTROLLED ACTIONS + AUTOMATION (Phase 5 — see docs/ai/CAS-AI-PHASE-5.md)
+// Confirmation protocol (actionsRouter) and personal scheduled reminders
+// (automationsRouter) each get their own limiter, distinct from aiLimiter,
+// for the same reason voice/attachments do: a burst here shouldn't starve
+// ordinary chat traffic or vice versa. GET /api/ai/automations/run-due
+// (Vercel Cron's entry point) lives inside automationsRouter and is gated
+// by CRON_SECRET, not a user session — the rate limiter below still
+// applies to it, but generously enough (120/15min) that a legitimate
+// hourly-or-slower cron schedule is never at risk of being throttled; the
+// secret comparison is the real gate, not this limiter.
+// ==========================================
+const aiActionsLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 60, standardHeaders: true, legacyHeaders: false });
+app.use('/api/ai/actions', aiActionsLimiter, actionsRouter);
+app.use('/api/ai/automations', aiActionsLimiter, automationsRouter);
+// Reuses adminLimiter (defined above, already governing /api/admin) — this
+// is the same class of surface (a small set of privileged administrators),
+// not ordinary AI traffic.
+app.use('/api/ai/admin', adminLimiter, aiAdminRouter);
 
 export default app;

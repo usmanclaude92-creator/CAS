@@ -9,5 +9,8 @@
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index" }
+  ],
+  "crons": [
+    { "path": "/api/ai/automations/run-due", "schedule": "0 3 * * *" }
   ]
 }

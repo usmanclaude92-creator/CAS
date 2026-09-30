@@ -1,6 +1,8 @@
 # CAS AI — Voice Readiness
 
-## Current state: not started, on any surface
+> **Phase 4 update:** Voice (STT/TTS) is now implemented on the **web** surface — browser `MediaRecorder`/`getUserMedia` in `AiAgentChatModal.tsx`, server-side OpenAI Whisper/TTS. See `docs/ai/CAS-AI-PHASE-4.md`. The native-app gaps this document originally identified are **still open**: `android/app/src/main/AndroidManifest.xml` still declares no `RECORD_AUDIO` permission, and no iOS `NSMicrophoneUsageDescription`/WKWebView media-capture entitlement work has been done. Inside the native app wrapper, the mic button will currently hit a permission denial (handled gracefully — falls back to the Error state, text input unaffected) rather than actually recording, until that native-side work happens as a follow-up.
+
+## Original state (pre-Phase-4): not started, on any surface
 
 Checked for microphone permissions, audio capture APIs, and speech recognition/synthesis references across the whole ecosystem:
 

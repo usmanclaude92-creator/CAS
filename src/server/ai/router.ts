@@ -5,6 +5,7 @@ import { createCallerScopedClient } from './db.js';
 import { recordAiToolCall } from './audit.js';
 import { getConversation, listRecentMessages } from './conversations.js';
 import { runAiChat, MAX_USER_MESSAGE_LENGTH } from './runtime.js';
+import { MAX_ATTACHMENTS_PER_MESSAGE } from './attachments/index.js';
 import type { ToolResult } from './types.js';
 
 export const aiRouter = express.Router();
@@ -67,6 +68,17 @@ aiRouter.post('/chat', async (req, res) => {
     }
     const conversationId = typeof body.conversationId === 'string' ? body.conversationId : undefined;
 
+    let attachmentIds: string[] | undefined;
+    if (body.attachmentIds !== undefined) {
+      if (!Array.isArray(body.attachmentIds) || !body.attachmentIds.every((id: unknown) => typeof id === 'string')) {
+        return res.status(400).json({ success: false, error: '"attachmentIds" must be an array of strings.' });
+      }
+      if (body.attachmentIds.length > MAX_ATTACHMENTS_PER_MESSAGE) {
+        return res.status(400).json({ success: false, error: `A message may reference at most ${MAX_ATTACHMENTS_PER_MESSAGE} attachments.` });
+      }
+      attachmentIds = body.attachmentIds;
+    }
+
     let db;
     try {
       // See the try/catch below the legacy path for why this is inside,
@@ -79,7 +91,7 @@ aiRouter.post('/chat', async (req, res) => {
 
     let result;
     try {
-      result = await runAiChat({ caller, db, conversationId, message: body.message });
+      result = await runAiChat({ caller, db, conversationId, message: body.message, attachmentIds });
     } catch (err: any) {
       log('error', '[AI Gateway] runAiChat threw', { error: err?.message });
       return res.status(500).json({ success: false, error: 'Internal error processing your request.' });
@@ -93,6 +105,8 @@ aiRouter.post('/chat', async (req, res) => {
       conversationId: result.conversationId,
       reply: result.reply,
       toolActivity: result.toolActivity,
+      sources: result.sources,
+      pendingAction: result.pendingAction,
     });
   }
 
