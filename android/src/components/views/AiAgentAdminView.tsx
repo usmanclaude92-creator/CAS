@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Sparkles,
   Power,
   ListChecks,
   Clock,
@@ -50,11 +49,11 @@ export const AiAgentAdminView: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-            <span>AI Agent Administration</span>
+            <img src="./ask-artify-logo.png" alt="" className="w-6 h-6 rounded-full object-cover" />
+            <span>Ask Artify Administration</span>
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Oversight for the AI Agent&rsquo;s controlled actions and automations — emergency kill switch, action audit trail, pending confirmations, and scheduled reminders.
+            Oversight for Ask Artify&rsquo;s controlled actions and automations — emergency kill switch, action audit trail, pending confirmations, and scheduled reminders.
           </p>
         </div>
       </div>

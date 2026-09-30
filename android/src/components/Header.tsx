@@ -487,7 +487,7 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(({
       case 'audit':
         return 'Immutable System Audit Trail';
       case 'ai_agent_admin':
-        return 'AI Agent Administration';
+        return 'Ask Artify Administration';
     }
   };
 

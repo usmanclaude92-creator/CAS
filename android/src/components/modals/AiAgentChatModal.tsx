@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  Sparkles,
   X,
   Send,
   Loader2,
@@ -509,16 +508,16 @@ export const AiAgentChatModal: React.FC<AiAgentChatModalProps> = ({ onClose }) =
       className="fixed inset-0 sm:inset-auto sm:bottom-6 sm:right-6 z-50 flex flex-col w-full h-full sm:w-96 sm:h-[560px] sm:max-h-[80vh] bg-white dark:bg-slate-900 sm:rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in slide-in-from-bottom-2"
       role="dialog"
       aria-modal="true"
-      aria-label="CAS AI Agent chat"
+      aria-label="Ask Artify chat"
     >
       {/* Header */}
       <div className="shrink-0 px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-emerald-600 text-white">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-            <Sparkles className="w-4 h-4" />
+          <div className="w-7 h-7 rounded-full overflow-hidden shrink-0">
+            <img src="./ask-artify-logo.png" alt="" className="w-full h-full object-cover" />
           </div>
           <div className="min-w-0">
-            <div className="text-sm font-bold truncate">CAS AI Agent</div>
+            <div className="text-sm font-bold truncate">Ask Artify</div>
             <div className="text-[10px] text-emerald-100 truncate">Read-only · answers from your CAS data</div>
           </div>
         </div>
@@ -536,7 +535,7 @@ export const AiAgentChatModal: React.FC<AiAgentChatModalProps> = ({ onClose }) =
             type="button"
             onClick={onClose}
             title="Close"
-            aria-label="Close AI Agent"
+            aria-label="Close Ask Artify"
             className="p-1.5 rounded-lg hover:bg-white/15 transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
@@ -548,8 +547,8 @@ export const AiAgentChatModal: React.FC<AiAgentChatModalProps> = ({ onClose }) =
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3.5 py-3 space-y-3 bg-slate-50 dark:bg-slate-950/40">
         {messages.length === 0 && !isSending && (
           <div className="h-full flex flex-col items-center justify-center text-center px-6 py-10">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3">
-              <Sparkles className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-2xl overflow-hidden mb-3">
+              <img src="./ask-artify-logo.png" alt="" className="w-full h-full object-cover" />
             </div>
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Ask about your CAS data</p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-[240px]">

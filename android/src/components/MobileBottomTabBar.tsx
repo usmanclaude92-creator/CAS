@@ -20,7 +20,6 @@ import {
   ArrowUpRight,
   FileText,
   ArrowRightLeft,
-  Sparkles,
 } from 'lucide-react';
 import { NavView } from './Sidebar';
 import { authService } from '../services/authService';
@@ -306,7 +305,7 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
               </span>
             </button>
 
-            {/* Tab (center): CAS AI Agent — raised out of the bar so it reads
+            {/* Tab (center): Ask Artify — raised out of the bar so it reads
                 as "assistant", not another data-view shortcut. Shown to
                 every authenticated user regardless of tool permissions (see
                 docs/ai/CAS-AI-PHASE-2.md's system prompt) — even a caller
@@ -314,14 +313,14 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
             <button
               type="button"
               onClick={() => setIsAiAgentOpen(true)}
-              aria-label="Open CAS AI Agent"
+              aria-label="Open Ask Artify"
               className="flex flex-col items-center justify-center py-1 px-1 min-h-[48px] rounded-xl cursor-pointer group active:scale-95"
             >
-              <div className="w-12 h-12 -mt-5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center shadow-[0_6px_16px_rgba(5,150,105,0.45)] ring-4 ring-white dark:ring-slate-900 transition-all group-active:scale-95">
-                <Sparkles className="w-5 h-5" />
+              <div className="w-12 h-12 -mt-5 rounded-full overflow-hidden shadow-[0_6px_16px_rgba(5,150,105,0.45)] ring-4 ring-white dark:ring-slate-900 transition-all group-active:scale-95">
+                <img src="./ask-artify-logo.png" alt="" className="w-full h-full object-cover" />
               </div>
               <span className="text-[10px] mt-0.5 tracking-tight leading-none font-medium text-emerald-600 dark:text-emerald-400">
-                AI Agent
+                Ask Artify
               </span>
             </button>
 

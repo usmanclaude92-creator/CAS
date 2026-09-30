@@ -79,7 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'reports', label: 'Financial Reports', icon: FileBarChart, permission: 'reports.view', section: 'main' },
     { id: 'masters', label: 'Business Masters', icon: Layers, permission: 'settings.view', section: 'masters' },
     { id: 'audit', label: 'Immutable Audit Log', icon: ShieldAlert, permission: 'audit.view', section: 'audit' },
-    { id: 'ai_agent_admin', label: 'AI Agent Administration', icon: Sparkles, permission: 'ai_actions.manage', section: 'audit' },
+    { id: 'ai_agent_admin', label: 'Ask Artify Administration', icon: Sparkles, permission: 'ai_actions.manage', section: 'audit' },
   ];
 
   // Filter based on user permissions

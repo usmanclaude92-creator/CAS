@@ -436,7 +436,7 @@ export const Header: React.FC<HeaderProps> = ({
       case 'audit':
         return 'Immutable System Audit Trail';
       case 'ai_agent_admin':
-        return 'AI Agent Administration';
+        return 'Ask Artify Administration';
     }
   };
 
@@ -862,7 +862,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
-        {/* CAS AI Agent (read-only assistant, Phase 2) */}
+        {/* Ask Artify (read-only assistant, Phase 2) */}
         <AiAgentButton />
 
         {/* In-App Notifications Bell */}
