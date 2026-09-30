@@ -143,6 +143,17 @@ function toGeminiTools(tools: ToolSchema[]): Array<{ functionDeclarations: unkno
  * Plain `fetch` against the REST API, no SDK dependency — same rationale as
  * the OpenAI voice providers (one well-documented endpoint).
  */
+/** Gemini returns 503 UNAVAILABLE for ordinary transient capacity spikes —
+ *  its own error body says so explicitly ("usually temporary, try again
+ *  later"), confirmed hit twice in a handful of live test calls while
+ *  building this provider. One short retry turns a real-but-transient
+ *  overload into a success instead of an immediate user-facing failure. */
+const OVERLOAD_RETRY_DELAY_MS = 1_000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export class GeminiProvider implements AiProvider {
   readonly name = 'gemini';
   private readonly apiKey: string;
@@ -153,21 +164,11 @@ export class GeminiProvider implements AiProvider {
     this.model = model;
   }
 
-  async sendMessage(request: ProviderRequest, opts: SendMessageOptions): Promise<ProviderResponse> {
+  private async fetchOnce(body: Record<string, unknown>, timeoutMs: number): Promise<Response> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), opts.timeoutMs);
-
-    const body: Record<string, unknown> = {
-      system_instruction: { parts: [{ text: request.system }] },
-      contents: toGeminiContents(request.messages),
-      generationConfig: { maxOutputTokens: request.maxTokens },
-    };
-    const tools = toGeminiTools(request.tools);
-    if (tools.length > 0) body.tools = tools;
-
-    let res: Response;
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      res = await fetch(
+      return await fetch(
         `${GEMINI_API_BASE}/models/${encodeURIComponent(this.model)}:generateContent?key=${encodeURIComponent(this.apiKey)}`,
         {
           method: 'POST',
@@ -182,6 +183,22 @@ export class GeminiProvider implements AiProvider {
       throw new ProviderInvalidResponseError('Failed to reach the AI provider.');
     } finally {
       clearTimeout(timer);
+    }
+  }
+
+  async sendMessage(request: ProviderRequest, opts: SendMessageOptions): Promise<ProviderResponse> {
+    const body: Record<string, unknown> = {
+      system_instruction: { parts: [{ text: request.system }] },
+      contents: toGeminiContents(request.messages),
+      generationConfig: { maxOutputTokens: request.maxTokens },
+    };
+    const tools = toGeminiTools(request.tools);
+    if (tools.length > 0) body.tools = tools;
+
+    let res = await this.fetchOnce(body, opts.timeoutMs);
+    if (res.status === 503) {
+      await sleep(OVERLOAD_RETRY_DELAY_MS);
+      res = await this.fetchOnce(body, opts.timeoutMs);
     }
 
     if (!res.ok) {
