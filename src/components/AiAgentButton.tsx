@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AiAgentChatModal } from './modals/AiAgentChatModal';
+import { useAskArtifyLogoSrc } from '../utils/askArtifyLogo';
 
 /**
  * The app-wide entry point into the read-only Ask Artify assistant (Phase 2).
@@ -12,6 +13,7 @@ import { AiAgentChatModal } from './modals/AiAgentChatModal';
  */
 export const AiAgentButton: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const logoSrc = useAskArtifyLogoSrc();
 
   return (
     <>
@@ -22,7 +24,7 @@ export const AiAgentButton: React.FC = () => {
         title="Ask Artify"
         className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40 w-14 h-14 rounded-full overflow-hidden shadow-lg ring-1 ring-black/5 transition-transform hover:scale-105 cursor-pointer print:hidden"
       >
-        <img src="/ask-artify-logo.png" alt="" className="w-full h-full object-cover" />
+        <img src={logoSrc} alt="" className="w-full h-full object-cover" />
       </button>
       {isOpen && <AiAgentChatModal onClose={() => setIsOpen(false)} />}
     </>

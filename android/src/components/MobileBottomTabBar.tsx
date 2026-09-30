@@ -24,6 +24,7 @@ import {
 import { NavView } from './Sidebar';
 import { authService } from '../services/authService';
 import { AiAgentChatModal } from './modals/AiAgentChatModal';
+import { useAskArtifyLogoSrc } from '../utils/askArtifyLogo';
 
 interface MobileBottomTabBarProps {
   activeView: NavView;
@@ -54,6 +55,8 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
   onOpenExpense,
   onOpenTransfer,
 }) => {
+  const logoSrc = useAskArtifyLogoSrc();
+
   // Collapsed state - persist user preference in localStorage
   const [isCollapsed, setIsCollapsed] = useState(() => {
     try {
@@ -205,33 +208,49 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
             : 'opacity-0 translate-y-10 scale-95 pointer-events-none'
         }`}
       >
-        <button
-          type="button"
-          onClick={() => handleToggleCollapse(false)}
-          className="flex items-center gap-2.5 px-4 py-2.5 min-h-[48px] bg-slate-900/95 dark:bg-slate-800/95 text-white rounded-full shadow-lg backdrop-blur-md border border-slate-700/80 hover:bg-slate-800 active:scale-95 transition-all text-xs font-semibold cursor-pointer group touch-target-min"
-          aria-label="Expand navigation bar"
-          title="Expand navigation bar"
-        >
-          <div className="flex items-center gap-1.5">
-            {getActiveTabIcon(activeView)}
-            <span className="text-slate-200 group-hover:text-white font-medium">
-              {getActiveTabLabel(activeView)}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => handleToggleCollapse(false)}
+            className="flex items-center gap-2.5 px-4 py-2.5 min-h-[48px] bg-slate-900/95 dark:bg-slate-800/95 text-white rounded-full shadow-lg backdrop-blur-md border border-slate-700/80 hover:bg-slate-800 active:scale-95 transition-all text-xs font-semibold cursor-pointer group touch-target-min"
+            aria-label="Expand navigation bar"
+            title="Expand navigation bar"
+          >
+            <div className="flex items-center gap-1.5">
+              {getActiveTabIcon(activeView)}
+              <span className="text-slate-200 group-hover:text-white font-medium">
+                {getActiveTabLabel(activeView)}
+              </span>
+            </div>
+
+            {pendingApprovalsCount > 0 && (
+              <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full ring-2 ring-slate-900 animate-pulse">
+                {pendingApprovalsCount}
+              </span>
+            )}
+
+            <div className="w-px h-3.5 bg-slate-700 mx-0.5" />
+
+            <span className="flex items-center gap-1 text-[11px] text-indigo-300 font-medium">
+              <span>Show Nav</span>
+              <ChevronUp className="w-3.5 h-3.5 transition-transform group-hover:-translate-y-0.5" />
             </span>
-          </div>
+          </button>
 
-          {pendingApprovalsCount > 0 && (
-            <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full ring-2 ring-slate-900 animate-pulse">
-              {pendingApprovalsCount}
-            </span>
-          )}
-
-          <div className="w-px h-3.5 bg-slate-700 mx-0.5" />
-
-          <span className="flex items-center gap-1 text-[11px] text-indigo-300 font-medium">
-            <span>Show Nav</span>
-            <ChevronUp className="w-3.5 h-3.5 transition-transform group-hover:-translate-y-0.5" />
-          </span>
-        </button>
+          {/* Ask Artify — straddles the pill's top-middle edge (half above,
+              half on), always the dark-background logo variant since the
+              pill itself is always dark-colored regardless of app theme.
+              No text label here, unlike the expanded bar's center tab. */}
+          <button
+            type="button"
+            onClick={() => setIsAiAgentOpen(true)}
+            aria-label="Open Ask Artify"
+            title="Ask Artify"
+            className="absolute left-1/2 -top-5 -translate-x-1/2 z-10 w-10 h-10 rounded-full overflow-hidden shadow-[0_4px_12px_rgba(0,0,0,0.35)] ring-4 ring-slate-900 dark:ring-slate-800 cursor-pointer active:scale-95 transition-all"
+          >
+            <img src="./ask-artify-logo-dark.png" alt="" className="w-full h-full object-cover" />
+          </button>
+        </div>
       </div>
 
       {/* 2. EXPANDED BOTTOM TAB BAR */}
@@ -240,7 +259,26 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
           isCollapsed ? 'translate-y-full pointer-events-none' : 'translate-y-0 pointer-events-auto'
         }`}
       >
-        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] pb-[max(0.375rem,env(safe-area-inset-bottom))]">
+        <div className="relative bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] pb-[max(0.375rem,env(safe-area-inset-bottom))]">
+          {/* Ask Artify — positioned absolutely (not grid-flowed) so it can
+              straddle the bar's top edge exactly half above / half on it,
+              independent of the grid row's own padding. The grid below
+              keeps an empty placeholder in this same column so the other
+              four tabs stay evenly spaced. */}
+          <button
+            type="button"
+            onClick={() => setIsAiAgentOpen(true)}
+            aria-label="Open Ask Artify"
+            className="absolute left-1/2 -top-7 -translate-x-1/2 z-10 flex flex-col items-center cursor-pointer group active:scale-95"
+          >
+            <div className="w-14 h-14 rounded-full overflow-hidden shadow-[0_6px_16px_rgba(5,150,105,0.45)] ring-4 ring-white dark:ring-slate-900 transition-all group-active:scale-95">
+              <img src={logoSrc} alt="" className="w-full h-full object-cover" />
+            </div>
+            <span className="text-[10px] mt-0.5 tracking-tight leading-none font-medium text-emerald-600 dark:text-emerald-400">
+              Ask Artify
+            </span>
+          </button>
+
           {/* Tab Navigation Items (48px min touch targets, Material 3 Pill Design) */}
           <nav className="grid grid-cols-5 items-center px-2 py-1 gap-1">
             {/* Tab 1: Dashboard */}
@@ -305,24 +343,11 @@ export const MobileBottomTabBar: React.FC<MobileBottomTabBarProps> = ({
               </span>
             </button>
 
-            {/* Tab (center): Ask Artify — raised out of the bar so it reads
-                as "assistant", not another data-view shortcut. Shown to
-                every authenticated user regardless of tool permissions (see
-                docs/ai/CAS-AI-PHASE-2.md's system prompt) — even a caller
-                with no data access still gets an honest answer. */}
-            <button
-              type="button"
-              onClick={() => setIsAiAgentOpen(true)}
-              aria-label="Open Ask Artify"
-              className="flex flex-col items-center justify-center py-1 px-1 min-h-[48px] rounded-xl cursor-pointer group active:scale-95"
-            >
-              <div className="w-12 h-12 -mt-5 rounded-full overflow-hidden shadow-[0_6px_16px_rgba(5,150,105,0.45)] ring-4 ring-white dark:ring-slate-900 transition-all group-active:scale-95">
-                <img src="./ask-artify-logo.png" alt="" className="w-full h-full object-cover" />
-              </div>
-              <span className="text-[10px] mt-0.5 tracking-tight leading-none font-medium text-emerald-600 dark:text-emerald-400">
-                Ask Artify
-              </span>
-            </button>
+            {/* Center column: intentionally empty — Ask Artify itself is the
+                absolutely-positioned button above, straddling the bar's top
+                edge. This placeholder only keeps the grid at 5 even columns
+                so the other four tabs don't redistribute across 4. */}
+            <div aria-hidden="true" className="min-h-[48px]" />
 
             {/* Tab 3: Projects */}
             <button
