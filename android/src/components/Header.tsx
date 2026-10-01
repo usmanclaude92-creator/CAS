@@ -428,72 +428,6 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(({
     }
   };
 
-  const getSection = () => {
-    switch (activeView) {
-      case 'dashboard':
-      case 'project_dashboard':
-      case 'approvals':
-      case 'reports':
-        return 'Overview';
-      case 'projects':
-      case 'banking':
-      case 'customers':
-      case 'purchases':
-      case 'expenses':
-        return 'Transactions';
-      case 'masters':
-        return 'Master Data';
-      case 'system_config':
-      case 'audit':
-      case 'users':
-      case 'roles':
-      case 'workflow_settings':
-      case 'master_import_audit':
-      case 'ai_agent_admin':
-      case 'knowledge_admin':
-        return 'Administration & Setup';
-      default:
-        return '';
-    }
-  };
-
-  const getTitle = () => {
-    switch (activeView) {
-      case 'dashboard':
-        return 'Executive Financial Dashboard';
-      case 'approvals':
-        return 'Pending Approvals & Governance Queue';
-      case 'projects':
-        return 'Construction Projects & Cost Accounting';
-      case 'banking':
-        return 'Commercial Banking & Treasury Operations';
-      case 'customers':
-        return 'Customers & Accounts Receivable';
-      case 'purchases':
-        return 'Vendors, Materials & Accounts Payable';
-      case 'expenses':
-        return 'Direct Project & Site Expenses';
-      case 'reports':
-        return 'Financial Statements & Reports';
-      case 'masters':
-        return 'Chart of Accounts & System Masters';
-      case 'users':
-        return 'User Management & Security Profiles';
-      case 'roles':
-        return 'Role-Based Access Control (RBAC)';
-      case 'workflow_settings':
-        return 'Approval Thresholds & SOD Governance';
-      case 'master_import_audit':
-        return 'Master Data Import Governance Logs';
-      case 'audit':
-        return 'Immutable System Audit Trail';
-      case 'ai_agent_admin':
-        return 'Ask Artify Administration';
-      case 'knowledge_admin':
-        return 'Knowledge Base';
-    }
-  };
-
   // Permission checks for quick transaction creation
   const canCreateInvoice = authService.hasPermission('invoices.create');
   const canCreateReceipt = authService.hasPermission('money_in.create');
@@ -523,19 +457,34 @@ export const Header = forwardRef<HTMLElement, HeaderProps>(({
         >
           <Menu className="w-5 h-5 text-slate-700 dark:text-slate-200" />
         </button>
-        <div className="min-w-0">
-          <div className="hidden sm:block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider truncate">
-            {getSection()}
-          </div>
-          <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight truncate">
-            {getTitle()}
-          </h1>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:flex items-center gap-2">
-            <span>Muscat, Sultanate of Oman</span>
-            <span>&bull;</span>
-            <span className="font-mono font-medium text-emerald-600 dark:text-emerald-400">
-              OMR (3-Decimals)
-            </span>
+        <div className="min-w-0 flex items-center gap-2">
+          {/* Fixed brand lockup — replaces the old per-page section label +
+              title (which duplicated each view's own on-page heading and,
+              varying wildly in length, destabilized the header's height).
+              Icon stays the app mark's real colors in light theme; in dark
+              theme it's rendered as a plain light/white silhouette for
+              contrast against the dark header. Matches the web app's header. */}
+          <img
+            src="./apple-touch-icon.png"
+            alt="CAS by Artify Sols"
+            className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 dark:brightness-0 dark:invert"
+          />
+          <div className="min-w-0">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white leading-tight tracking-tight">
+                CAS
+              </span>
+              <span className="text-[11px] sm:text-xs font-semibold text-slate-400 dark:text-slate-500 truncate">
+                by Artify Sols
+              </span>
+            </div>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:flex items-center gap-2">
+              <span>Muscat, Sultanate of Oman</span>
+              <span>&bull;</span>
+              <span className="font-mono font-medium text-emerald-600 dark:text-emerald-400">
+                OMR (3-Decimals)
+              </span>
+            </div>
           </div>
         </div>
       </div>
