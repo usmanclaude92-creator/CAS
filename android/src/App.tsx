@@ -66,17 +66,32 @@ function AppContent() {
   // Header is fixed (not sticky, which some WebView builds fail to keep
   // pinned during scroll), so its rendered height is measured and used to
   // push page content down by exactly that amount, at every breakpoint.
+  // HEADER_HEIGHT_BUFFER_PX absorbs any sub-pixel rounding or late layout
+  // shift (webfonts, the icon image) between the first offsetHeight read
+  // and the page settling, which was letting page content clip under the
+  // header's bottom edge.
+  const HEADER_HEIGHT_BUFFER_PX = 8;
   const headerRef = useRef<HTMLElement>(null);
-  const [headerHeight, setHeaderHeight] = useState(56);
+  const [headerHeight, setHeaderHeight] = useState(56 + HEADER_HEIGHT_BUFFER_PX);
 
   useEffect(() => {
     const el = headerRef.current;
     if (!el) return;
-    const updateHeight = () => setHeaderHeight(el.offsetHeight);
+    const updateHeight = () => setHeaderHeight(el.offsetHeight + HEADER_HEIGHT_BUFFER_PX);
     updateHeight();
+    // Re-measure once more after the first paint settles (webfonts/images
+    // can still shift the header's height a frame or two after mount) and
+    // again on window 'load', in addition to the ResizeObserver covering
+    // every later change (sidebar breakpoint, orientation, etc.).
+    const raf = requestAnimationFrame(updateHeight);
+    window.addEventListener('load', updateHeight);
     const observer = new ResizeObserver(updateHeight);
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('load', updateHeight);
+      observer.disconnect();
+    };
   }, []);
 
   // Table spacing optimization state (Compact vs Normal)
